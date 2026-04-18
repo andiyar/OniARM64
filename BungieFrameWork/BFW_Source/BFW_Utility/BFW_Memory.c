@@ -992,13 +992,13 @@ void
 UUrMemory_Block_Delete_Real(
 	void		*inMemory)
 {
-	unsigned long *realMemory;
+	void *realMemory;
 
 	UUmAssert(NULL != inMemory);	// we could use real memory w/ assertions some day
 
-	realMemory = (unsigned long *)((char *)inMemory - 4);
+	realMemory = *(void **)((char *)inMemory - sizeof(void*));
 
-	free((void *)*realMemory);
+	free(realMemory);
 }
 
 #if DEBUGGING_MEMORY
