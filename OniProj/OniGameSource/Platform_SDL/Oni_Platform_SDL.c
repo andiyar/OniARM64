@@ -51,7 +51,7 @@ ONiPlatform_CreateWindow(
 	SDL_DisplayMode desktopMode;
 	SDL_GetDesktopDisplayMode(0, &desktopMode);
 	//TODO: SDL_WINDOW_FULLSCREEN?
-	ioPlatformData->gameWindow = SDL_CreateWindow(ONcMainWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, desktopMode.w, desktopMode.h, SDL_WINDOW_OPENGL);
+	ioPlatformData->gameWindow = SDL_CreateWindow(ONcMainWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, desktopMode.w, desktopMode.h, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
 	if (!ioPlatformData->gameWindow)
 	{

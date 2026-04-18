@@ -1001,7 +1001,7 @@ WMrWindow_GetLong(
 		return 0;
 	}
 
-	data = *((UUtUns32*)((UUtUns32)inWindow + sizeof(WMtWindow) + inOffset));
+	data = *((UUtUns32*)((char*)inWindow + sizeof(WMtWindow) + inOffset));
 
 	return data;
 }
@@ -1543,9 +1543,9 @@ WMrWindow_SetLong(
 		return 0;
 	}
 
-	data = *((UUtUns32*)((UUtUns32)inWindow + sizeof(WMtWindow) + inOffset));
+	data = *((UUtUns32*)((char*)inWindow + sizeof(WMtWindow) + inOffset));
 
-	*(UUtUns32*)((UUtUns32)inWindow + sizeof(WMtWindow) + inOffset) = inData;
+	*(UUtUns32*)((char*)inWindow + sizeof(WMtWindow) + inOffset) = inData;
 
 	return data;
 }

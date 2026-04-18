@@ -7,7 +7,7 @@
 // ======================================================================
 #include "BFW_CommandLine.h"
 
-#if UUmPlatform == UUmPlatform_Mac
+#if (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 
 	#include "BFW_CL_Platform_MacOS.h"
 

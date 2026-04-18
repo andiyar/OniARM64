@@ -9,8 +9,60 @@
 
 /*---------- headers */
 
+#if defined(__APPLE__)
+#include <OpenGL/gl.h>
+#ifndef APIENTRY
+#define APIENTRY
+#endif
+#else
 #include <GL/gl.h>
-#if UUmPlatform != UUmPlatform_Linux
+#endif
+
+#ifndef APIENTRY
+#define APIENTRY
+#endif
+
+#if defined(__APPLE__)
+// macOS: define GL extension constants that aren't in Apple's headers
+#define GL_TEXTURE_IMAGE_SIZE_ARB GL_TEXTURE_COMPRESSED_IMAGE_SIZE_ARB
+
+// nVidia register combiners (not supported on macOS, but need constants)
+#ifndef GL_REGISTER_COMBINERS_NV
+#define GL_REGISTER_COMBINERS_NV          0x8522
+#define GL_MAX_GENERAL_COMBINERS_NV       0x854D
+#define GL_NUM_GENERAL_COMBINERS_NV       0x854E
+#define GL_COMBINER0_NV                   0x8550
+#define GL_VARIABLE_A_NV                  0x8523
+#define GL_VARIABLE_B_NV                  0x8524
+#define GL_VARIABLE_C_NV                  0x8525
+#define GL_VARIABLE_D_NV                  0x8526
+#define GL_UNSIGNED_IDENTITY_NV           0x8536
+#define GL_UNSIGNED_INVERT_NV             0x8537
+#define GL_TEXTURE0_ARB                   0x84C0
+#define GL_TEXTURE1_ARB                   0x84C1
+#define GL_PRIMARY_COLOR_NV               0x852C
+#define GL_SPARE0_NV                      0x852E
+#define GL_DISCARD_NV                     0x8530
+#define GL_COMBINER_INPUT_NV              0x8542
+#define GL_COMBINER_MAPPING_NV            0x8543
+#define GL_COMBINER_COMPONENT_USAGE_NV    0x8544
+#define GL_COMBINER_AB_DOT_PRODUCT_NV     0x8545
+#define GL_COMBINER_CD_DOT_PRODUCT_NV     0x8546
+#define GL_COMBINER_MUX_SUM_NV            0x8547
+#define GL_COMBINER_SCALE_NV              0x8548
+#define GL_COMBINER_BIAS_NV               0x8549
+#define GL_COMBINER_AB_OUTPUT_NV          0x854A
+#define GL_COMBINER_CD_OUTPUT_NV          0x854B
+#define GL_COMBINER_SUM_OUTPUT_NV         0x854C
+#endif
+
+// 3DFX texture compression (not supported on macOS)
+#ifndef GL_COMPRESSED_RGB_FXT1_3DFX
+#define GL_COMPRESSED_RGB_FXT1_3DFX       0x86B0
+#define GL_COMPRESSED_RGBA_FXT1_3DFX      0x86B1
+#endif
+
+#elif UUmPlatform != UUmPlatform_Linux
 #include "glext.h"
 #else
 #define GL_TEXTURE_IMAGE_SIZE_ARB GL_TEXTURE_COMPRESSED_IMAGE_SIZE_ARB

@@ -290,17 +290,17 @@ IMrImage_Copy(
 {
 	UUtUns16		src_rowbytes;
 	UUtUns16		src_pixel_size;
-	UUtUns32		src;
+	uintptr_t		src;
 	UUtRect			src_bounds;
 	UUtRect			src_rect;
-	UUtUns32		src_read;
+	uintptr_t		src_read;
 
 	UUtUns16		dst_rowbytes;
 	UUtUns16		dst_pixel_size;
-	UUtUns32		dst;
+	uintptr_t		dst;
 	UUtRect			dst_bounds;
 	UUtRect			dst_rect;
-	UUtUns32		dst_write;
+	uintptr_t		dst_write;
 
 	UUtRect			temp;
 	UUtUns16 		width;
@@ -334,14 +334,14 @@ IMrImage_Copy(
 	// calculate the src start
 	src_rowbytes = IMrImage_ComputeRowBytes(inSrcPixelType, inSrcWidth);
 	src =
-		(UUtUns32)inSrcData +
+		(uintptr_t)inSrcData +
 		(src_rect.left * src_pixel_size) +
 		(src_rect.top * src_rowbytes);
 
 	// calculate the dst start
 	dst_rowbytes = IMrImage_ComputeRowBytes(inDstPixelType, inDstWidth);
 	dst =
-		(UUtUns32)inDstData +
+		(uintptr_t)inDstData +
 		(dst_rect.left * dst_pixel_size) +
 		(dst_rect.top * dst_rowbytes);
 

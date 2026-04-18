@@ -121,7 +121,7 @@ static UUtBool iDebuggerMessageBox(char *msg)
 
 	return return_value;
 }
-#elif (UUmPlatform == UUmPlatform_Mac)
+#elif (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 static UUtBool iDebuggerMessageBox(
 	char *msg)
 {
@@ -169,7 +169,7 @@ static UUtBool iDebuggerMessageBox(
 }
 #endif
 
-#if UUmPlatform == UUmPlatform_Mac
+#if (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 
 static void iDebugCStrG(char *str)
 {
@@ -212,7 +212,7 @@ void UUrError_Report_Internal(
 			__debugbreak();
 		}
 	}
-	#elif (UUmPlatform == UUmPlatform_Mac)
+	#elif (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 	{
 		UUtBool enter_debugger;
 
@@ -379,7 +379,7 @@ int UUrEnterDebuggerInline(
 
 	#if defined(DEBUGGING) && DEBUGGING
 
-		#if UUmPlatform == UUmPlatform_Mac
+		#if (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 			// enterDebugger= iDebuggerMessageBox(msg);
 			enterDebugger = 1;
 		#elif UUmPlatform == UUmPlatform_Win32
@@ -415,7 +415,7 @@ void UUcArglist_Call UUrEnterDebugger(const char *format, ...)
 
 	#if defined(DEBUGGING) && DEBUGGING
 
-		#if UUmPlatform == UUmPlatform_Mac
+		#if (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 			{
 				UUtBool enter_debugger;
 
@@ -468,7 +468,7 @@ void UUcArglist_Call UUrDebuggerMessage(
 
 	iAppendDebugFileMessage(buffer);
 #if defined(DEBUGGING) && DEBUGGING
-#if UUmPlatform == UUmPlatform_Mac
+#if (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 	iDebugCStrG(buffer);
 #elif UUmPlatform == UUmPlatform_Win32
 	OutputDebugString(buffer);

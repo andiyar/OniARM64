@@ -143,7 +143,7 @@ extern "C" {
 
 	typedef struct M3tGeomCamera			M3tGeomCamera;
 
-	#if UUmPlatform == UUmPlatform_Mac
+	#if (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 
 		typedef GDHandle					M3tPlatformDevice;
 
@@ -151,9 +151,9 @@ extern "C" {
 
 		typedef LPVOID						M3tPlatformDevice;
 
-	#elif UUmPlatform == UUmPlatform_Linux
+	#elif UUmPlatform == UUmPlatform_Linux || ((UUmPlatform == UUmPlatform_Mac) && defined(UUmSDL))
 
-		// software renderer not yet available on Linux
+		// SDL renderer - no platform-specific device needed
 		typedef struct {} M3tPlatformDevice;
 
 	#else

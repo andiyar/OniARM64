@@ -500,13 +500,10 @@ if(Platform_SDL)
 
                     ../../../BungieFrameWork/BFW_Source/BFW_FileManager/Platform_Win32/BFW_FileManager_Win32.c)
     elseif(APPLE)
+            # For SDL builds on macOS, use Linux file manager (POSIX-compatible)
             set(OS_SOURCE_FILES
-                    ../../../BungieFrameWork/BFW_Source/BFW_DebuggerSymbols/BFW_DebuggerSymbols_MacOS.c
-
-                    ../../../BungieFrameWork/BFW_Source/BFW_FileManager/Platform_MacOS/BFW_FileManager_MacOS.c
-
-                    ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Manager/AltiVec/Motoko_SIMDCache_AltiVec.c
-                    ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Manager/AltiVec/Motoko_SIMDCache_AltiVec.h)
+                    ../../../BungieFrameWork/BFW_Source/BFW_DebuggerSymbols/BFW_DebuggerSymbols_Win32.c
+                    ../../../BungieFrameWork/BFW_Source/BFW_FileManager/Platform_Linux/BFW_FileManager_Linux.c)
     endif()
 
     add_executable(Oni

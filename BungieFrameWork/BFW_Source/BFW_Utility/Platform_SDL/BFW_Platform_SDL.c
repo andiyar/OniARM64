@@ -183,8 +183,8 @@ UUrGetSecsSince1900(
 	void)
 {
 	UUtUns32 secs;
-#if UUmPlatform == UUmPlatform_Linux
-	//FIXME: this is going to fail in a few years
+#if UUmPlatform == UUmPlatform_Linux || (UUmPlatform == UUmPlatform_Mac && defined(UUmSDL))
+	// Use Unix time for Linux and SDL Mac builds
 	UUtUns32 secsSince1970 = (UUtUns32)time(NULL);
 	static const UUtUns32 secondsBetween1900And1970 = 2208988800;
 	secs = secsSince1970 + secondsBetween1900And1970;

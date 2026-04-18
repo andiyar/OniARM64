@@ -13,6 +13,10 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-multichar -Wno-incompatible-pointer-types")
 endif()
 
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-multichar -Wno-incompatible-pointer-types -Wno-incompatible-function-pointer-types")
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 	set(Platform_SDL TRUE)
 else()
@@ -91,6 +95,7 @@ if (Platform_SDL)
     include_directories(
         OniProj/OniGameSource/Platform_SDL/
         BungieFrameWork/BFW_Source/BFW_SoundSystem2/Platform_OpenAL/
+        ${SDL2_INCLUDE_DIRS}
     )
 elseif(WIN32)
     include_directories(

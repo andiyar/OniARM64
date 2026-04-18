@@ -255,7 +255,7 @@ ONiResolution_Switch(
 
 	voodoo_fullscreen= gl_voodoo_card_full_screen();
 	s3_crappy_card_fullscreen= gl_s3_crappy_card_full_screen();
-#if defined(UUmPlatform) && (UUmPlatform == UUmPlatform_Mac)
+#if defined(UUmPlatform) && (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 	{
 		// OSX doesn't handle res changes properly (if at all) as of OS X public beta
 		// so we force a restart
@@ -275,6 +275,9 @@ ONiResolution_Switch(
 			}
 		}
 	}
+#elif defined(UUmPlatform) && (UUmPlatform == UUmPlatform_Mac) && defined(UUmSDL)
+	// Modern macOS with SDL - always treat as OSX for restart behavior
+	osx= UUcTrue;
 #endif
 
 	if (voodoo_fullscreen || s3_crappy_card_fullscreen || osx)

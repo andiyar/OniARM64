@@ -2559,7 +2559,7 @@ AUtMB_ButtonChoice UUcArglist_Call AUrMessageBox(AUtMB_ButtonType inButtonType, 
 
 	return choice;
 }
-#elif UUmPlatform == UUmPlatform_Mac
+#elif (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 AUtMB_ButtonChoice UUcArglist_Call AUrMessageBox(
 	AUtMB_ButtonType inButtonType,
 	const char *format, ...)
@@ -2912,7 +2912,7 @@ AUrFlags_PrintFromValue(
 }
 
 
-#if UUmPlatform == UUmPlatform_Mac
+#if (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 
 UUtWindow AUrWindow_New(
 	UUtRect *inRect)

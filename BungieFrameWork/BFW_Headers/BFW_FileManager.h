@@ -53,7 +53,7 @@ typedef struct BFtFileRef
 	char	name[BFcMaxPathLength];
 } BFtFileRef;
 
-#elif UUmPlatform == UUmPlatform_Mac
+#elif (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 
 #define BFcPathSeparator ':'
 
@@ -64,7 +64,7 @@ typedef struct BFtFileRef
 
 } BFtFileRef;
 
-#elif UUmPlatform == UUmPlatform_Linux
+#elif UUmPlatform == UUmPlatform_Linux || ((UUmPlatform == UUmPlatform_Mac) && defined(UUmSDL))
 
 #define BFcPathSeparator '/'
 
@@ -92,7 +92,7 @@ void
 BFrFile_CompletionFunc_Bool(
 	void*	inBoolAddr);
 
-#if UUmPlatform == UUmPlatform_Mac
+#if (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 
 	UUtError
 	BFrFileRef_MakeFromFSSpec(
@@ -103,7 +103,7 @@ BFrFile_CompletionFunc_Bool(
 	BFrFileRef_GetFSSpec(
 		BFtFileRef		*inFileRef);
 
-#elif UUmPlatform == UUmPlatform_Win32 || UUmPlatform == UUmPlatform_Linux
+#elif UUmPlatform == UUmPlatform_Win32 || UUmPlatform == UUmPlatform_Linux || ((UUmPlatform == UUmPlatform_Mac) && defined(UUmSDL))
 
 #else
 

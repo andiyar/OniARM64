@@ -13,7 +13,7 @@
 #include "Oni_Motoko.h"
 #include "Oni_Persistance.h"
 
-#if UUmPlatform == UUmPlatform_Linux
+#if UUmPlatform == UUmPlatform_Linux || ((UUmPlatform == UUmPlatform_Mac) && defined(UUmSDL))
 //FIXME: Bink 1.0q, included here, does not support Linux
 #define __RAD__
 #define PTR4
@@ -41,7 +41,7 @@ typedef struct{} *HCURSOR;
 
 #include "gl_engine.h"
 
-#if UUmPlatform == UUmPlatform_Mac
+#if (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 
 #include <Files.h>
 
@@ -49,7 +49,9 @@ typedef struct{} *HCURSOR;
 
 #include "BFW_SS2_Platform_Win32.h"
 
-#elif UUmPlatform == UUmPlatform_Linux
+#elif UUmPlatform == UUmPlatform_Linux || ((UUmPlatform == UUmPlatform_Mac) && defined(UUmSDL))
+
+// SDL/Linux path - no additional includes needed
 
 #else
 

@@ -857,7 +857,7 @@ static void gl_purge_old_textures_as_needed(
 
 	if (texture_memory_limit == 0L)
 	{
-	#if defined(UUmPlatform) && (UUmPlatform == UUmPlatform_Mac)
+	#if defined(UUmPlatform) && (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 		extern UUtUns32 gl_get_mac_texture_memory(void); // gl_macos.c
 
 		texture_memory_limit= gl_get_mac_texture_memory();

@@ -52,6 +52,13 @@ elseif (WIN32)
         ../../../BungieFrameWork/BFW_Source/BFW_FileManager/Platform_Win32/BFW_FileManager_Win32.c
         ../../../BungieFrameWork/BFW_Source/BFW_Utility/Platform_Win32/BFW_Platform_Win32.c
     )
+elseif (APPLE)
+    # macOS with SDL uses Linux-style file manager and Win32-style (stub) debugger symbols
+    target_sources(TEVCProj PRIVATE
+        ../../../BungieFrameWork/BFW_Source/BFW_FileManager/Platform_Linux/BFW_FileManager_Linux.c
+        ../../../BungieFrameWork/BFW_Source/BFW_DebuggerSymbols/BFW_DebuggerSymbols_Win32.c
+    )
+    target_link_libraries(TEVCProj PRIVATE m)
 endif()
 
 if (MSVC)

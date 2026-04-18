@@ -43,11 +43,11 @@ extern UUtBool gl_draw_engine_initialize(void); // from gl_engine.c
 
 #if UUmPlatform == UUmPlatform_Win32
 //	#include "MD_DrawEngine_Method.h"
-#elif UUmPlatform == UUmPlatform_Mac
+#elif (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 #include "RV_DrawEngine_Method.h"
 #endif
 
-#if UUmPlatform == UUmPlatform_Mac
+#if (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 #include "RV_DrawEngine_Method.h"
 #endif
 

@@ -78,6 +78,7 @@ extern "C" {
 
 	#define UUmProcessor_Pentium	1
 	#define UUmProcessor_PPC		2
+	#define UUmProcessor_ARM64		3
 
 	#define UUmCompiler_VisC		1
 	#define UUmCompiler_MWerks		2
@@ -97,7 +98,9 @@ extern "C" {
  * they are not given.
  */
 	#if !defined(UUmPlatform)
-		#if (defined(__MWERKS__) && defined(__POWERPC__)) || defined(__MRC__) || defined(__MOTO__)
+		#if defined(__APPLE__)
+			#define UUmPlatform	UUmPlatform_Mac
+		#elif (defined(__MWERKS__) && defined(__POWERPC__)) || defined(__MRC__) || defined(__MOTO__)
 			#define UUmPlatform	UUmPlatform_Mac
 		#elif (defined(__MWERKS__) && defined(__INTEL__)) || defined(_WIN32) || defined(__WATCOMC__)
 			#define UUmPlatform	UUmPlatform_Win32
@@ -109,7 +112,11 @@ extern "C" {
 	#endif
 
 	#if !defined(UUmProcessor)
-		#if (defined(__MWERKS__) && defined(__POWERPC__)) || defined(__MRC__) || defined(__MOTO__) || defined(ppc) || defined(__ppc__) || defined(__ppc)
+		#if defined(__aarch64__) || defined(__arm64__)
+			#define UUmProcessor	UUmProcessor_ARM64
+			#define UUmSIMD			UUmSIMD_None
+
+		#elif (defined(__MWERKS__) && defined(__POWERPC__)) || defined(__MRC__) || defined(__MOTO__) || defined(ppc) || defined(__ppc__) || defined(__ppc)
 			#define UUmProcessor	UUmProcessor_PPC
 
 			#if defined(__ALTIVEC__) && defined(__VEC__)
@@ -118,7 +125,7 @@ extern "C" {
 				#define UUmSIMD		UUmSIMD_None
 			#endif
 
-		#elif defined(i386) || defined(__i386__)
+		#elif defined(i386) || defined(__i386__) || defined(__x86_64__) || defined(__amd64__)
 			#define UUmProcessor	UUmProcessor_Pentium
 			#define UUmSIMD			UUmSIMD_None
 
@@ -153,6 +160,8 @@ extern "C" {
 			#define UUmEndian	UUmEndian_Big
 		#elif UUmProcessor == UUmProcessor_Pentium
 			#define UUmEndian	UUmEndian_Little
+		#elif UUmProcessor == UUmProcessor_ARM64
+			#define UUmEndian	UUmEndian_Little
 		#else
 			#error Could not automatically determine endianness, please specify manually
 		#endif
@@ -176,6 +185,9 @@ extern "C" {
                 #else
                     #define UUrProcessor_ZeroCacheLine(x, y)	__dcbz(x, y)
                 #endif
+	#elif UUmProcessor == UUmProcessor_ARM64
+		#define UUcProcessor_CacheLineBits	(6)
+		#define UUrProcessor_ZeroCacheLine(x, y)
 	#else
 		#error unknown processor
 	#endif
@@ -1383,7 +1395,7 @@ extern "C" {
 	{
 #if DEBUGGING_MEMORY
 		UUrMemory_MoveFast_Debug(inSrc, inDst, inSize);
-#elif UUmPlatform == UUmPlatform_Mac
+#elif (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 		BlockMoveData(inSrc, inDst, inSize);
 #else
 		memcpy(inDst, inSrc, inSize);
@@ -1395,7 +1407,7 @@ extern "C" {
 	{
 #if DEBUGGING_MEMORY
 		UUrMemory_MoveOverlap_Debug(inSrc, inDst, inSize);
-#elif UUmPlatform == UUmPlatform_Mac
+#elif (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 		BlockMoveData(inSrc, inDst, inSize);
 #else
 		memmove(inDst, inSrc, inSize);
