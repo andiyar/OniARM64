@@ -892,7 +892,7 @@ SSiSoundData_ProcHandler(
 	switch (inMessage)
 	{
 		case TMcTemplateProcMessage_LoadPostProcess:
-			sound_data->data = (void*)(((UUtUns32)sound_data->data) + ((UUtUns32)TMrInstance_GetRawOffset(sound_data)));
+			sound_data->data = (void*)(((uintptr_t)sound_data->data) + ((uintptr_t)TMrInstance_GetRawOffset(sound_data)));
 		break;
 
 		case TMcTemplateProcMessage_DisposePreProcess:

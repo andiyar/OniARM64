@@ -17,8 +17,13 @@
 
 #include "BFW_Console.h"
 
+#if defined(__APPLE__)
+#include <OpenAL/al.h>
+#include <OpenAL/alc.h>
+#else
 #include "AL/al.h"
 #include "AL/alc.h"
+#endif
 #include <math.h>
 
 #include <libavutil/frame.h>
@@ -440,7 +445,6 @@ SS2rPlatform_Initialize(
 	CHECK_AL_ERROR();
 	UUmError_ReturnOnNull(SSgDevice);
 
-	//FIXME: the number of channels will be split across mono/stereo
 	ALCint attrs[] = {
 		ALC_FREQUENCY, SScSamplesPerSecond,
 		ALC_MONO_SOURCES, SScMaxSoundChannels * 2,
@@ -451,11 +455,18 @@ SS2rPlatform_Initialize(
 	CHECK_AL_ERROR();
 	UUmError_ReturnOnNull(SSgContext);
 
-	ALCint numMono, numStereo;
+	// Apple's OpenAL does not honor ALC_MONO_SOURCES / ALC_STEREO_SOURCES in
+	// alcGetIntegerv — output vars stay uninitialized. Initialize to 0 and
+	// fall back to the count we requested via attrs if the query is a no-op.
+	ALCint numMono = 0, numStereo = 0;
 	alcGetIntegerv(SSgDevice, ALC_MONO_SOURCES, 1, &numMono);
 	alcGetIntegerv(SSgDevice, ALC_STEREO_SOURCES, 1, &numStereo);
 	CHECK_AL_ERROR();
-	*outNumChannels = UUmMin(numMono, numStereo);
+	if (numMono <= 0 || numStereo <= 0) {
+		numMono = SScMaxSoundChannels * 2;
+		numStereo = SScMaxSoundChannels * 2;
+	}
+	*outNumChannels = (UUtUns32)UUmMin(numMono, numStereo);
 
 	alcMakeContextCurrent(SSgContext);
 	CHECK_AL_ERROR();
