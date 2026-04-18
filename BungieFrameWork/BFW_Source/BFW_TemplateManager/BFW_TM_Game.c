@@ -365,11 +365,18 @@ TMiGame_Instance_FileAndIndex_Get(
 	if(TMmInstanceFile_ID_IsIndex(instanceFileID))
 	{
 		instanceFile = TMiGame_InstanceFile_GetFromIndex(instanceFileID);
+#if UUmPlatform_PointerSize == 4
+		// 32-bit only: cache the resolved TMtInstanceFile* inline in the
+		// 4-byte fileID slot so future calls hit the else-branch below.
+		// On 64-bit, pointers don't fit in 4 bytes — this writeback would
+		// smash the adjacent 4-byte placeholder field, so skip it and pay
+		// the extra hash lookup on every call.
 		((TMtInstanceFile**)inDataPtr)[-1] = instanceFile;
+#endif
 	}
 	else
 	{
-
+		// Never reached on 64-bit (see comment above).
 		instanceFile = (TMtInstanceFile*)instanceFileID;
 
 		#if defined(DEBUGGING) && DEBUGGING
@@ -418,11 +425,14 @@ TMiGame_Instance_File_Get(
 	if(TMmInstanceFile_ID_IsIndex(instanceFileID))
 	{
 		instanceFile = TMiGame_InstanceFile_GetFromIndex(instanceFileID);
+#if UUmPlatform_PointerSize == 4
+		// See TMiGame_Instance_FileAndIndex_Get for why this is 32-bit only.
 		((TMtInstanceFile**)inDataPtr)[-1] = instanceFile;
+#endif
 	}
 	else
 	{
-
+		// Never reached on 64-bit.
 		instanceFile = (TMtInstanceFile*)instanceFileID;
 
 		#if defined(DEBUGGING) && DEBUGGING
@@ -1994,8 +2004,16 @@ TMiGame_InstanceFile_Instance_Dynamic_New(
 
 	//UUrMemory_Set32(newDataPtr, 0xBADBADBA, dataSize);
 
+	// Preamble layout is: [0..4) placeholder, [4..8) instanceFileID.
+	// Original code wrote the resolved TMtInstanceFile* pointer directly into
+	// the fileID slot using `((TMtInstanceFile**)newDataPtr)[1]`. On 32-bit
+	// that hit offset 4 and the pointer fit in 4 bytes. On 64-bit, [1] is
+	// offset 8 (past the preamble) AND the pointer is 8 bytes — the fileID
+	// slot was left uninitialized, breaking downstream lookups.
+	// Fix: always store the 4-byte fileIndex and let the lookup path resolve
+	// it via TMiGame_InstanceFile_GetFromIndex.
 	((UUtUns32*)newDataPtr)[0] = TMmPlaceHolder_MakeFromIndex(newInstanceDescIndex);
-	((TMtInstanceFile**)newDataPtr)[1] = inInstanceFile;
+	((UUtUns32*)newDataPtr)[1] = inInstanceFile->fileIndex;
 
 	newDataPtr = newDataPtr + TMcPreDataSize;
 

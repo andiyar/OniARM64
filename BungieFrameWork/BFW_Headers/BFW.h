@@ -137,6 +137,15 @@ extern "C" {
 		#endif
 	#endif
 
+	// 64-bit pointer detection — needed by TM_Game instance-pointer handling.
+	#if !defined(UUmPlatform_PointerSize)
+		#if defined(__LP64__) || defined(_WIN64) || defined(__aarch64__)
+			#define UUmPlatform_PointerSize 8
+		#else
+			#define UUmPlatform_PointerSize 4
+		#endif
+	#endif
+
 	#if !defined(UUmCompiler)
 		#if defined(__MWERKS__)
 			#define UUmCompiler	UUmCompiler_MWerks

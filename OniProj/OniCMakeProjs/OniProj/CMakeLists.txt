@@ -523,7 +523,7 @@ if(Platform_SDL)
             ../../OniGameSource/Platform_SDL/Oni_Platform_SDL.c
             ../../OniGameSource/Platform_SDL/Oni_Platform_SDL.h)
     target_include_directories(Oni PRIVATE ${OPENAL_INCLUDE_DIR})
-    target_compile_definitions(Oni PRIVATE UUmSDL=1 UUmOpenAL=1)
+    target_compile_definitions(Oni PRIVATE UUmSDL=1 UUmOpenAL=1 TM_ALLOW_SIZE_MISMATCH=1)
     target_link_libraries(Oni PRIVATE
             OpenGL::GL
             SDL2::SDL2

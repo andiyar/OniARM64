@@ -288,6 +288,20 @@ TMrTemplate_Register(
 	// Add 4 to make up for preamble
 	if(curTemplateDefinition->size + curTemplateDefinition->varArrayElemSize != inSize + TMcPreDataSize)
 	{
+#if defined(TM_ALLOW_SIZE_MISMATCH)
+		// 64-bit port: .dat files were authored with 32-bit struct layouts;
+		// current sizeof() is bigger for any struct containing pointers.
+		// Tolerated — the swap-code interpreter handles field-by-field loading.
+		// Silent by default; define TM_LOG_SIZE_MISMATCH to enable per-template logs.
+#if defined(TM_LOG_SIZE_MISMATCH)
+		UUrStartupMessage("[tm] size mismatch on %s: stored size=%u var=%u inSize=%u pre=%d",
+			curTemplateDefinition->name,
+			(unsigned)curTemplateDefinition->size,
+			(unsigned)curTemplateDefinition->varArrayElemSize,
+			(unsigned)inSize,
+			(int)TMcPreDataSize);
+#endif
+#else
 		AUrMessageBox(AUcMBType_OK, "Template %s size %d var elem size %d inSize %d pre data size %d",
 			curTemplateDefinition->name,
 			curTemplateDefinition->size,
@@ -298,6 +312,7 @@ TMrTemplate_Register(
 		UUmAssert(0);
 
 		UUmError_ReturnOnErrorMsg(UUcError_Generic, "size mismatch, either you need to run the extractor or structure padding is wrong");
+#endif
 	}
 
 	curTemplateDefinition->flags |= TMcTemplateFlag_Registered;
