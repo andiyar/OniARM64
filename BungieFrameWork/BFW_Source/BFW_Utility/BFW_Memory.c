@@ -396,8 +396,8 @@ UUiMemory_Debug_FindBookkeepBlock(
 		bookkeepBlock;
 		bookkeepBlock = bookkeepBlock->next)
 	{
-		if((UUtUns32)inMemory > (UUtUns32)bookkeepBlock->beginMagic &&
-			(UUtUns32)inMemory < (UUtUns32)bookkeepBlock->endMagic)
+		if((uintptr_t)inMemory > (uintptr_t)bookkeepBlock->beginMagic &&
+			(uintptr_t)inMemory < (uintptr_t)bookkeepBlock->endMagic)
 		{
 			break;
 		}
@@ -495,8 +495,8 @@ void UUrMemory_Clear_Debug(void *inDst, UUtUns32 inSize)
 
 void UUrMemory_MoveFast_Debug(const void *inSrc, void *inDst, UUtUns32 inSize)  // non overlapping buffers only
 {
-	UUtUns32 inSrcInt = (UUtUns32) inSrc;
-	UUtUns32 inDstInt = (UUtUns32) inDst;
+	uintptr_t inSrcInt = (uintptr_t) inSrc;
+	uintptr_t inDstInt = (uintptr_t) inDst;
 
 	UUmAssertReadPtr(inSrc, inSize);
 	UUmAssertWritePtr(inDst, inSize);
@@ -1026,7 +1026,7 @@ UUrMemory_Block_Delete_Debug(
 		curBlock;
 		curBlock = curBlock->next)
 	{
-		if((UUtUns32)curBlock->beginMagic < (UUtUns32)inMemory && (UUtUns32)inMemory < (UUtUns32)curBlock->endMagic)
+		if((uintptr_t)curBlock->beginMagic < (uintptr_t)inMemory && (uintptr_t)inMemory < (uintptr_t)curBlock->endMagic)
 		{
 			break;
 		}
