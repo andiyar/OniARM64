@@ -240,7 +240,7 @@ static void out_of_memory(
 	stefans_emergency_relief_fund= NULL;
 	AUrMessageBox(AUcMBType_OK, "Sorry, Oni has run out of memory!");
 
-#if UUmPlatform == UUmPlatform_Mac
+#if (UUmPlatform == UUmPlatform_Mac) && !defined(UUmSDL)
 	// somehow, someway, even calling ExitToShell() is causing atexit-registered functions
 	// to be triggered, which tends to blow up on the Mac
 	{
@@ -260,7 +260,7 @@ static void out_of_memory(
 
 static void *iGetRealPtr(void *inFakePtr)
 {
-	void *realMemory = *(UUtUns32 **)((char *)inFakePtr - 4);
+	void *realMemory = *(void **)((char *)inFakePtr - sizeof(void*));
 
 	return realMemory;
 }
@@ -268,16 +268,16 @@ static void *iGetRealPtr(void *inFakePtr)
 static UUtUns32 iSizeToAllocSize(UUtUns32 inSize)
 {
 	UUtUns32 mungedSize		= (inSize + UUcProcessor_CacheLineSize_Mask) & ~UUcProcessor_CacheLineSize_Mask;
-	UUtUns32 allocateSize	= mungedSize + UUcProcessor_CacheLineSize + 4;
+	UUtUns32 allocateSize	= mungedSize + UUcProcessor_CacheLineSize + sizeof(void*);
 
 	return allocateSize;
 }
 
 void *UUrAlignMemory(void *inMemory)
 {
-	UUtUns32	alignedMemory;
+	uintptr_t	alignedMemory;
 
-	alignedMemory = (UUtUns32)(((UUtUns32)inMemory + UUcProcessor_CacheLineSize_Mask) &
+	alignedMemory = (uintptr_t)(((uintptr_t)inMemory + UUcProcessor_CacheLineSize_Mask) &
 		~UUcProcessor_CacheLineSize_Mask);
 
 	return (void *) alignedMemory;
@@ -288,9 +288,9 @@ void *UUrAlignMemory(void *inMemory)
  */
 static void *iAlignMemory_PlusPointerSpace(void *inMemory)
 {
-	UUtUns32	alignedMemory;
+	uintptr_t	alignedMemory;
 
-	alignedMemory = (UUtUns32)(((UUtUns32)inMemory + UUcProcessor_CacheLineSize_Mask + 4) &
+	alignedMemory = (uintptr_t)(((uintptr_t)inMemory + UUcProcessor_CacheLineSize_Mask + sizeof(void*)) &
 		~UUcProcessor_CacheLineSize_Mask);
 
 	return (void *) alignedMemory;
@@ -298,7 +298,7 @@ static void *iAlignMemory_PlusPointerSpace(void *inMemory)
 
 static void iSetRealPtr(void *inAlignedMemory, void *inRealPtr)
 {
-	*(UUtUns32 *)((char *)inAlignedMemory - 4) = (UUtUns32)inRealPtr;
+	*(void **)((char *)inAlignedMemory - sizeof(void*)) = inRealPtr;
 }
 
 static void *iAlignMemory_PlusPointerSpaceUpdate(void *inMemory)
@@ -670,6 +670,30 @@ UUiMemory_Block_Copy(
 			destPtr[3] = ft3;
 			destPtr += 4;
 
+		#elif UUcProcessor_CacheLineBits == 6
+
+			/* ARM64 has 64-byte cache lines */
+			ft0 = srcPtr[0];
+			ft1 = srcPtr[1];
+			ft2 = srcPtr[2];
+			ft3 = srcPtr[3];
+			destPtr[0] = ft0;
+			destPtr[1] = ft1;
+			destPtr[2] = ft2;
+			destPtr[3] = ft3;
+
+			ft0 = srcPtr[4];
+			ft1 = srcPtr[5];
+			ft2 = srcPtr[6];
+			ft3 = srcPtr[7];
+			srcPtr += 8;
+
+			destPtr[4] = ft0;
+			destPtr[5] = ft1;
+			destPtr[6] = ft2;
+			destPtr[7] = ft3;
+			destPtr += 8;
+
 		#else
 
 			#error handle me
@@ -687,7 +711,7 @@ UUrMemory_Block_New_Real(
 	UUtUns32	inSize)
 {
 	void		*newMemory;
-	UUtUns32	alignedMemory;
+	uintptr_t	alignedMemory;
 	UUtUns32	mungedSize;
 
 	if (0 == inSize)
@@ -699,19 +723,20 @@ UUrMemory_Block_New_Real(
 		mungedSize = (inSize + UUcProcessor_CacheLineSize_Mask) & ~UUcProcessor_CacheLineSize_Mask;
 
 	// Allocate enough room so that return address is cache line aligned
-		newMemory = malloc(mungedSize + UUcProcessor_CacheLineSize + 4);
+	// Use sizeof(void*) for 64-bit pointer storage
+		newMemory = malloc(mungedSize + UUcProcessor_CacheLineSize + sizeof(void*));
 		if(newMemory == NULL)
 		{
 			out_of_memory();
 			return NULL;
 		}
 
-	// Align to cache line
-		alignedMemory = ((UUtUns32)newMemory + UUcProcessor_CacheLineSize_Mask + 4) &
+	// Align to cache line (use uintptr_t for pointer arithmetic)
+		alignedMemory = ((uintptr_t)newMemory + UUcProcessor_CacheLineSize_Mask + sizeof(void*)) &
 			~UUcProcessor_CacheLineSize_Mask;
 
-	// Keep the original pointer
-		*(UUtUns32 *)(alignedMemory - 4) = (UUtUns32)newMemory;
+	// Keep the original pointer (store as pointer, not truncated to 32-bit)
+		*(void **)(alignedMemory - sizeof(void*)) = newMemory;
 
 	return (void *)(alignedMemory);
 }
@@ -1123,9 +1148,9 @@ UUrMemory_Block_Delete_Debug(
   bytes forward for len bytes (non destructively)
 
  */
-static void iShiftMemory(UUtUns32 inMemory, UUtUns32 len, int shift)
+static void iShiftMemory(uintptr_t inMemory, UUtUns32 len, int shift)
 {
-	UUtUns32 dst;
+	uintptr_t dst;
 
 	dst = inMemory;
 	dst += shift;
@@ -1148,13 +1173,13 @@ UUrMemory_Block_Realloc_Real(
 	void		*inMemory,
 	UUtUns32	inSize)
 {
-	UUtUns32		inMemoryInt;
-	UUtUns32		inRealMemoryInt;
-	UUtUns32		inOffset;
+	uintptr_t		inMemoryInt;
+	uintptr_t		inRealMemoryInt;
+	uintptr_t		inOffset;
 
-	UUtUns32		outMemoryInt;
-	UUtUns32		outRealMemoryInt;
-	UUtUns32		outOffset;
+	uintptr_t		outMemoryInt;
+	uintptr_t		outRealMemoryInt;
+	uintptr_t		outOffset;
 
 	unsigned long*	realMemory;
 	void*			newMemory;
@@ -1194,12 +1219,12 @@ UUrMemory_Block_Realloc_Real(
 
 	// fix the alignment of the allocated chunk
 	if ((NULL != inMemory) && (NULL != newMemory)) {
-		inMemoryInt			= (UUtUns32) inMemory;
-		inRealMemoryInt		= (UUtUns32) realMemory;
+		inMemoryInt			= (uintptr_t) inMemory;
+		inRealMemoryInt		= (uintptr_t) realMemory;
 		inOffset			= inMemoryInt - inRealMemoryInt;
 
-		outMemoryInt		= (UUtUns32) alignedMemory;
-		outRealMemoryInt	= (UUtUns32) newMemory;
+		outMemoryInt		= (uintptr_t) alignedMemory;
+		outRealMemoryInt	= (uintptr_t) newMemory;
 		outOffset			= outMemoryInt - outRealMemoryInt;
 
 		// in this case a fixup needs to happen
