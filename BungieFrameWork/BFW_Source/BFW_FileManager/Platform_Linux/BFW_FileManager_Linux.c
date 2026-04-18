@@ -252,10 +252,11 @@ BFrFileRef_SetName(
 		}
 	}
 
-	if(BFiFileRef_PathNameExists(inFileRef->name) == UUcFalse)
-	{
-		return BFcError_FileNotFound;
-	}
+	// SetName only constructs a file ref; callers that need the file to exist
+	// (Open, Map, FileExists) check separately. The original Classic Mac
+	// implementation tolerates fnfErr; we match that so callers like
+	// TMrUtility_DataRef_To_BinaryRef can derive refs for optional companion
+	// files (.sep) without aborting when they're missing.
 
 	return UUcError_None;
 }

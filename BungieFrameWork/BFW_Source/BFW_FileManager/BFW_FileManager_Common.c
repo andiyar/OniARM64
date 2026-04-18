@@ -669,7 +669,11 @@ BFrPath_IsAbsolute(
 
 	return absolutePath;
 #elif UUmPlatform == UUmPlatform_Mac
-        return UUcTrue;
+    #ifdef UUmSDL
+	return inPath[0] == '/';
+    #else
+	return UUcTrue;
+    #endif
 #elif UUmPlatform == UUmPlatform_Linux
 	return inPath[0] == '/';
 #else
