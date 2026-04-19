@@ -80,8 +80,6 @@ TEiExtract_ComputeSwapCodeSize(
 			break;
 
 		case TEcTypeKind_RawPtr:
-			break;
-
 		case TEcTypeKind_SeparateIndex:
 		case TEcTypeKind_Enum:
 		case TEcTypeKind_8Byte:

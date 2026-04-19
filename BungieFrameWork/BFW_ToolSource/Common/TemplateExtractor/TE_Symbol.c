@@ -471,7 +471,7 @@ void
 TErSymbolTable_Field_RawRef(
 	void)
 {
-	TEgCurField->baseType = TEg4ByteType;
+	TEgCurField->baseType = TEgRawType;
 }
 
 void
