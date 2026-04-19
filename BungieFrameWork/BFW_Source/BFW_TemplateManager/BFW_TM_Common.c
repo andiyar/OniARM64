@@ -338,7 +338,7 @@ TMrTemplate_Register(
 				(curTemplateDefinition->tag >> 8) & 0xFF,
 				(curTemplateDefinition->tag >> 0) & 0xFF);
 		} else {
-			UUtUns32 expected = curTemplateDefinition->size; /* already excludes preamble */
+			UUtUns32 expected = inSize; /* compile-time sizeof(STRUCT) from caller — the correct 64-bit ground truth */
 			UUtError verr = TMrBridge_ValidateDescriptor(
 				curTemplateDefinition, desc, expected);
 			(void)verr; /* log only — do not abort here (becomes fatal in Task 12) */
