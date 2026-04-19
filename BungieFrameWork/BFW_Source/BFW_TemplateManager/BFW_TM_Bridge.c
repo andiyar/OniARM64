@@ -11,6 +11,7 @@
 #include "BFW_TM_Bridge.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #if UUmPlatform_PointerSize == 8
@@ -314,6 +315,89 @@ TMrBridge_BuildDescriptor(
     return desc;
 }
 
+/* ------------------------------------------------------------------------
+ * Diagnostic dump helpers (Phase 2B spike).
+ *
+ * Gated by ONI_BRIDGE_DUMP_FIELDS env var at validate time. Not committed —
+ * to be removed or gated off once walker-rule fixes land.
+ * ------------------------------------------------------------------------ */
+
+static const char*
+iFieldKindName(UUtUns8 kind)
+{
+    switch (kind) {
+    case TMcFieldKind_1Byte:         return "1Byte";
+    case TMcFieldKind_2Byte:         return "2Byte";
+    case TMcFieldKind_4Byte:         return "4Byte";
+    case TMcFieldKind_8Byte:         return "8Byte";
+    case TMcFieldKind_RawPtr:        return "RawPtr";
+    case TMcFieldKind_TemplatePtr:   return "TemplatePtr";
+    case TMcFieldKind_SeparateIndex: return "SeparateIndex";
+    case TMcFieldKind_NestedStruct:  return "NestedStruct";
+    case TMcFieldKind_FixedArray:    return "FixedArray";
+    case TMcFieldKind_VarArray:      return "VarArray";
+    default:                         return "?";
+    }
+}
+
+static void
+iDumpDescriptor(
+    const char*             inTag,
+    TMtLayoutDescriptor*    inDesc,
+    UUtUns32                inDepth)
+{
+    /* Indent string: up to 8 levels of two-space indent. */
+    static const char* kIndent[] = {
+        "", "  ", "    ", "      ", "        ",
+        "          ", "            ", "              ", "                "
+    };
+    const char* ind = kIndent[(inDepth < 8) ? inDepth : 8];
+
+    UUrStartupMessage(
+        "[bridge-dump] %s%s descriptor num_fields=%u src_size=%u dst_size=%u alignment=%u",
+        ind, inTag,
+        (unsigned)inDesc->num_fields,
+        (unsigned)inDesc->src_size,
+        (unsigned)inDesc->dst_size,
+        (unsigned)inDesc->alignment);
+
+    for (UUtUns32 i = 0; i < inDesc->num_fields; i++) {
+        TMtFieldDescriptor* f = &inDesc->fields[i];
+        UUrStartupMessage(
+            "[bridge-dump] %s  [%u] kind=%s src_off=%u dst_off=%u src_size=%u dst_size=%u count=%u",
+            ind, (unsigned)i,
+            iFieldKindName(f->kind),
+            (unsigned)f->src_offset,
+            (unsigned)f->dst_offset,
+            (unsigned)f->src_size,
+            (unsigned)f->dst_size,
+            (unsigned)f->count);
+        if (f->sub != NULL) {
+            iDumpDescriptor(inTag, f->sub, inDepth + 1);
+        }
+    }
+}
+
+static void
+iDumpSwapCodes(const char* inTag, UUtUns8* inCodes)
+{
+    /* Dump 128 bytes as space-separated hex, in 16-byte chunks. */
+    char buf[16 * 3 + 1];
+    for (UUtUns32 chunk = 0; chunk < 8; chunk++) {
+        char* p = buf;
+        for (UUtUns32 j = 0; j < 16; j++) {
+            UUtUns8 b = inCodes[chunk * 16 + j];
+            const char* hex = "0123456789abcdef";
+            *p++ = hex[(b >> 4) & 0xF];
+            *p++ = hex[b & 0xF];
+            *p++ = ' ';
+        }
+        *p = 0;
+        UUrStartupMessage("[bridge-dump] %s swapCodes[%02u]: %s",
+            inTag, (unsigned)(chunk * 16), buf);
+    }
+}
+
 UUtError
 TMrBridge_ValidateDescriptor(
     TMtTemplateDefinition*  inTemplate,
@@ -323,14 +407,38 @@ TMrBridge_ValidateDescriptor(
     /* inCompilerSize is the compiler's sizeof(struct) minus TMcPreDataSize.
        inDescriptor->dst_size is our runtime-computed size of the same. */
     if (inDescriptor->dst_size != inCompilerSize) {
+        char tag[5];
+        tag[0] = (char)((inTemplate->tag >> 24) & 0xFF);
+        tag[1] = (char)((inTemplate->tag >> 16) & 0xFF);
+        tag[2] = (char)((inTemplate->tag >> 8) & 0xFF);
+        tag[3] = (char)((inTemplate->tag >> 0) & 0xFF);
+        tag[4] = 0;
+
         UUrStartupMessage(
-            "[bridge] SIZE MISMATCH template %c%c%c%c: computed=%u compiler=%u",
-            (inTemplate->tag >> 24) & 0xFF,
-            (inTemplate->tag >> 16) & 0xFF,
-            (inTemplate->tag >> 8) & 0xFF,
-            (inTemplate->tag >> 0) & 0xFF,
+            "[bridge] SIZE MISMATCH template %s: computed=%u compiler=%u",
+            tag,
             (unsigned)inDescriptor->dst_size,
             (unsigned)inCompilerSize);
+
+        if (getenv("ONI_BRIDGE_DUMP_FIELDS") != NULL) {
+            /* Restrict dump to three representative targets to keep logs sane.
+               Env var acts as both gate and allowlist selector. */
+            UUtBool dump =
+                (strcmp(tag, "IDXA") == 0) ||
+                (strcmp(tag, "Mtrl") == 0) ||
+                (strcmp(tag, "TRAM") == 0);
+            if (dump) {
+                UUrStartupMessage(
+                    "[bridge-dump] === %s === template->size=%u varArrayElemSize=%u compilerSize=%u",
+                    tag,
+                    (unsigned)inTemplate->size,
+                    (unsigned)inTemplate->varArrayElemSize,
+                    (unsigned)inCompilerSize);
+                iDumpSwapCodes(tag, inTemplate->swapCodes);
+                iDumpDescriptor(tag, inDescriptor, 0);
+                UUrStartupMessage("[bridge-dump] === end %s ===", tag);
+            }
+        }
         return UUcError_Generic;
     }
     return UUcError_None;
