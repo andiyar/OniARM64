@@ -109,6 +109,8 @@ set(SOURCE_FILES
         ../../../BungieFrameWork/BFW_Source/BFW_TemplateManager/BFW_TM_Construction.h
         ../../../BungieFrameWork/BFW_Source/BFW_TemplateManager/BFW_TM_Game.c
         ../../../BungieFrameWork/BFW_Source/BFW_TemplateManager/BFW_TM_Private.h
+        ../../../BungieFrameWork/BFW_Source/BFW_TemplateManager/BFW_TM_Bridge.c
+        ../../../BungieFrameWork/BFW_Source/BFW_TemplateManager/BFW_TM_Bridge.h
 
         ../../../BungieFrameWork/BFW_Source/BFW_Utility/BFW_BitVector.c
         ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/3DFX_Glide/bfw_cseries.h

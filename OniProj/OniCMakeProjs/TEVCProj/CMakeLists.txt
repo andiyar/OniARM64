@@ -13,6 +13,7 @@ add_executable(TEVCProj
         ../../../BungieFrameWork/BFW_Source/BFW_TemplateManager/BFW_TM_Common.c
         ../../../BungieFrameWork/BFW_Source/BFW_TemplateManager/BFW_TM_Construction.c
         ../../../BungieFrameWork/BFW_Source/BFW_TemplateManager/BFW_TM_Game.c
+        ../../../BungieFrameWork/BFW_Source/BFW_TemplateManager/BFW_TM_Bridge.c
         ../../../BungieFrameWork/BFW_Source/BFW_Utility/BFW_BitVector.c
         ../../../BungieFrameWork/BFW_Source/BFW_Utility/BFW_Error.c
         ../../../BungieFrameWork/BFW_Source/BFW_Utility/BFW_Memory.c
