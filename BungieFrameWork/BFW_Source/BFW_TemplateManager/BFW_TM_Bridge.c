@@ -660,4 +660,8 @@ TMrBridge_TranslateNameDescriptorArray(
     return dst;
 }
 
+/* TMrBridge_PreparePointers is implemented in BFW_TM_Game.c where the
+ * TMtInstanceFile struct body is visible. Declaration is in BFW_TM_Bridge.h.
+ */
+
 #endif /* UUmPlatform_PointerSize == 8 */

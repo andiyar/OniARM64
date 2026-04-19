@@ -1747,9 +1747,11 @@ TMiGame_InstanceFile_New_FromFileRef(
 			curDesc2->flags = (TMtDescriptorFlags)(curDesc2->flags & TMcDescriptorFlags_PersistentMask);
 
 			if (curDesc2->flags & TMcDescriptorFlags_PlaceHolder) {
+				/* PlaceHolder instance: no data content, but namePtr still
+				   resolves normally so that TemplatePtr refs to this
+				   instance can look it up by name (32-bit semantics). */
 				curDesc2->dataPtr = NULL;
-				curDesc2->namePtr = NULL;
-				continue;
+				goto skip_translation_resolve_name;
 			}
 
 			disk_off = (UUtUns32)(uintptr_t)curDesc2->dataPtr;
@@ -1777,44 +1779,51 @@ TMiGame_InstanceFile_New_FromFileRef(
 					goto skip_translation_resolve_name;
 				}
 
-				/* Extract var_count if this template has a trailing var-array. */
+				/* Extract var_count from the in-data count field (mirrors
+				   32-bit TMiGame_Instance_PrepareForMemory_VarArray which
+				   reads count from data, not from disk-size math). The
+				   count field is the scalar immediately preceding the
+				   VarArray field in the descriptor; its src_offset locates
+				   it in the on-disk data (which has not been translated at
+				   this point — we read raw on-disk bytes from src_data). */
 				var_count = 0;
 				if (tdef->varArrayElemSize > 0) {
-					UUtUns32 total_disk = curDesc2->size;
-					UUtUns32 base_disk  = lyt->src_size;  /* base excludes var-array (A2: src_size=0) */
-					UUtUns32 array_disk = (total_disk > base_disk) ? (total_disk - base_disk) : 0;
-					UUtUns32 elem_src_size = 0;
 					for (k = 0; k < lyt->num_fields; k++) {
-						if (lyt->fields[k].kind == TMcFieldKind_VarArray) {
-							elem_src_size = lyt->fields[k].sub->src_size;
+						if (lyt->fields[k].kind == TMcFieldKind_VarArray && k > 0) {
+							TMtFieldDescriptor* countField = &lyt->fields[k - 1];
+							/* Count field's src_offset is in the full-record
+							   (preamble-inclusive) view; the on-disk body
+							   starts at src_data - TMcPreDataSize. */
+							const UUtUns8* countPtr = (src_data - TMcPreDataSize) + countField->src_offset;
+							UUtUns32 cnt = 0;
+							if (countField->src_size == 2) {
+								UUtUns16 v;
+								memcpy(&v, countPtr, 2);
+								if (needsSwapping) UUrSwap_2Byte(&v);
+								cnt = v;
+							} else if (countField->src_size == 4) {
+								memcpy(&cnt, countPtr, 4);
+								if (needsSwapping) UUrSwap_4Byte(&cnt);
+							} else if (countField->src_size == 8) {
+								UUtUns64 v;
+								memcpy(&v, countPtr, 8);
+								if (needsSwapping) UUrSwap_8Byte(&v);
+								cnt = (UUtUns32)v;
+							}
+							var_count = cnt;
 							break;
 						}
 					}
-					if (elem_src_size > 0) var_count = array_disk / elem_src_size;
 				}
 
-				/* Preamble: 8 bytes before the struct body. Copy it verbatim
-				   from on-disk (placeholder/fileIndex semantics, not pointers). */
-				dst_preamble = dst_cursor;
-				memcpy(dst_preamble, src_data - TMcPreDataSize, TMcPreDataSize);
-				dst_data = dst_preamble + TMcPreDataSize;
-
-				TMrBridge_TranslateInstance(lyt, src_data, dst_data,
-					needsSwapping, var_count);
-
-				curDesc2->dataPtr = dst_data;
-
-				/* Record src→dst mapping for pass 2 (duplicate resolution). */
-				map[map_n].src = src_data;
-				map[map_n].dst = dst_data;
-				map_n++;
-
-				/* Compute per-instance dst size.
-				   NOTE: per A2 fix, lyt->dst_size already includes 1 stub
-				   element for var-array templates. So if var_count >= 1,
-				   total = base + (var_count - 1) * elem_dst. If var_count
-				   == 0, total = base (but base includes the stub — which
-				   is "correct" per sizeof semantics). */
+				/* Compute the full per-instance dst size FIRST so we can
+				   zero the whole region. TMrBridge_TranslateInstance only
+				   memsets descriptor->dst_size bytes; for var-arrays with
+				   count > 1, the trailing elements live past that and would
+				   otherwise keep the UUrMemory_Block_New fill pattern
+				   (0xdeaddead), which PrepareForMemory then mis-reads as a
+				   bogus placeholder. Per A2, lyt->dst_size already reserves
+				   1 stub element; additional elements come from (count−1). */
 				per_inst_dst = lyt->dst_size;
 				if (var_count > 1) {
 					for (k = 0; k < lyt->num_fields; k++) {
@@ -1825,7 +1834,37 @@ TMiGame_InstanceFile_New_FromFileRef(
 					}
 				}
 
-				dst_cursor = dst_data + per_inst_dst;
+				/* The descriptor's fields include the 8-byte preamble at
+				   offsets 0..8 — they don't describe "struct body only".
+				   So we point the translator at dst_preamble (preamble-start),
+				   not dst_data, so field offsets line up. The walker's
+				   first two 4Byte fields copy the preamble from
+				   src_data-TMcPreDataSize to dst_preamble[0..8]; subsequent
+				   fields fill the body at dst_preamble[8..]. */
+				dst_preamble = dst_cursor;
+				dst_data = dst_preamble + TMcPreDataSize;
+
+				/* Zero the whole per-instance region (preamble + body +
+				   var-array tail). Walker fills field-level content
+				   afterwards. */
+				memset(dst_preamble, 0, per_inst_dst);
+
+				TMrBridge_TranslateInstance(lyt,
+					src_data - TMcPreDataSize,
+					dst_preamble,
+					needsSwapping,
+					var_count);
+
+				curDesc2->dataPtr = dst_data;
+
+				/* Record src→dst mapping for pass 2 (duplicate resolution). */
+				map[map_n].src = src_data;
+				map[map_n].dst = dst_data;
+				map_n++;
+
+				/* Advance cursor by the full per-instance size (which
+				   already includes preamble). */
+				dst_cursor = dst_preamble + per_inst_dst;
 				/* Align to 8 bytes for next instance. */
 				misalign = ((uintptr_t)dst_cursor) & 7;
 				if (misalign) dst_cursor += (8 - misalign);
@@ -2092,6 +2131,142 @@ TMiGame_InstanceFile_GetDataPtr(
 	return NULL;
 }
 
+#if UUmPlatform_PointerSize == 8
+/* ============================================================================
+ * TMrBridge_PreparePointers: descriptor-walking pointer resolution for 64-bit.
+ * Replaces the old swap-code-driven TMiGame_Instance_PrepareForMemory path;
+ * lives here (not in BFW_TM_Bridge.c) because TMtInstanceFile's struct body is
+ * file-local.
+ * ============================================================================
+ */
+
+static UUtError
+iBridgePrepare_ResolveTemplatePtr(UUtUns8* slot, TMtInstanceFile* inInstanceFile)
+{
+	UUtUns32 placeholder;
+	UUtUns32 index;
+	TMtInstanceDescriptor* target;
+	void* resolved;
+	UUtUns64 zero = 0;
+
+	memcpy(&placeholder, slot, 4);
+	memcpy(slot, &zero, 8);
+
+	if (placeholder == 0) return UUcError_None;
+
+	UUmAssert(!TMmPlaceHolder_IsPtr(placeholder));
+	index = TMmPlaceHolder_GetIndex(placeholder);
+	if (index >= inInstanceFile->numInstanceDescriptors) {
+		UUrStartupMessage("[bridge-prepare] out-of-range placeholder: ph=0x%08x index=%u max=%u",
+			(unsigned)placeholder, (unsigned)index,
+			(unsigned)inInstanceFile->numInstanceDescriptors);
+		return UUcError_Generic;
+	}
+	target = inInstanceFile->instanceDescriptors + index;
+
+	if (target->namePtr == NULL) {
+		if (target->dataPtr == NULL) {
+			/* Matches 32-bit TMiGame_Instance_PrepareForMemory behavior at
+			   line 1036 "dataPtr is NULL". Log which template is unresolvable. */
+			UUrStartupMessage("[bridge-prepare] unresolvable TemplatePtr target: index=%u tag=%c%c%c%c (Unique+PlaceHolder?)",
+				(unsigned)index,
+				(target->templatePtr ? ((target->templatePtr->tag >> 24) & 0xFF) : '?'),
+				(target->templatePtr ? ((target->templatePtr->tag >> 16) & 0xFF) : '?'),
+				(target->templatePtr ? ((target->templatePtr->tag >> 8) & 0xFF) : '?'),
+				(target->templatePtr ? ((target->templatePtr->tag >> 0) & 0xFF) : '?'));
+			return UUcError_Generic;
+		}
+		resolved = target->dataPtr;
+	} else {
+		resolved = NULL;
+		(void)TMrInstance_GetDataPtr(target->templatePtr->tag,
+		                             target->namePtr + 4,
+		                             &resolved);
+	}
+	memcpy(slot, &resolved, 8);
+	return UUcError_None;
+}
+
+static UUtError
+iBridgePrepare_ResolveRawPtr(UUtUns8* slot, TMtInstanceFile* inInstanceFile)
+{
+	UUtUns32 offset;
+	void* resolved;
+	UUtUns64 zero = 0;
+
+	memcpy(&offset, slot, 4);
+	memcpy(slot, &zero, 8);
+	if (offset == 0 || inInstanceFile->rawPtr == NULL) return UUcError_None;
+	resolved = (UUtUns8*)inInstanceFile->rawPtr + offset;
+	memcpy(slot, &resolved, 8);
+	return UUcError_None;
+}
+
+static UUtError
+iBridgePrepare_Walk(
+	TMtLayoutDescriptor*	inDesc,
+	UUtUns8*				ioData,
+	UUtUns32				inVarCount,
+	TMtInstanceFile*		inInstanceFile)
+{
+	UUtUns32 i;
+	for (i = 0; i < inDesc->num_fields; i++) {
+		TMtFieldDescriptor* f = &inDesc->fields[i];
+		UUtUns8* slot = ioData + f->dst_offset;
+		UUtError err;
+
+		switch (f->kind) {
+		case TMcFieldKind_TemplatePtr:
+			err = iBridgePrepare_ResolveTemplatePtr(slot, inInstanceFile);
+			if (err != UUcError_None) return err;
+			break;
+		case TMcFieldKind_RawPtr:
+			err = iBridgePrepare_ResolveRawPtr(slot, inInstanceFile);
+			if (err != UUcError_None) return err;
+			break;
+		case TMcFieldKind_FixedArray: {
+			UUtUns32 e;
+			for (e = 0; e < f->count; e++) {
+				err = iBridgePrepare_Walk(f->sub,
+					slot + e * f->sub->dst_size, 0, inInstanceFile);
+				if (err != UUcError_None) return err;
+			}
+			break;
+		}
+		case TMcFieldKind_VarArray: {
+			UUtUns32 e;
+			for (e = 0; e < inVarCount; e++) {
+				err = iBridgePrepare_Walk(f->sub,
+					slot + e * f->sub->dst_size, 0, inInstanceFile);
+				if (err != UUcError_None) return err;
+			}
+			break;
+		}
+		case TMcFieldKind_NestedStruct:
+			err = iBridgePrepare_Walk(f->sub, slot, 0, inInstanceFile);
+			if (err != UUcError_None) return err;
+			break;
+		/* Scalars and SeparateIndex need no resolution. */
+		default:
+			break;
+		}
+	}
+	return UUcError_None;
+}
+
+UUtError
+TMrBridge_PreparePointers(
+	TMtLayoutDescriptor*		inDescriptor,
+	void*						ioData,
+	UUtUns32					inVarCount,
+	struct TMtInstanceFile*		inInstanceFile)
+{
+	if (inDescriptor == NULL) return UUcError_None;
+	return iBridgePrepare_Walk(inDescriptor, (UUtUns8*)ioData,
+	                           inVarCount, inInstanceFile);
+}
+#endif /* UUmPlatform_PointerSize == 8 */
+
 static UUtError
 TMiGame_InstanceFile_PrepareForMemory(
 	TMtInstanceFile*	inInstanceFile)
@@ -2100,9 +2275,11 @@ TMiGame_InstanceFile_PrepareForMemory(
 	UUtUns32				curDescIndex;
 	TMtInstanceDescriptor*	curDesc;
 
+#if UUmPlatform_PointerSize != 8
 	UUtUns8*				swapCode;
 	UUtUns8*				dataPtr;
 	char					msg[2048];
+#endif
 
 	UUmAssertReadPtr(inInstanceFile, sizeof(*inInstanceFile));
 
@@ -2113,12 +2290,63 @@ TMiGame_InstanceFile_PrepareForMemory(
 		curDescIndex < inInstanceFile->numInstanceDescriptors;
 		curDescIndex++, curDesc++)
 	{
+		if(curDesc->templatePtr == NULL) continue;  /* unregistered template (see Tasks 12+13 guard) */
+
 		if(curDesc->templatePtr->flags & TMcTemplateFlag_Leaf) continue;
 
 		if(curDesc->flags & TMcDescriptorFlags_Duplicate) continue;
 
 		if(curDesc->dataPtr == NULL) continue;
 
+#if UUmPlatform_PointerSize == 8
+		{
+			TMtLayoutDescriptor* lyt =
+				(TMtLayoutDescriptor*)curDesc->templatePtr->layoutDescriptor;
+			UUtUns32 var_count = 0;
+			if (lyt == NULL) continue;  /* same guard as translation pass */
+
+			if (curDesc->templatePtr->varArrayElemSize > 0) {
+				/* Read count field from translated in-memory data (mirrors
+				   32-bit PrepareForMemory_VarArray). Count field is scalar
+				   preceding VarArray field in descriptor. */
+				UUtUns32 k;
+				for (k = 0; k < lyt->num_fields; k++) {
+					if (lyt->fields[k].kind == TMcFieldKind_VarArray && k > 0) {
+						TMtFieldDescriptor* countField = &lyt->fields[k - 1];
+						UUtUns8* countPtr = (UUtUns8*)curDesc->dataPtr - TMcPreDataSize
+							+ countField->dst_offset;
+						UUtUns32 cnt = 0;
+						if (countField->dst_size == 2) {
+							UUtUns16 v; memcpy(&v, countPtr, 2); cnt = v;
+						} else if (countField->dst_size == 4) {
+							memcpy(&cnt, countPtr, 4);
+						} else if (countField->dst_size == 8) {
+							UUtUns64 v; memcpy(&v, countPtr, 8); cnt = (UUtUns32)v;
+						}
+						var_count = cnt;
+						break;
+					}
+				}
+			}
+
+			/* Descriptor offsets include the 8-byte preamble, so point the
+			   walker at (dataPtr - TMcPreDataSize) to line up. */
+			error = TMrBridge_PreparePointers(
+				lyt, curDesc->dataPtr - TMcPreDataSize, var_count, inInstanceFile);
+			if (error != UUcError_None) {
+				UUrStartupMessage("[bridge-prepare] FAILED on idx=%u template=%c%c%c%c var_count=%u dst_size=%u size=%u",
+					(unsigned)curDescIndex,
+					(curDesc->templatePtr->tag >> 24) & 0xFF,
+					(curDesc->templatePtr->tag >> 16) & 0xFF,
+					(curDesc->templatePtr->tag >> 8) & 0xFF,
+					(curDesc->templatePtr->tag >> 0) & 0xFF,
+					(unsigned)var_count,
+					(unsigned)lyt->dst_size,
+					(unsigned)curDesc->size);
+			}
+			UUmError_ReturnOnError(error);
+		}
+#else
 		swapCode = curDesc->templatePtr->swapCodes;
 		dataPtr = curDesc->dataPtr - TMcPreDataSize;
 
@@ -2138,6 +2366,7 @@ TMiGame_InstanceFile_PrepareForMemory(
 				msg,
 				(curDesc->templatePtr->flags & TMcTemplateFlag_VarArrayIsLeaf) ? UUcTrue : UUcFalse);
 		UUmError_ReturnOnError(error);
+#endif
 	}
 
 	error = TMiGame_InstanceFile_Callback(inInstanceFile, TMcTemplateProcMessage_LoadPostProcess);

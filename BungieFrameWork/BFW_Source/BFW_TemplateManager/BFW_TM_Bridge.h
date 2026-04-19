@@ -107,6 +107,23 @@ TMrBridge_TranslateNameDescriptorArray(
     UUtUns32                inCount,
     UUtBool                 inNeedsSwapping);
 
+/*
+ * Walk a translated instance's layout descriptor and resolve each
+ * TemplatePtr / RawPtr field from a 32-bit placeholder (zero-extended
+ * into the low 4 bytes of the 8-byte slot) into a real 8-byte pointer.
+ * For TemplatePtr, looks up the target instance via the file's instance
+ * descriptor array. For RawPtr, adds the offset to inInstanceFile->rawPtr.
+ * Scalars and SeparateIndex fields are left alone. Fixed/var arrays
+ * recurse.
+ */
+struct TMtInstanceFile;
+UUtError
+TMrBridge_PreparePointers(
+    TMtLayoutDescriptor*    inDescriptor,
+    void*                   ioData,
+    UUtUns32                inVarCount,
+    struct TMtInstanceFile* inInstanceFile);
+
 #endif /* UUmPlatform_PointerSize == 8 */
 
 #endif /* BFW_TM_BRIDGE_H */
