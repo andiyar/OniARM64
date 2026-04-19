@@ -441,6 +441,14 @@ SS2rPlatform_Initialize(
 {
 	*outNumChannels = 0;
 
+	if (!inUseSound) {
+		/* -nosound: skip OpenAL init entirely. SSgDevice / SSgContext stay
+		   NULL; downstream SS code guards on SSgEnabled. */
+		SSgDevice = NULL;
+		SSgContext = NULL;
+		return UUcError_None;
+	}
+
 	SSgDevice = alcOpenDevice(NULL);
 	CHECK_AL_ERROR();
 	UUmError_ReturnOnNull(SSgDevice);
