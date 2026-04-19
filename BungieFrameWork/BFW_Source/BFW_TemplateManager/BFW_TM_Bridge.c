@@ -145,6 +145,54 @@ iWalkSwapCodes(TMtBuildState* ioState, UUtUns8* inSwapCodes)
                stops on that same code — no extra sentinel exists. */
             return cur;
 
+        case TMcSwapCode_BeginArray:
+        {
+            UUtUns8 count = *cur++;
+
+            /* Build a sub-descriptor for a single element. */
+            TMtBuildState sub_state;
+            iBuildState_Init(&sub_state);
+
+            UUtUns8* after_elem = iWalkSwapCodes(&sub_state, cur);
+            if (after_elem == NULL || sub_state.overflowed) return NULL;
+            cur = after_elem;  /* now positioned after EndArray */
+
+            /* Element stride = aligned element size. */
+            UUtUns32 elem_src  = sub_state.src_cursor;
+            UUtUns32 elem_dst  = iAlignUp(sub_state.dst_cursor, sub_state.alignment);
+            UUtUns32 elem_algn = sub_state.alignment;
+
+            /* Place the array field in the parent. */
+            TMtFieldDescriptor* f = iBuildState_AppendField(ioState);
+            if (f == NULL) return NULL;
+
+            f->kind       = (UUtUns8)TMcFieldKind_FixedArray;
+            f->src_offset = ioState->src_cursor;
+            f->dst_offset = iAlignUp(ioState->dst_cursor, elem_algn);
+            f->src_size   = (UUtUns32)count * elem_src;
+            f->dst_size   = (UUtUns32)count * elem_dst;
+            f->count      = count;
+
+            /* Allocate a heap-owned sub-descriptor holding the element layout. */
+            UUtUns32 block_size = sizeof(TMtLayoutDescriptor)
+                                + sub_state.num_fields * sizeof(TMtFieldDescriptor);
+            TMtLayoutDescriptor* sub = (TMtLayoutDescriptor*)UUrMemory_Block_New(block_size);
+            if (sub == NULL) return NULL;
+            sub->num_fields = sub_state.num_fields;
+            sub->src_size   = elem_src;
+            sub->dst_size   = elem_dst;
+            sub->alignment  = elem_algn;
+            sub->fields     = (TMtFieldDescriptor*)((UUtUns8*)sub + sizeof(TMtLayoutDescriptor));
+            memcpy(sub->fields, sub_state.fields,
+                   sub_state.num_fields * sizeof(TMtFieldDescriptor));
+            f->sub = sub;
+
+            ioState->src_cursor = f->src_offset + f->src_size;
+            ioState->dst_cursor = f->dst_offset + f->dst_size;
+            if (elem_algn > ioState->alignment) ioState->alignment = elem_algn;
+            break;
+        }
+
         default:
             /* unsupported in this task — handled in later tasks */
             fprintf(stderr,
@@ -204,8 +252,12 @@ TMrBridge_DisposeDescriptor(
     TMtLayoutDescriptor*    inDescriptor)
 {
     if (inDescriptor == NULL) return;
-    /* sub-descriptors freed recursively in later tasks; for now fields array
-       is co-allocated with the parent so one free is enough. */
+
+    for (UUtUns32 i = 0; i < inDescriptor->num_fields; i++) {
+        if (inDescriptor->fields[i].sub != NULL) {
+            TMrBridge_DisposeDescriptor(inDescriptor->fields[i].sub);
+        }
+    }
     UUrMemory_Block_Delete(inDescriptor);
 }
 

@@ -27,9 +27,11 @@ typedef struct TMtFieldDescriptor
     UUtUns8     _pad[3];
     UUtUns32    src_offset;
     UUtUns32    dst_offset;
-    UUtUns32    src_size;
-    UUtUns32    dst_size;
-    struct TMtLayoutDescriptor* sub;
+    UUtUns32    src_size;       /* total size across all elements for arrays */
+    UUtUns32    dst_size;       /* total size across all elements for arrays */
+    UUtUns32    count;          /* fixed-array element count; 0 for non-array */
+    UUtUns32    _pad2;
+    struct TMtLayoutDescriptor* sub;  /* element layout for arrays and nested structs */
 } TMtFieldDescriptor;
 
 typedef struct TMtLayoutDescriptor
