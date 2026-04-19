@@ -248,8 +248,15 @@ iWalkSwapCodes(TMtBuildState* ioState, UUtUns8* inSwapCodes)
             f->kind       = (UUtUns8)TMcFieldKind_VarArray;
             f->src_offset = ioState->src_cursor;
             f->dst_offset = iAlignUp(ioState->dst_cursor, elem_algn);
-            f->src_size   = 0;  /* variable */
-            f->dst_size   = 0;  /* variable */
+            /* On-disk: no base elements — the count*elem data starts AT
+               src_offset and extends for runtime-determined bytes. */
+            f->src_size   = 0;
+            /* In-memory: C sizeof(STRUCT) counts the 1-element stub
+               declared as `tm_vararray T field[1]` — include it in the
+               base size so the descriptor matches compiler sizeof. The
+               runtime translator overwrites the stub with the first
+               real element when count >= 1. */
+            f->dst_size   = elem_dst;
             f->count      = 0;  /* resolved per instance */
 
             /* Allocate sub-descriptor for the element. */
@@ -266,9 +273,10 @@ iWalkSwapCodes(TMtBuildState* ioState, UUtUns8* inSwapCodes)
                    sub_state.num_fields * sizeof(TMtFieldDescriptor));
             f->sub = sub;
 
-            /* Cursors stay put — the var-array starts here but has
-               unknown runtime length. The descriptor's dst_size is
-               the base size; the caller adds runtime varArrayElemSize * N. */
+            /* Src cursor stays put — on-disk base ends here and var-array
+               content begins. Dst cursor advances by one element for the
+               in-memory stub that C sizeof(STRUCT) counts. */
+            ioState->dst_cursor = f->dst_offset + f->dst_size;
             if (elem_algn > ioState->alignment) ioState->alignment = elem_algn;
             break;
         }
