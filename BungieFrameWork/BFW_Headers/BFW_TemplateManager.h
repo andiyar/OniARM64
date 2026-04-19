@@ -142,6 +142,9 @@ extern "C" {
 
 		UUtUns32					magicCookie;
 		void						*timer;
+#if UUmPlatform_PointerSize == 8
+		void*						layoutDescriptor;  /* TMtLayoutDescriptor* - void* to avoid include cycle */
+#endif
 	} TMtTemplateDefinition;
 
 /*

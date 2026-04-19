@@ -22,6 +22,7 @@
 #include "BFW_AppUtilities.h"
 #include "BFW_TM_Private.h"
 #include "BFW_TM_Construction.h"
+#include "BFW_TM_Bridge.h"
 
 /*
  * =========================================================================
@@ -321,6 +322,24 @@ TMrTemplate_Register(
 	{
 		curTemplateDefinition->flags |= TMcTemplateFlag_AllowFolding;
 	}
+
+#if UUmPlatform_PointerSize == 8
+	{
+		TMtLayoutDescriptor* desc = TMrBridge_BuildDescriptor(curTemplateDefinition);
+		curTemplateDefinition->layoutDescriptor = desc;
+		if (desc == NULL) {
+			/* Unsupported swap-code combination — log loud, continue.
+			   This allows us to land the builder incrementally; templates
+			   whose codes we can't yet handle simply won't have a
+			   descriptor until we extend the walker. */
+			UUrStartupMessage("[bridge] no descriptor for template %c%c%c%c",
+				(curTemplateDefinition->tag >> 24) & 0xFF,
+				(curTemplateDefinition->tag >> 16) & 0xFF,
+				(curTemplateDefinition->tag >> 8) & 0xFF,
+				(curTemplateDefinition->tag >> 0) & 0xFF);
+		}
+	}
+#endif
 
 	return UUcError_None;
 }
