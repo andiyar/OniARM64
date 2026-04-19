@@ -10,16 +10,156 @@
 #include "BFW_TM_Private.h"
 #include "BFW_TM_Bridge.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #if UUmPlatform_PointerSize == 8
+
+/* Maximum fields in a single template. 114 templates * average fields ~ well under this. */
+#define TMcBridge_MaxFieldsPerDescriptor 512
+
+typedef struct TMtBuildState
+{
+    TMtFieldDescriptor  fields[TMcBridge_MaxFieldsPerDescriptor];
+    UUtUns32            num_fields;
+    UUtUns32            src_cursor;
+    UUtUns32            dst_cursor;
+    UUtUns32            alignment;      /* running max alignment of fields added so far */
+    UUtBool             overflowed;
+} TMtBuildState;
+
+static UUtUns32
+iAlignUp(UUtUns32 value, UUtUns32 alignment)
+{
+    UUmAssert(alignment > 0);
+    return (value + alignment - 1) & ~(alignment - 1);
+}
+
+static void
+iBuildState_Init(TMtBuildState* ioState)
+{
+    memset(ioState, 0, sizeof(*ioState));
+    ioState->alignment = 1;
+}
+
+static TMtFieldDescriptor*
+iBuildState_AppendField(TMtBuildState* ioState)
+{
+    if (ioState->num_fields >= TMcBridge_MaxFieldsPerDescriptor) {
+        ioState->overflowed = UUcTrue;
+        return NULL;
+    }
+    TMtFieldDescriptor* f = &ioState->fields[ioState->num_fields++];
+    memset(f, 0, sizeof(*f));
+    return f;
+}
+
+/*
+ * Append a scalar field to the descriptor. Updates src_cursor by src_size
+ * (packed in on-disk format — no alignment padding on source) and
+ * dst_cursor aligned up to inDstAlign then bumped by inDstSize.
+ */
+static UUtBool
+iAppendScalar(
+    TMtBuildState*  ioState,
+    TMtFieldKind    inKind,
+    UUtUns32        inSrcSize,
+    UUtUns32        inDstSize,
+    UUtUns32        inDstAlign)
+{
+    TMtFieldDescriptor* f = iBuildState_AppendField(ioState);
+    if (f == NULL) return UUcFalse;
+
+    f->kind       = (UUtUns8)inKind;
+    f->src_offset = ioState->src_cursor;
+    f->dst_offset = iAlignUp(ioState->dst_cursor, inDstAlign);
+    f->src_size   = inSrcSize;
+    f->dst_size   = inDstSize;
+    f->sub        = NULL;
+
+    ioState->src_cursor = f->src_offset + inSrcSize;
+    ioState->dst_cursor = f->dst_offset + inDstSize;
+    if (inDstAlign > ioState->alignment) ioState->alignment = inDstAlign;
+    return UUcTrue;
+}
+
+/*
+ * Walk swap codes starting at inSwapCodes and consume them into ioState.
+ * Returns pointer past the last consumed code on success, or NULL on
+ * unsupported code / overflow.
+ *
+ * This function is incrementally extended in later tasks to cover
+ * additional swap-code kinds. In this task it handles scalars only.
+ */
+static UUtUns8*
+iWalkSwapCodes(TMtBuildState* ioState, UUtUns8* inSwapCodes)
+{
+    UUtUns8* cur = inSwapCodes;
+    while (1) {
+        UUtUns8 code = *cur++;
+
+        switch (code) {
+        case TMcSwapCode_1Byte:
+            if (!iAppendScalar(ioState, TMcFieldKind_1Byte, 1, 1, 1)) return NULL;
+            break;
+
+        case TMcSwapCode_2Byte:
+            if (!iAppendScalar(ioState, TMcFieldKind_2Byte, 2, 2, 2)) return NULL;
+            break;
+
+        case TMcSwapCode_4Byte:
+            if (!iAppendScalar(ioState, TMcFieldKind_4Byte, 4, 4, 4)) return NULL;
+            break;
+
+        case TMcSwapCode_8Byte:
+            if (!iAppendScalar(ioState, TMcFieldKind_8Byte, 8, 8, 8)) return NULL;
+            break;
+
+        case TMcSwapCode_EndArray:
+        case TMcSwapCode_EndVarArray:
+            /* terminator for a nested walk — return to caller */
+            return cur;
+
+        default:
+            /* unsupported in this task — handled in later tasks */
+            fprintf(stderr,
+                "[bridge] unsupported swap code 0x%02x during descriptor build\n",
+                code);
+            return NULL;
+        }
+    }
+}
 
 TMtLayoutDescriptor*
 TMrBridge_BuildDescriptor(
     TMtTemplateDefinition*  inTemplate)
 {
-    (void)inTemplate;
-    return NULL; /* stub — implemented in later tasks */
+    TMtBuildState state;
+    iBuildState_Init(&state);
+
+    UUtUns8* end = iWalkSwapCodes(&state, inTemplate->swapCodes);
+    if (end == NULL || state.overflowed) {
+        return NULL;
+    }
+
+    /* Round dst_size up to overall struct alignment. */
+    UUtUns32 dst_size = iAlignUp(state.dst_cursor, state.alignment);
+
+    /* Allocate descriptor + fields as one block for easy dispose. */
+    UUtUns32 block_size = sizeof(TMtLayoutDescriptor)
+                        + state.num_fields * sizeof(TMtFieldDescriptor);
+    TMtLayoutDescriptor* desc = (TMtLayoutDescriptor*)UUrMemory_Block_New(block_size);
+    if (desc == NULL) return NULL;
+
+    desc->num_fields = state.num_fields;
+    desc->src_size   = state.src_cursor;
+    desc->dst_size   = dst_size;
+    desc->alignment  = state.alignment;
+    desc->fields     = (TMtFieldDescriptor*)((UUtUns8*)desc + sizeof(TMtLayoutDescriptor));
+    memcpy(desc->fields, state.fields,
+           state.num_fields * sizeof(TMtFieldDescriptor));
+
+    return desc;
 }
 
 UUtError
@@ -38,7 +178,10 @@ void
 TMrBridge_DisposeDescriptor(
     TMtLayoutDescriptor*    inDescriptor)
 {
-    (void)inDescriptor; /* stub */
+    if (inDescriptor == NULL) return;
+    /* sub-descriptors freed recursively in later tasks; for now fields array
+       is co-allocated with the parent so one free is enough. */
+    UUrMemory_Block_Delete(inDescriptor);
 }
 
 void
