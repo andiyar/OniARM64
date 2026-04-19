@@ -404,9 +404,10 @@ TMrBridge_ValidateDescriptor(
     TMtLayoutDescriptor*    inDescriptor,
     UUtUns32                inCompilerSize)
 {
-    /* inCompilerSize is the compiler's sizeof(struct) minus TMcPreDataSize.
-       inDescriptor->dst_size is our runtime-computed size of the same. */
-    if (inDescriptor->dst_size != inCompilerSize) {
+    /* dst_size includes the 8-byte TMcPreDataSize preamble at the head of
+       every on-disk record; compiler sizeof(STRUCT) does not. Add it to
+       the expected value so we validate struct-body layout correctly. */
+    if (inDescriptor->dst_size != inCompilerSize + TMcPreDataSize) {
         char tag[5];
         tag[0] = (char)((inTemplate->tag >> 24) & 0xFF);
         tag[1] = (char)((inTemplate->tag >> 16) & 0xFF);
@@ -415,10 +416,12 @@ TMrBridge_ValidateDescriptor(
         tag[4] = 0;
 
         UUrStartupMessage(
-            "[bridge] SIZE MISMATCH template %s: computed=%u compiler=%u",
+            "[bridge] SIZE MISMATCH template %s: computed=%u compiler=%u (incl preamble: %u vs %u)",
             tag,
+            (unsigned)(inDescriptor->dst_size - TMcPreDataSize),
+            (unsigned)inCompilerSize,
             (unsigned)inDescriptor->dst_size,
-            (unsigned)inCompilerSize);
+            (unsigned)(inCompilerSize + TMcPreDataSize));
 
         if (getenv("ONI_BRIDGE_DUMP_FIELDS") != NULL) {
             /* Restrict dump to three representative targets to keep logs sane.
