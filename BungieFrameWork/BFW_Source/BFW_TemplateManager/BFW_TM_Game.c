@@ -21,6 +21,7 @@
 #include "BFW_AppUtilities.h"
 #include "BFW_TM_Private.h"
 #include "BFW_TM_Construction.h"
+#include "BFW_TM_Bridge.h"
 #include "BFW_Timer.h"
 
 
@@ -161,6 +162,10 @@ UUtBool TMgTimeLevelLoad = UUcFalse;
 		UUtUns32					numPrivateInfos;
 		TMtInstanceFile_PrivateInfo	privateInfos[TMcGame_PrivateInfosPerInstanceFile_Max];
 
+#if UUmPlatform_PointerSize == 8
+		UUtUns8*					translatedBlock;
+		UUtUns32					translatedBlockSize;
+#endif
 	};
 
 	typedef struct TMtInstanceFileRef
@@ -1656,6 +1661,206 @@ TMiGame_InstanceFile_New_FromFileRef(
 	newInstanceFile->numTemplateDescriptors = 0;
 	newInstanceFile->templateDescriptors = NULL;
 
+#if UUmPlatform_PointerSize == 8
+	{
+		UUtUns32 header_sz = sizeof(TMtInstanceFile_Header);
+		UUtUns32 disk_inst_desc_size = fileHeader->sizeofInstanceDescriptor;	/* 20 */
+		UUtUns32 disk_name_desc_size = fileHeader->sizeofNameDescriptor;	/* 8 */
+		const void* inst_src;
+		const void* name_src;
+		UUtUns32 total_dst_size_estimate;
+		typedef struct TMtTranslationMap {
+			const UUtUns8* src;
+			UUtUns8*       dst;
+		} TMtTranslationMap;
+		TMtTranslationMap* map;
+		UUtUns32 map_n;
+		UUtUns8* dst_cursor;
+		UUtUns32 idx;
+
+		(void)disk_name_desc_size;
+
+		inst_src = mappingPtr + header_sz;
+		name_src = (const UUtUns8*)inst_src
+			+ newInstanceFile->numInstanceDescriptors * disk_inst_desc_size;
+
+		newInstanceFile->instanceDescriptors =
+			TMrBridge_TranslateInstanceDescriptorArray(
+				inst_src,
+				newInstanceFile->numInstanceDescriptors,
+				needsSwapping);
+
+		newInstanceFile->nameDescriptors =
+			TMrBridge_TranslateNameDescriptorArray(
+				name_src,
+				newInstanceFile->numNameDescriptors,
+				needsSwapping);
+
+		/* dataBlock / nameBlock still point into mmap — we translate
+		   per-instance below. */
+		newInstanceFile->dataBlock = (mappingPtr + fileHeader->dataBlockOffset);
+		newInstanceFile->nameBlock = (char*)(mappingPtr + fileHeader->nameBlockOffset);
+		newInstanceFile->dynamicBytesUsed = 0;
+		newInstanceFile->dynamicPool = NULL;
+
+		newInstanceFile->numInstancePtrLists = 0;
+		newInstanceFile->numPrivateInfos = 0;
+
+		/* First pass: estimate translated block size. Over-allocate 2×
+		   for safety; tighten once translation is verified. */
+		total_dst_size_estimate = 0;
+		for (idx = 0; idx < newInstanceFile->numInstanceDescriptors; idx++) {
+			TMtInstanceDescriptor* eDesc = newInstanceFile->instanceDescriptors + idx;
+			if ((eDesc->flags & TMcDescriptorFlags_PlaceHolder) ||
+				(eDesc->flags & TMcDescriptorFlags_Duplicate)) continue;
+			/* rough estimate using curDesc->size (32-bit on-disk size) × 2 */
+			total_dst_size_estimate += eDesc->size * 2 + TMcPreDataSize + 16;
+		}
+		newInstanceFile->translatedBlockSize = total_dst_size_estimate + 4096;
+		newInstanceFile->translatedBlock =
+			(UUtUns8*)UUrMemory_Block_New(newInstanceFile->translatedBlockSize);
+
+		/* Side table: map on-disk src pointer → translated dst pointer,
+		   used for resolving duplicates in pass 2. */
+		map = (TMtTranslationMap*)UUrMemory_Block_New(
+			newInstanceFile->numInstanceDescriptors * sizeof(TMtTranslationMap));
+		map_n = 0;
+
+		dst_cursor = newInstanceFile->translatedBlock;
+
+		/* ---- Pass 1: translate non-duplicates ---- */
+		for (idx = 0; idx < newInstanceFile->numInstanceDescriptors; idx++) {
+			TMtInstanceDescriptor* curDesc2 = newInstanceFile->instanceDescriptors + idx;
+			UUtUns32 tag;
+			TMtTemplateDefinition* tdef;
+			UUtUns32 disk_off;
+			const UUtUns8* src_data;
+
+			/* Resolve the 32-bit tag (currently in templatePtr slot) to a
+			   TMtTemplateDefinition pointer. */
+			tag = (UUtUns32)(uintptr_t)curDesc2->templatePtr;
+			tdef = TMrUtility_Template_FindDefinition(tag);
+			UUmAssert(tdef != NULL);
+			curDesc2->templatePtr = tdef;
+
+			/* Apply persistent-flags mask (same as old ByteSwap path). */
+			curDesc2->flags = (TMtDescriptorFlags)(curDesc2->flags & TMcDescriptorFlags_PersistentMask);
+
+			if (curDesc2->flags & TMcDescriptorFlags_PlaceHolder) {
+				curDesc2->dataPtr = NULL;
+				curDesc2->namePtr = NULL;
+				continue;
+			}
+
+			disk_off = (UUtUns32)(uintptr_t)curDesc2->dataPtr;
+			src_data = newInstanceFile->dataBlock + disk_off;
+
+			if (curDesc2->flags & TMcDescriptorFlags_Duplicate) {
+				/* Stash src for pass 2. */
+				curDesc2->dataPtr = (UUtUns8*)src_data;
+			} else {
+				TMtLayoutDescriptor* lyt = (TMtLayoutDescriptor*)tdef->layoutDescriptor;
+				UUtUns32 var_count;
+				UUtUns8* dst_preamble;
+				UUtUns8* dst_data;
+				UUtUns32 per_inst_dst;
+				UUtUns32 misalign;
+				UUtUns32 k;
+				if (lyt == NULL) {
+					/* Template is in the checksum table but no subsystem called
+					   TMrTemplate_Register for it (e.g. WM dialog/cursor templates
+					   may exist in .dat files without a live code path). 32-bit
+					   behavior: leave dataPtr pointing into the mmap'd data and
+					   continue with name resolution — the instance is inert but
+					   the descriptor list stays walkable. */
+					curDesc2->dataPtr = (UUtUns8*)src_data;
+					goto skip_translation_resolve_name;
+				}
+
+				/* Extract var_count if this template has a trailing var-array. */
+				var_count = 0;
+				if (tdef->varArrayElemSize > 0) {
+					UUtUns32 total_disk = curDesc2->size;
+					UUtUns32 base_disk  = lyt->src_size;  /* base excludes var-array (A2: src_size=0) */
+					UUtUns32 array_disk = (total_disk > base_disk) ? (total_disk - base_disk) : 0;
+					UUtUns32 elem_src_size = 0;
+					for (k = 0; k < lyt->num_fields; k++) {
+						if (lyt->fields[k].kind == TMcFieldKind_VarArray) {
+							elem_src_size = lyt->fields[k].sub->src_size;
+							break;
+						}
+					}
+					if (elem_src_size > 0) var_count = array_disk / elem_src_size;
+				}
+
+				/* Preamble: 8 bytes before the struct body. Copy it verbatim
+				   from on-disk (placeholder/fileIndex semantics, not pointers). */
+				dst_preamble = dst_cursor;
+				memcpy(dst_preamble, src_data - TMcPreDataSize, TMcPreDataSize);
+				dst_data = dst_preamble + TMcPreDataSize;
+
+				TMrBridge_TranslateInstance(lyt, src_data, dst_data,
+					needsSwapping, var_count);
+
+				curDesc2->dataPtr = dst_data;
+
+				/* Record src→dst mapping for pass 2 (duplicate resolution). */
+				map[map_n].src = src_data;
+				map[map_n].dst = dst_data;
+				map_n++;
+
+				/* Compute per-instance dst size.
+				   NOTE: per A2 fix, lyt->dst_size already includes 1 stub
+				   element for var-array templates. So if var_count >= 1,
+				   total = base + (var_count - 1) * elem_dst. If var_count
+				   == 0, total = base (but base includes the stub — which
+				   is "correct" per sizeof semantics). */
+				per_inst_dst = lyt->dst_size;
+				if (var_count > 1) {
+					for (k = 0; k < lyt->num_fields; k++) {
+						if (lyt->fields[k].kind == TMcFieldKind_VarArray) {
+							per_inst_dst += (var_count - 1) * lyt->fields[k].sub->dst_size;
+							break;
+						}
+					}
+				}
+
+				dst_cursor = dst_data + per_inst_dst;
+				/* Align to 8 bytes for next instance. */
+				misalign = ((uintptr_t)dst_cursor) & 7;
+				if (misalign) dst_cursor += (8 - misalign);
+			}
+
+skip_translation_resolve_name:
+			/* Name pointer resolution — disk offset → real char*. */
+			if (!(curDesc2->flags & TMcDescriptorFlags_Unique)) {
+				UUtUns32 name_off = (UUtUns32)(uintptr_t)curDesc2->namePtr;
+				curDesc2->namePtr = (char*)newInstanceFile->nameBlock + name_off;
+			} else {
+				curDesc2->namePtr = NULL;
+			}
+		}
+
+		/* ---- Pass 2: resolve duplicates ---- */
+		for (idx = 0; idx < newInstanceFile->numInstanceDescriptors; idx++) {
+			TMtInstanceDescriptor* curDesc2 = newInstanceFile->instanceDescriptors + idx;
+			const UUtUns8* src;
+			UUtUns8* resolved;
+			UUtUns32 k;
+			if (!(curDesc2->flags & TMcDescriptorFlags_Duplicate)) continue;
+
+			src = curDesc2->dataPtr;
+			resolved = NULL;
+			for (k = 0; k < map_n; k++) {
+				if (map[k].src == src) { resolved = map[k].dst; break; }
+			}
+			curDesc2->dataPtr = resolved; /* may be NULL if the source wasn't found */
+		}
+
+		UUrMemory_Block_Delete(map);
+	}
+#else
+	/* 32-bit build path — original cast-from-mmap + in-place byte-swap loop. */
 	newInstanceFile->instanceDescriptors = (struct TMtInstanceDescriptor *) (mappingPtr + sizeof(TMtInstanceFile_Header));
 	newInstanceFile->nameDescriptors = (struct TMtNameDescriptor *) (mappingPtr + sizeof(TMtInstanceFile_Header) + newInstanceFile->numInstanceDescriptors * sizeof(TMtInstanceDescriptor));
 	newInstanceFile->dataBlock = (mappingPtr + fileHeader->dataBlockOffset);
@@ -1716,16 +1921,21 @@ TMiGame_InstanceFile_New_FromFileRef(
 			curDesc->namePtr = NULL;
 		}
 	}
+#endif
 
 	// Traverse through the name descs and update pointers
 	for(curDescIndex = 0, curNameDesc = newInstanceFile->nameDescriptors;
 		curDescIndex < newInstanceFile->numNameDescriptors;
 		curDescIndex++, curNameDesc++)
 	{
+#if UUmPlatform_PointerSize == 8
+		/* instanceDescIndex already swapped by TranslateNameDescriptorArray */
+#else
 		if(needsSwapping)
 		{
 			UUrSwap_4Byte(&curNameDesc->instanceDescIndex);
 		}
+#endif
 
 		UUmAssert(curNameDesc->instanceDescIndex < newInstanceFile->numInstanceDescriptors);
 
