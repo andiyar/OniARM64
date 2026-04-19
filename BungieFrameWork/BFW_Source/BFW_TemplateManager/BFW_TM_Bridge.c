@@ -494,6 +494,80 @@ TMrBridge_DisposeDescriptor(
     UUrMemory_Block_Delete(inDescriptor);
 }
 
+static void
+iTranslateWithDescriptor(
+    TMtLayoutDescriptor*    inDesc,
+    const UUtUns8*          inSrc,
+    UUtUns8*                outDst,
+    UUtBool                 inNeedsSwapping,
+    UUtUns32                inVarCount)
+{
+    for (UUtUns32 i = 0; i < inDesc->num_fields; i++) {
+        TMtFieldDescriptor* f = &inDesc->fields[i];
+        const UUtUns8* sp = inSrc + f->src_offset;
+        UUtUns8*       dp = outDst + f->dst_offset;
+
+        switch (f->kind) {
+        case TMcFieldKind_1Byte:
+            dp[0] = sp[0];
+            break;
+        case TMcFieldKind_2Byte:
+            memcpy(dp, sp, 2);
+            if (inNeedsSwapping) UUrSwap_2Byte(dp);
+            break;
+        case TMcFieldKind_4Byte:
+        case TMcFieldKind_SeparateIndex:
+            memcpy(dp, sp, 4);
+            if (inNeedsSwapping) UUrSwap_4Byte(dp);
+            break;
+        case TMcFieldKind_8Byte:
+            memcpy(dp, sp, 8);
+            if (inNeedsSwapping) UUrSwap_8Byte(dp);
+            break;
+
+        case TMcFieldKind_RawPtr:
+        case TMcFieldKind_TemplatePtr: {
+            UUtUns32 v;
+            memcpy(&v, sp, 4);
+            if (inNeedsSwapping) UUrSwap_4Byte(&v);
+            /* Zero-extend into 8-byte slot. */
+            UUtUns64 w = (UUtUns64)v;
+            memcpy(dp, &w, 8);
+            break;
+        }
+
+        case TMcFieldKind_FixedArray: {
+            for (UUtUns32 e = 0; e < f->count; e++) {
+                const UUtUns8* esp = sp + e * f->sub->src_size;
+                UUtUns8*       edp = dp + e * f->sub->dst_size;
+                iTranslateWithDescriptor(f->sub, esp, edp,
+                                         inNeedsSwapping, 0);
+            }
+            break;
+        }
+
+        case TMcFieldKind_VarArray: {
+            for (UUtUns32 e = 0; e < inVarCount; e++) {
+                const UUtUns8* esp = sp + e * f->sub->src_size;
+                UUtUns8*       edp = dp + e * f->sub->dst_size;
+                iTranslateWithDescriptor(f->sub, esp, edp,
+                                         inNeedsSwapping, 0);
+            }
+            break;
+        }
+
+        case TMcFieldKind_NestedStruct:
+            iTranslateWithDescriptor(f->sub, sp, dp,
+                                     inNeedsSwapping, 0);
+            break;
+
+        default:
+            /* unreachable */
+            break;
+        }
+    }
+}
+
 void
 TMrBridge_TranslateInstance(
     TMtLayoutDescriptor*    inDescriptor,
@@ -502,12 +576,13 @@ TMrBridge_TranslateInstance(
     UUtBool                 inNeedsSwapping,
     UUtUns32                inVarCount)
 {
-    (void)inDescriptor;
-    (void)inSrc;
-    (void)outDst;
-    (void)inNeedsSwapping;
-    (void)inVarCount;
-    /* stub */
+    if (inDescriptor == NULL) return;
+    memset(outDst, 0, inDescriptor->dst_size); /* zero any padding bytes */
+    iTranslateWithDescriptor(inDescriptor,
+                             (const UUtUns8*)inSrc,
+                             (UUtUns8*)outDst,
+                             inNeedsSwapping,
+                             inVarCount);
 }
 
 TMtInstanceDescriptor*
