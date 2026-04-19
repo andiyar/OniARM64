@@ -161,7 +161,7 @@ WMiMenuBar_Create(
 	// get the private data
 	private_data = (WMtMenuBar_PrivateData*)UUrMemory_Block_NewClear(sizeof(WMtMenuBar_PrivateData));
 	if (private_data == NULL) { return WMcResult_Error; }
-	WMrWindow_SetLong(inMenuBar, 0, (UUtUns32)private_data);
+	WMrWindow_SetLong(inMenuBar, 0, (uintptr_t)private_data);
 
 	if (inMenuBarData->num_menus > WMcMenuBar_MaxNumMenus)
 	{
@@ -269,7 +269,7 @@ WMiMenuBar_HiliteMenu(
 		WMrMessage_Send(
 			WMrWindow_GetParent(inMenuBar),
 			WMcMessage_MenuInit,
-			(UUtUns32)private_data->menubar_items[menu_index].menu,
+			(uintptr_t)private_data->menubar_items[menu_index].menu,
 			UUmMakeLong(WMrWindow_GetID(private_data->menubar_items[menu_index].menu), menu_index));
 
 		// make the menu visible
@@ -306,8 +306,8 @@ static void
 WMiMenuBar_ForwardMessage(
 	WMtMenuBar				*inMenuBar,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	WMtMenuBar_PrivateData	*private_data;
 
@@ -348,8 +348,8 @@ static void
 WMiMenuBar_HandleMouseEvent(
 	WMtMenuBar				*inMenuBar,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	IMtPoint2D				global_mouse;
 	IMtPoint2D				local_mouse;
@@ -526,12 +526,12 @@ WMiMenuBar_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiMenuBar_Callback(
 	WMtMenuBar				*inMenuBar,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtUns32				result;
 
@@ -642,7 +642,7 @@ WMrMenuBar_Create(
 			width,
 			0,
 			inParent,
-			(UUtUns32)menubar_data);
+			(uintptr_t)menubar_data);
 	return menubar;
 }
 

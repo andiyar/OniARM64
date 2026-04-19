@@ -89,7 +89,7 @@ static UUtUns32
 WMiListBox_InsertString(
 	WMtListBox				*inListBox,
 	UUtUns32				inItemIndex,
-	UUtUns32				inParam1);
+	uintptr_t				inParam1);
 
 static UUtUns32
 WMiListBox_Reset(
@@ -99,7 +99,7 @@ static UUtUns32
 WMiListBox_SetItemData(
 	WMtListBox				*inListBox,
 	UUtUns32				inItemIndex,
-	UUtUns32				inParam1);
+	uintptr_t				inParam1);
 
 static UUtUns32
 WMiListBox_SetSelection(
@@ -156,7 +156,7 @@ static UUtUns32
 WMiListBox_FindInsertPos(
 	WMtListBox				*inListBox,
 	WMtListBox_PrivateData	*inPrivateData,
-	UUtUns32				inParam1,
+	uintptr_t				inParam1,
 	UUtInt32				*outInsertIndex)
 {
 	WMtListBox_PrivateData	*private_data;
@@ -206,7 +206,7 @@ WMiListBox_FindInsertPos(
 					WMrWindow_GetOwner(inListBox),
 					WMcMessage_CompareItems,
 					(UUtUns32)compare_items.window_id,
-					(UUtUns32)&compare_items);
+					(uintptr_t)&compare_items);
 		}
 		else
 		{
@@ -270,7 +270,7 @@ WMiListBox_NC_Create(
 	if (private_data == NULL) { return WMcResult_Error; }
 
 	// save the private data
-	WMrWindow_SetLong(inListBox, 0, (UUtUns32)private_data);
+	WMrWindow_SetLong(inListBox, 0, (uintptr_t)private_data);
 
 	return WMcResult_Handled;
 }
@@ -365,7 +365,7 @@ WMiListBox_NC_CalcClientSize(
 static UUtUns32
 WMiListBox_NC_HitTest(
 	WMtListBox				*inListBox,
-	UUtUns32				inParam1)
+	uintptr_t				inParam1)
 {
 	UUtRect					bounds;
 	IMtPoint2D				global_mouse;
@@ -730,8 +730,8 @@ static void
 WMiListBox_HandleKeyEvent(
 	WMtListBox				*inListBox,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	WMtListBox_PrivateData	*private_data;
 
@@ -819,8 +819,8 @@ static void
 WMiListBox_HandleMouseEvent(
 	WMtListBox				*inListBox,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	WMtListBox_PrivateData	*private_data;
 	IMtPoint2D				global_mouse;
@@ -900,7 +900,7 @@ WMiListBox_HandleMouseEvent(
 					WMrWindow_GetParent(inListBox),
 					WMcMessage_Command,
 					UUmMakeLong(WMcNotify_DoubleClick, WMrWindow_GetID(inListBox)),
-					(UUtUns32)inListBox);
+					(uintptr_t)inListBox);
 			}
 		}
 		break;
@@ -911,8 +911,8 @@ WMiListBox_HandleMouseEvent(
 static void
 WMiListBox_HandleVerticalScroll(
 	WMtListBox				*inListBox,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtInt32				scroll_increment;
 	WMtListBox_PrivateData	*private_data;
@@ -1077,7 +1077,7 @@ WMiListBox_Paint(
 				WMrWindow_GetOwner(inListBox),
 				WMcMessage_DrawItem,
 				(UUtUns32)draw_item.window_id,
-				(UUtUns32)&draw_item);
+				(uintptr_t)&draw_item);
 		}
 		else if (style & WMcListBoxStyle_HasStrings)
 		{
@@ -1151,7 +1151,7 @@ WMiListBox_Paint(
 static UUtUns32
 WMiListBox_AddString(
 	WMtListBox				*inListBox,
-	UUtUns32				inParam1)
+	uintptr_t				inParam1)
 {
 	WMtListBox_PrivateData	*private_data;
 	UUtInt32				item_index;
@@ -1412,7 +1412,7 @@ static UUtUns32
 WMiListBox_InsertString(
 	WMtListBox				*inListBox,
 	UUtUns32				inItemIndex,
-	UUtUns32				inParam1)
+	uintptr_t				inParam1)
 {
 	WMtListBox_PrivateData	*private_data;
 	UUtError				error;
@@ -1493,7 +1493,7 @@ static UUtUns32
 WMiListBox_ReplaceString(
 	WMtListBox				*inListBox,
 	UUtUns32				inItemIndex,
-	UUtUns32				inParam1)
+	uintptr_t				inParam1)
 {
 	WMtListBox_PrivateData	*private_data;
 	WMtListBox_Item			*items;
@@ -1652,7 +1652,7 @@ WMiListBox_SelectString(
 static UUtUns32
 WMiListBox_SetDirectoryInfo(
 	WMtListBox				*inListBox,
-	UUtUns32				inParam1,
+	uintptr_t				inParam1,
 	UUtBool					inReset)
 {
 	WMtListBox_PrivateData		*private_data;
@@ -1760,7 +1760,7 @@ static UUtUns32
 WMiListBox_SetItemData(
 	WMtListBox				*inListBox,
 	UUtUns32				inItemIndex,
-	UUtUns32				inParam1)
+	uintptr_t				inParam1)
 {
 	WMtListBox_PrivateData		*private_data;
 	WMtListBox_Item				*items;
@@ -1910,7 +1910,7 @@ WMiListBox_SetSelection(
 			WMrWindow_GetParent(inListBox),
 			WMcMessage_Command,
 			UUmMakeLong(LBcNotify_SelectionChanged, WMrWindow_GetID(inListBox)),
-			(UUtUns32)inListBox);
+			(uintptr_t)inListBox);
 	}
 
 	return LBcNoError;
@@ -1922,12 +1922,12 @@ WMiListBox_SetSelection(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiListBox_Callback(
 	WMtListBox				*inListBox,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtUns32				result;
 
@@ -2113,7 +2113,7 @@ WMrListBox_SetSelection(WMtListBox *inListBox, UUtBool inNotifyParent, UUtUns32 
 {
 	UUtUns32 result;
 
-	result = WMrMessage_Send(inListBox, LBcMessage_SetSelection, (UUtUns32) inNotifyParent, inIndex);
+	result = WMrMessage_Send(inListBox, LBcMessage_SetSelection, (uintptr_t) inNotifyParent, inIndex);
 
 	return;
 }
@@ -2123,7 +2123,7 @@ WMrListBox_AddString(WMtListBox *inListBox, const char *inString)
 {
 	UUtUns32 result;
 
-	result = WMrMessage_Send(inListBox, LBcMessage_AddString, (UUtUns32) inString, 0);
+	result = WMrMessage_Send(inListBox, LBcMessage_AddString, (uintptr_t) inString, 0);
 
 	return result;
 }
@@ -2143,7 +2143,7 @@ WMrListBox_GetText(WMtListBox *inListBox, char *ioBuffer, UUtUns32 inIndex)
 {
 	UUtUns32 result;
 
-	result = WMrMessage_Send(inListBox, LBcMessage_GetText, (UUtUns32) ioBuffer, inIndex);
+	result = WMrMessage_Send(inListBox, LBcMessage_GetText, (uintptr_t) ioBuffer, inIndex);
 
 	return;
 }
@@ -2200,8 +2200,8 @@ WMrListBox_SetDirectoryInfo(
 		WMrMessage_Send(
 			inListBox,
 			LBcMessage_SetDirectoryInfo,
-			(UUtUns32)&dir_info,
-			(UUtUns32)inReset);
+			(uintptr_t)&dir_info,
+			(uintptr_t)inReset);
 
 	return result;
 }
@@ -2213,7 +2213,7 @@ WMrListBox_SelectString(
 {
 	UUtUns32					result;
 
-	result = WMrMessage_Send(inListBox, LBcMessage_SelectString, LBcSelected, (UUtUns32)inString);
+	result = WMrMessage_Send(inListBox, LBcMessage_SelectString, LBcSelected, (uintptr_t)inString);
 
 	return result;
 }

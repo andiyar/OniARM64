@@ -568,169 +568,169 @@ UUtBool
 OWrParticle_Edit_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Class_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Variables_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Appearance_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Attractor_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Value_Int_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Value_Float_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Value_String_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Value_Shade_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Value_Enum_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_NewVar_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_RenameVar_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Actions_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_NewAction_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_VarRef_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_ActionList_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Texture_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Emitters_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_EmitterFlags_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_EmitterChoice_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_EventList_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_ClassName_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_Number_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 OWrParticle_LinkType_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtError OWrSave_Particles(UUtBool autosave);
 UUtError OWrSave_Particle(P3tParticleClass *inClass);

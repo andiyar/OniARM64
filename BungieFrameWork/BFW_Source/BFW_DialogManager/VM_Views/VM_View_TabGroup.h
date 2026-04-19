@@ -27,12 +27,12 @@ VMrView_TabGroup_ActivateTab(
 	VMtView				*inTabGroup,
 	UUtUns16			inTabID);
 
-UUtUns32
+uintptr_t
 VMrView_TabGroup_Callback(
 	VMtView				*inView,
 	VMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2);
+	uintptr_t			inParam1,
+	uintptr_t			inParam2);
 
 // ======================================================================
 #endif /* VM_VIEW_TABGROUP_H */

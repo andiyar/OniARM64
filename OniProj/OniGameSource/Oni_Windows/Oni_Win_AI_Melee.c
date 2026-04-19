@@ -423,9 +423,9 @@ OWiEditMelee_SetupTechniquePane(WMtDialog *inDialog,
 		WMrEditField_SetText(inUserData->ef_techniquename, "");
 		WMrEditField_SetText(inUserData->ef_techniqueweight, "");
 		WMrEditField_SetText(inUserData->ef_techniquedelay, "");
-		WMrMessage_Send(inUserData->cb_techniqueinterrupt, CBcMessage_SetCheck, (UUtUns32) UUcFalse, (UUtUns32) -1);
-		WMrMessage_Send(inUserData->cb_techniquegenerous, CBcMessage_SetCheck, (UUtUns32) UUcFalse, (UUtUns32) -1);
-		WMrMessage_Send(inUserData->cb_techniquefearless, CBcMessage_SetCheck, (UUtUns32) UUcFalse, (UUtUns32) -1);
+		WMrMessage_Send(inUserData->cb_techniqueinterrupt, CBcMessage_SetCheck, (uintptr_t) UUcFalse, (UUtUns32) -1);
+		WMrMessage_Send(inUserData->cb_techniquegenerous, CBcMessage_SetCheck, (uintptr_t) UUcFalse, (UUtUns32) -1);
+		WMrMessage_Send(inUserData->cb_techniquefearless, CBcMessage_SetCheck, (uintptr_t) UUcFalse, (UUtUns32) -1);
 	} else {
 		UUmAssert((inUserData->technique >= inUserData->profile->technique) &&
 					(inUserData->technique < &inUserData->profile->technique[inUserData->profile->num_actions +
@@ -447,13 +447,13 @@ OWiEditMelee_SetupTechniquePane(WMtDialog *inDialog,
 		WMrEditField_SetInt32(inUserData->ef_techniquedelay, inUserData->technique->delay_frames);
 
 		checked = (inUserData->technique->user_flags & AI2cTechniqueUserFlag_Interruptable) ? UUcTrue : UUcFalse;
-		WMrMessage_Send(inUserData->cb_techniqueinterrupt, CBcMessage_SetCheck, (UUtUns32) checked, (UUtUns32) -1);
+		WMrMessage_Send(inUserData->cb_techniqueinterrupt, CBcMessage_SetCheck, (uintptr_t) checked, (UUtUns32) -1);
 
 		checked = (inUserData->technique->user_flags & AI2cTechniqueUserFlag_GenerousDirection) ? UUcTrue : UUcFalse;
-		WMrMessage_Send(inUserData->cb_techniquegenerous, CBcMessage_SetCheck, (UUtUns32) checked, (UUtUns32) -1);
+		WMrMessage_Send(inUserData->cb_techniquegenerous, CBcMessage_SetCheck, (uintptr_t) checked, (UUtUns32) -1);
 
 		checked = (inUserData->technique->user_flags & AI2cTechniqueUserFlag_Fearless) ? UUcTrue : UUcFalse;
-		WMrMessage_Send(inUserData->cb_techniquefearless, CBcMessage_SetCheck, (UUtUns32) checked, (UUtUns32) -1);
+		WMrMessage_Send(inUserData->cb_techniquefearless, CBcMessage_SetCheck, (uintptr_t) checked, (UUtUns32) -1);
 	}
 
 	OWiEditMelee_FillTechniqueMoveList(inDialog, inUserData);
@@ -553,7 +553,7 @@ OWiEditMelee_InitDialog(WMtDialog *inDialog)
 	}
 
 	user_data->object = (OBJtObject *) WMrDialog_GetUserData(inDialog);
-	WMrDialog_SetUserData(inDialog, (UUtUns32) user_data);
+	WMrDialog_SetUserData(inDialog, (uintptr_t) user_data);
 
 	// set up pointers to all our child windows
 	user_data->ef_id					= WMrDialog_GetItemByID(inDialog, OWcEditMelee_ID);
@@ -1545,8 +1545,8 @@ UUtBool
 OWrEditMelee_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool handled = UUcTrue;
 	OWtEditMelee_UserData *user_data = (OWtEditMelee_UserData *) WMrDialog_GetUserData(inDialog);
@@ -1565,7 +1565,7 @@ OWrEditMelee_Callback(
 				}
 
 				// restore our user data pointer to what it was before we started monkeying with it
-				WMrDialog_SetUserData(inDialog, (UUtUns32) user_data->object);
+				WMrDialog_SetUserData(inDialog, (uintptr_t) user_data->object);
 				UUrMemory_Block_Delete(user_data);
 			}
 		break;

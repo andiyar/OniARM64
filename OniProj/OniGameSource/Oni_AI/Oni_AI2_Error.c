@@ -54,133 +54,133 @@ AI2tPathfindingErrorStorage AI2gPathfindingErrorStorage;
 
 /* error reporting */
 static void AI2iReport_All_Report(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Error_OpenLog(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Error_InvalidSubsystem(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Error_InvalidSeverity(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Error_UnknownError(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Executor_TurnOverride(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Executor_UnexpectedAttack(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Movement_InvalidAlertStatus(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Movement_MaxModifiers(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Movement_MaxCollisions(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Movement_Collision(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Movement_CollisionStalled(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Movement_MaxBadnessValues(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_HighLevel_UnknownJob(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_HighLevel_ImproperJob(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_HighLevel_CombatSettings(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_HighLevel_NoPath(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_HighLevel_NoMeleeProfile(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_HighLevel_MeleeVariant(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_HighLevel_NoCharacter(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_HighLevel_TalkBufferFull(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_HighLevel_NoNeutralBehavior(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Pathfinding_NoBNVAtStart(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Pathfinding_NoBNVAtDest(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Pathfinding_NoConnectionsFromStart(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Pathfinding_NoConnectionsToDest(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Pathfinding_NoPath(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Pathfinding_AStarFailed(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Pathfinding_CollisionStuck(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Pathfinding_FellFromRoom(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Pathfinding_FellFromPath(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Patrol_InvalidEntry(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Patrol_BeginPatrol(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Patrol_AtWaypoint(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Patrol_NoSuchFlag(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Patrol_FailedWaypoint(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Knowledge_MaxEntries(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Knowledge_InvalidContact(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Knowledge_NoStartle(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Knowledge_MaxPending(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Knowledge_MaxDodgeProjectiles(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Knowledge_MaxDodgeFiringSpreads(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Combat_UnknownBehavior(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Combat_UnimplementedBehavior(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Combat_UnhandledMessage(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Combat_TargetDead(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Combat_ContactDisappeared(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_AttackMoveNotInCombo(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_NoCharacterClass(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_PreComputeBroken(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_MultiDirectionTechnique(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_MaxTransitions(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_Failed_Attack(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_NoTransitionToDelay(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_NoTransitionOutOfDelay(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_NoDelayAnimation(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_NoTransitionToStart(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_BlockAnimIndex(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_BrokenMove(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_BrokenTechnique(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_BrokenAnim(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_TransitionUnavailable(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Melee_MaxDelayTimers(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 static void AI2iReport_Fight_MaxFights(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4);
 
 // ------------------------------------------------------------------------------------
 // -- error tables
@@ -350,7 +350,7 @@ void AI2rError_RestorePathfindingHandler(AI2tPathfindingErrorHandler inHandler)
 
 // handle an error - can be used to catch problems before they blow up
 UUtBool AI2rHandleError(AI2tErrorSubsystem inSystem, UUtUns32 inErrorID, ONtCharacter *inCharacter,
-						UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4,
+						uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4,
 						AI2tErrorTableEntry **outEntry)
 {
 	AI2tErrorTableEntry *errorptr;
@@ -421,7 +421,7 @@ UUtBool AI2rHandleError(AI2tErrorSubsystem inSystem, UUtUns32 inErrorID, ONtChar
 
 // report and handle an error - only called when running debug build of app
 UUtBool AI2rReportError(AI2tErrorSubsystem inSystem, UUtUns32 inErrorID, ONtCharacter *inCharacter,
-						UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4,
+						uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4,
 						const char *inFile, UUtUns32 inLine, AI2tErrorSeverity inSeverity)
 {
 	UUtBool handled;
@@ -629,19 +629,19 @@ void AI2rError_SetSilentHandling(AI2tErrorSubsystem inSystem, UUtBool inSilentHa
 // -- error reporting
 
 static void AI2iReport_All_Report(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2rError_Line((char *) inParam1);
 }
 
 static void AI2iReport_Error_OpenLog(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2rError_Line("cannot open AI2 error reporting log file!");
 }
 
 static void AI2iReport_Error_InvalidSubsystem(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	if (inParam2 == 0) {
 		sprintf(AI2gErrorBuf, "AI2 subsystem index %d is not handled!", inParam1);
@@ -653,7 +653,7 @@ static void AI2iReport_Error_InvalidSubsystem(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Error_InvalidSeverity(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "error reported from %s line %d with unknown AI2 severity level %d [range 0-%d]",
 			(char *) inParam2, inParam3, inParam1, AI2cSeverity_Max);
@@ -661,7 +661,7 @@ static void AI2iReport_Error_InvalidSeverity(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Error_UnknownError(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s error reported from %s line %d with unknown error ID %d",
 			AI2cErrorSubsystemDesc[inParam1], (char *) inParam3, inParam4, inParam2);
@@ -669,7 +669,7 @@ static void AI2iReport_Error_UnknownError(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Executor_TurnOverride(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s executing turn override from %f to %f",
 			inCharacter->player_name, *((float *) inParam1), *((float *) inParam2));
@@ -677,7 +677,7 @@ static void AI2iReport_Executor_TurnOverride(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Executor_UnexpectedAttack(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	TRtAnimation *anim = (TRtAnimation *) inParam3;
 
@@ -687,14 +687,14 @@ static void AI2iReport_Executor_UnexpectedAttack(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_HighLevel_UnknownJob(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: unknown job mode %d (range 0-%d)", inCharacter->player_name, inParam1, AI2cGoal_Max);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_HighLevel_ImproperJob(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	if ((inParam1 < 0) || (inParam1 >= AI2cGoal_Max)) {
 		AI2_ERROR(AI2cBug, AI2cSubsystem_HighLevel, AI2cError_HighLevel_UnknownJob, inCharacter, inParam1, 0, 0, 0);
@@ -707,28 +707,28 @@ static void AI2iReport_HighLevel_ImproperJob(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_HighLevel_CombatSettings(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: can't find combat settings (ID %d)", inCharacter->player_name, inParam1);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_HighLevel_NoPath(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: can't find patrol path (ID %d)", inCharacter->player_name, inParam1);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_HighLevel_NoMeleeProfile(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: can't find melee profile (ID %d)", inCharacter->player_name, inParam1);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_HighLevel_MeleeVariant(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeProfile *profile = (AI2tMeleeProfile *) inParam2;
 	ONtCharacterClass *char_class = (ONtCharacterClass *) inParam3;
@@ -744,7 +744,7 @@ static void AI2iReport_HighLevel_MeleeVariant(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_HighLevel_NoCharacter(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	char *command_name = (char *) inParam1;
 	SLtParameter_Actual *parameter = (SLtParameter_Actual *) inParam2;
@@ -776,7 +776,7 @@ static void AI2iReport_HighLevel_NoCharacter(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_HighLevel_TalkBufferFull(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	char *sound_name = (char *) inParam2;
 
@@ -786,14 +786,14 @@ static void AI2iReport_HighLevel_TalkBufferFull(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_HighLevel_NoNeutralBehavior(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: can't find neutral behavior (ID %d)", inCharacter->player_name, inParam1);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_Pathfinding_NoBNVAtStart(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	M3tPoint3D *point = (M3tPoint3D *) inParam1;
 
@@ -803,7 +803,7 @@ static void AI2iReport_Pathfinding_NoBNVAtStart(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Pathfinding_NoBNVAtDest(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	M3tPoint3D *point = (M3tPoint3D *) inParam2;
 
@@ -813,7 +813,7 @@ static void AI2iReport_Pathfinding_NoBNVAtDest(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Pathfinding_NoConnectionsFromStart(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	M3tPoint3D *point = (M3tPoint3D *) inParam1;
 
@@ -823,7 +823,7 @@ static void AI2iReport_Pathfinding_NoConnectionsFromStart(ONtCharacter *inCharac
 }
 
 static void AI2iReport_Pathfinding_NoConnectionsToDest(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	M3tPoint3D *point = (M3tPoint3D *) inParam2;
 
@@ -833,7 +833,7 @@ static void AI2iReport_Pathfinding_NoConnectionsToDest(ONtCharacter *inCharacter
 }
 
 static void AI2iReport_Pathfinding_NoPath(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: failed to generate path through large-scale graph",
 			inCharacter->player_name);
@@ -841,7 +841,7 @@ static void AI2iReport_Pathfinding_NoPath(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Pathfinding_AStarFailed(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	M3tPoint3D *start = (M3tPoint3D *) inParam1, *end = (M3tPoint3D *) inParam2;
 	IMtPoint2D start_grid, end_grid;
@@ -857,28 +857,28 @@ static void AI2iReport_Pathfinding_AStarFailed(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Pathfinding_CollisionStuck(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: colliding against wall, AI may be stuck", inCharacter->player_name);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_Pathfinding_FellFromRoom(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: AI fell from path (found itself in wrong room)", inCharacter->player_name);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_Pathfinding_FellFromPath(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: AI fell from path (somehow not actually following path points)", inCharacter->player_name);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_Patrol_InvalidEntry(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tPatrolState *patrolstate = (AI2tPatrolState *) inParam3;
 
@@ -888,7 +888,7 @@ static void AI2iReport_Patrol_InvalidEntry(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Patrol_BeginPatrol(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tPatrolState *patrolstate = (AI2tPatrolState *) inParam1;
 
@@ -897,7 +897,7 @@ static void AI2iReport_Patrol_BeginPatrol(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Patrol_AtWaypoint(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tPatrolState *patrolstate = (AI2tPatrolState *) inParam3;
 	AI2tWaypoint *waypoint = (AI2tWaypoint *) inParam2;
@@ -989,7 +989,7 @@ static void AI2iReport_Patrol_AtWaypoint(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Patrol_NoSuchFlag(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tPatrolState *patrolstate = (AI2tPatrolState *) inParam3;
 
@@ -999,7 +999,7 @@ static void AI2iReport_Patrol_NoSuchFlag(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Patrol_FailedWaypoint(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tPatrolPath *path = (AI2tPatrolPath *) inParam1;
 
@@ -1009,7 +1009,7 @@ static void AI2iReport_Patrol_FailedWaypoint(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Knowledge_MaxEntries(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: unable to add knowledge, exceeded AI2cKnowledge_MaxEntries %d", inCharacter->player_name,
 			inParam1);
@@ -1017,7 +1017,7 @@ static void AI2iReport_Knowledge_MaxEntries(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Knowledge_NoStartle(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	char *startle_direction;
 
@@ -1049,7 +1049,7 @@ static void AI2iReport_Knowledge_NoStartle(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Knowledge_MaxPending(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: unable to post knowledge, exceeded AI2cKnowledge_MaxPending %d for this frame", inCharacter->player_name,
 			inParam1);
@@ -1057,21 +1057,21 @@ static void AI2iReport_Knowledge_MaxPending(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Knowledge_MaxDodgeProjectiles(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "AI unable to create dodge projectile entry, exceeded AI2cKnowledge_MaxDodgeProjectiles %d", inParam1);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_Knowledge_MaxDodgeFiringSpreads(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "AI unable to create dodge firing spread entry, exceeded AI2cKnowledge_MaxDodgeFiringSpreads %d", inParam1);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_Movement_InvalidAlertStatus(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: unable to find movement mode for unknown alert status %d",
 			inCharacter->player_name, inParam1);
@@ -1079,7 +1079,7 @@ static void AI2iReport_Movement_InvalidAlertStatus(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Movement_MaxModifiers(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: exceeded max movement modifiers trying to add modifier %d: dir %f weight %f",
 			inCharacter->player_name, inParam1, *((float *) inParam2), *((float *) inParam3));
@@ -1087,7 +1087,7 @@ static void AI2iReport_Movement_MaxModifiers(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Movement_MaxCollisions(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tCollisionIdentifier *collision_id = (AI2tCollisionIdentifier *) inParam2;
 	M3tPoint3D *point = (M3tPoint3D *) inParam3;
@@ -1118,7 +1118,7 @@ static void AI2iReport_Movement_MaxCollisions(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Movement_Collision(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tCollisionIdentifier *collision_id = (AI2tCollisionIdentifier *) inParam1;
 	M3tPoint3D *point = (M3tPoint3D *) inParam2;
@@ -1150,7 +1150,7 @@ static void AI2iReport_Movement_Collision(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Movement_CollisionStalled(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tCollision *collision = (AI2tCollision *) inParam2;
 
@@ -1159,28 +1159,28 @@ static void AI2iReport_Movement_CollisionStalled(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Movement_MaxBadnessValues(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: can't add new badness value (max %d)", inCharacter->player_name, inParam1);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_Knowledge_InvalidContact(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: contact of unknown type (%d)", inCharacter->player_name, inParam1);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_Combat_UnknownBehavior(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: behavior at range %d is an unknown type (%d)", inCharacter->player_name, inParam1, inParam2);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_Combat_UnimplementedBehavior(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: behavior %s (type %d) at range %d is not yet implemented, sorry",
 				inCharacter->player_name, (char *) inParam3, inParam1, inParam2);
@@ -1188,7 +1188,7 @@ static void AI2iReport_Combat_UnimplementedBehavior(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Combat_UnhandledMessage(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	UUtUns32 behavior_type = (UUtUns32) inCharacter->ai2State.currentState->state.combat.current_behavior.type;
 
@@ -1199,7 +1199,7 @@ static void AI2iReport_Combat_UnhandledMessage(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Combat_TargetDead(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: target %s is dead but we weren't notified",
 			inCharacter->player_name, ((ONtCharacter *) inParam1)->player_name);
@@ -1207,7 +1207,7 @@ static void AI2iReport_Combat_TargetDead(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Combat_ContactDisappeared(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	ONtCharacter *target = (ONtCharacter *) inParam1;
 
@@ -1217,14 +1217,14 @@ static void AI2iReport_Combat_ContactDisappeared(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_AttackMoveNotInCombo(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "melee attack %d [anim type %d] is not in combo table", inParam1, inParam2);
 	AI2rError_Line(AI2gErrorBuf);
 }
 
 static void AI2iReport_Melee_NoCharacterClass(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "character class '%s' not found when loading melee profile ID %d (%s)",
 			(char *) inParam1, inParam2, (char *) inParam3);
@@ -1232,7 +1232,7 @@ static void AI2iReport_Melee_NoCharacterClass(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_PreComputeBroken(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeProfile *profile = (AI2tMeleeProfile *) inParam1;
 	ONtCharacterClass *new_class = (ONtCharacterClass *) inParam2;
@@ -1279,7 +1279,7 @@ static void AI2iReport_Melee_PreComputeBroken(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_MultiDirectionTechnique(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeProfile *profile = (AI2tMeleeProfile *) inParam1;
 	char *technique_name = (char *) inParam2;
@@ -1290,7 +1290,7 @@ static void AI2iReport_Melee_MultiDirectionTechnique(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_MaxTransitions(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeProfile *profile = (AI2tMeleeProfile *) inParam1;
 
@@ -1300,7 +1300,7 @@ static void AI2iReport_Melee_MaxTransitions(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_Failed_Attack(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: failing attack %s (current anims %s, %s, current state %s)",
 			inCharacter->player_name, ONrAnimTypeToString((UUtUns16) inParam1), ONrAnimTypeToString((UUtUns16) inParam2),
@@ -1309,7 +1309,7 @@ static void AI2iReport_Melee_Failed_Attack(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_NoTransitionToDelay(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeProfile *profile = (AI2tMeleeProfile *) inParam1;
 
@@ -1319,7 +1319,7 @@ static void AI2iReport_Melee_NoTransitionToDelay(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_NoTransitionOutOfDelay(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeProfile *profile = (AI2tMeleeProfile *) inParam1;
 
@@ -1329,7 +1329,7 @@ static void AI2iReport_Melee_NoTransitionOutOfDelay(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_NoDelayAnimation(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeProfile *profile = (AI2tMeleeProfile *) inParam1;
 
@@ -1339,7 +1339,7 @@ static void AI2iReport_Melee_NoDelayAnimation(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_NoTransitionToStart(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeTechnique *technique = (AI2tMeleeTechnique *) inParam1;
 
@@ -1350,7 +1350,7 @@ static void AI2iReport_Melee_NoTransitionToStart(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_BlockAnimIndex(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	ONtCharacter *attacker = (ONtCharacter *) inParam1;
 
@@ -1360,7 +1360,7 @@ static void AI2iReport_Melee_BlockAnimIndex(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_BrokenTechnique(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeState *melee_state = (AI2tMeleeState *) inParam1;
 	AI2tMeleeTechnique *technique = (AI2tMeleeTechnique *) inParam2;
@@ -1369,7 +1369,7 @@ static void AI2iReport_Melee_BrokenTechnique(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_BrokenMove(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeState *melee_state = (AI2tMeleeState *) inParam1;
 	AI2tMeleeTechnique *technique = (AI2tMeleeTechnique *) inParam2;
@@ -1380,7 +1380,7 @@ static void AI2iReport_Melee_BrokenMove(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_BrokenAnim(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeState *melee_state = (AI2tMeleeState *) inParam1;
 	AI2tMeleeTechnique *technique = (AI2tMeleeTechnique *) inParam2;
@@ -1393,7 +1393,7 @@ static void AI2iReport_Melee_BrokenAnim(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_TransitionUnavailable(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeProfile *profile = (AI2tMeleeProfile *) inParam1;
 	UUtUns32 itr, num_alternatives = inParam2;
@@ -1414,7 +1414,7 @@ static void AI2iReport_Melee_TransitionUnavailable(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Melee_MaxDelayTimers(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	AI2tMeleeProfile *profile = (AI2tMeleeProfile *) inParam1;
 
@@ -1424,7 +1424,7 @@ static void AI2iReport_Melee_MaxDelayTimers(ONtCharacter *inCharacter,
 }
 
 static void AI2iReport_Fight_MaxFights(ONtCharacter *inCharacter,
-									 UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
+									 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	sprintf(AI2gErrorBuf, "%s: exceeded AI2cFight_MaxFights %d, cannot run spacing behavior",
 			inCharacter->player_name, inParam1);
@@ -1435,7 +1435,7 @@ static void AI2iReport_Fight_MaxFights(ONtCharacter *inCharacter,
 // -- pathfinding error handling
 
 UUtBool AI2rError_DefaultPathfindingHandler(ONtCharacter *inCharacter, UUtUns32 inErrorID,
-											UUtUns32 inParam1, UUtUns32 inParam2,
+											uintptr_t inParam1, uintptr_t inParam2,
 											UUtUns32 inParam3, UUtUns32 inParam4)
 {
 #if TOOL_VERSION

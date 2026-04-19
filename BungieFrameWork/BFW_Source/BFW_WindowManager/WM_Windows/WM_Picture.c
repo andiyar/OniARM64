@@ -42,11 +42,11 @@ WMiPicture_Create(
 					&texture_ref);
 		}
 
-		WMrWindow_SetLong(inPicture, 0, (UUtUns32)texture_ref);
+		WMrWindow_SetLong(inPicture, 0, (uintptr_t)texture_ref);
 	}
 	else
 	{
-		WMrWindow_SetLong(inPicture, 0, (UUtUns32)texture_ref);
+		WMrWindow_SetLong(inPicture, 0, (uintptr_t)texture_ref);
 	}
 
 	return WMcResult_Handled;
@@ -56,7 +56,7 @@ WMiPicture_Create(
 static void
 WMiPicture_HandleSetPartSpec(
 	WMtPicture				*inPicture,
-	UUtUns32				inParam1)
+	uintptr_t				inParam1)
 {
 	TMtTemplateTag			template_tag;
 
@@ -74,7 +74,7 @@ WMiPicture_HandleSetPartSpec(
 static void
 WMiPicture_HandleSetPicture(
 	WMtPicture				*inPicture,
-	UUtUns32				inParam1)
+	uintptr_t				inParam1)
 {
 	TMtTemplateTag			template_tag;
 
@@ -166,12 +166,12 @@ WMiPicture_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiPicture_Callback(
 	WMtPicture				*inPicture,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtUns32				result;
 
@@ -231,7 +231,7 @@ WMrPicture_SetPartSpec(
 	UUmAssert(inPicture);
 	UUmAssert(inPartSpec);
 
-	WMrMessage_Send(inPicture, PTcMessage_SetPartSpec, (UUtUns32)inPartSpec, 0);
+	WMrMessage_Send(inPicture, PTcMessage_SetPartSpec, (uintptr_t)inPartSpec, 0);
 }
 
 // ----------------------------------------------------------------------
@@ -243,5 +243,5 @@ WMrPicture_SetPicture(
 	UUmAssert(inPicture);
 	UUmAssert(inTexture);
 
-	WMrMessage_Send(inPicture, PTcMessage_SetPicture, (UUtUns32)inTexture, 0);
+	WMrMessage_Send(inPicture, PTcMessage_SetPicture, (uintptr_t)inTexture, 0);
 }

@@ -253,7 +253,7 @@ WMiSlider_Create(
 	if (private_data == NULL) { goto cleanup; }
 
 	// save the private data
-	WMrWindow_SetLong(inSlider, 0, (UUtUns32)private_data);
+	WMrWindow_SetLong(inSlider, 0, (uintptr_t)private_data);
 
 	// calculate the thumb width and height
 	WMiSlider_GetBounds(inSlider, private_data, WMcSLPart_Thumb, &thumb_bounds);
@@ -303,7 +303,7 @@ WMiSlider_Destroy(
 static void
 WMiSlider_HandleKeyEvent(
 	WMtSlider				*inSlider,
-	UUtUns32				inParam1)
+	uintptr_t				inParam1)
 {
 	WMtSlider_PrivateData	*private_data;
 
@@ -357,7 +357,7 @@ WMiSlider_HandleKeyEvent(
 			WMrWindow_GetParent(inSlider),
 			WMcMessage_Command,
 			(UUtUns32)UUmMakeLong(SLcNotify_NewPosition, WMrWindow_GetID(inSlider)),
-			(UUtUns32)inSlider);
+			(uintptr_t)inSlider);
 	}
 }
 
@@ -366,8 +366,8 @@ static void
 WMiSlider_HandleMouseEvent(
 	WMtSlider				*inSlider,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	IMtPoint2D				global_mouse;
 	IMtPoint2D				local_mouse;
@@ -458,7 +458,7 @@ WMiSlider_HandleMouseEvent(
 			WMrWindow_GetParent(inSlider),
 			WMcMessage_Command,
 			(UUtUns32)UUmMakeLong(SLcNotify_NewPosition, WMrWindow_GetID(inSlider)),
-			(UUtUns32)inSlider);
+			(uintptr_t)inSlider);
 	}
 }
 
@@ -554,12 +554,12 @@ WMiSlider_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiSlider_Callback(
 	WMtSlider				*inSlider,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtUns32				result;
 

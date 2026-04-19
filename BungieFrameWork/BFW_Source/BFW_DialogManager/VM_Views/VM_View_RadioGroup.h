@@ -33,12 +33,12 @@ extern TMtPrivateData*	DMgTemplate_RadioGroup_PrivateData;
 // ======================================================================
 // prototypes
 // ======================================================================
-UUtUns32
+uintptr_t
 VMrView_RadioGroup_Callback(
 	VMtView				*inView,
 	VMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2);
+	uintptr_t			inParam1,
+	uintptr_t			inParam2);
 
 UUtError
 VMrView_RadioGroup_ProcHandler(

@@ -421,7 +421,7 @@ OWiIEprop_NewSound(
 static void
 OWiIEprop_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
+	uintptr_t					inParam1,
 	WMtWindow					*inControl)
 {
 	UUtError					error;
@@ -885,8 +885,8 @@ static UUtBool
 OWiIEprop_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 
@@ -942,9 +942,9 @@ OWrIE_FillImpactListBox(
 		if (indent > 0) {
 			UUrMemory_Set8(tempstring, ' ', indent);
 			UUrString_Copy(tempstring + indent, item_name, sizeof(tempstring) - indent);
-			WMrMessage_Send(inListBox, LBcMessage_AddString, (UUtUns32) tempstring, 0);
+			WMrMessage_Send(inListBox, LBcMessage_AddString, (uintptr_t) tempstring, 0);
 		} else {
-			WMrMessage_Send(inListBox, LBcMessage_AddString, (UUtUns32) item_name, 0);
+			WMrMessage_Send(inListBox, LBcMessage_AddString, (uintptr_t) item_name, 0);
 		}
 	}
 }
@@ -972,9 +972,9 @@ OWrIE_FillMaterialListBox(
 		if (indent > 0) {
 			UUrMemory_Set8(tempstring, ' ', indent);
 			UUrString_Copy(tempstring + indent, item_name, sizeof(tempstring) - indent);
-			WMrMessage_Send(inListBox, LBcMessage_AddString, (UUtUns32) tempstring, 0);
+			WMrMessage_Send(inListBox, LBcMessage_AddString, (uintptr_t) tempstring, 0);
 		} else {
-			WMrMessage_Send(inListBox, LBcMessage_AddString, (UUtUns32) item_name, 0);
+			WMrMessage_Send(inListBox, LBcMessage_AddString, (uintptr_t) item_name, 0);
 		}
 	}
 }
@@ -1174,7 +1174,7 @@ OWiIE_HandleEdit(
 				OWcDialog_Impact_Effect_Prop,
 				inDialog,
 				OWiIEprop_Callback,
-				(UUtUns32)&properties,
+				(uintptr_t)&properties,
 				&message);
 		UUmError_ReturnOnError(error);
 
@@ -1239,7 +1239,7 @@ OWiIE_InitDialog(
 		return;
 	}
 
-	WMrDialog_SetUserData(inDialog, (UUtUns32) data);
+	WMrDialog_SetUserData(inDialog, (uintptr_t) data);
 
 	// can't paste until we copy something
 	button = WMrDialog_GetItemByID(inDialog, OWcIE_Btn_Paste);
@@ -1384,7 +1384,7 @@ OWiIE_HandleMenuCommand(
 static void
 OWiIE_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
+	uintptr_t					inParam1,
 	WMtWindow					*inControl)
 {
 	OWtIEdata					*data;
@@ -1535,8 +1535,8 @@ static UUtBool
 OWiIE_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 

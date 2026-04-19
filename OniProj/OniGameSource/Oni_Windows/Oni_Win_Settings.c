@@ -72,7 +72,7 @@ OWiSettings_Player_Destroy(
 			window,
 			EFcMessage_GetText,
 			(UUtUns32)OWgSettings_Player.player_name,
-			(UUtUns32)ONcMaxPlayerNameLength);
+			(uintptr_t)ONcMaxPlayerNameLength);
 	}
 
 	// get the character class
@@ -87,8 +87,8 @@ UUtBool
 OWrSettings_Player_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 

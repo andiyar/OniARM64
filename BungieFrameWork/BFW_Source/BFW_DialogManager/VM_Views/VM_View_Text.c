@@ -210,12 +210,12 @@ VMiView_Text_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 VMrView_Text_Callback(
 	VMtView				*inView,
 	VMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2)
+	uintptr_t			inParam1,
+	uintptr_t			inParam2)
 {
 	VMtView_Text		*text;
 	VMtView_Text_PrivateData	*private_data;

@@ -2182,7 +2182,7 @@ OBJiBinaryData_Load(
 	object_group = OBJiObjectGroup_GetByName(inIdentifier);
 
 	if (NULL == object_group) {
-		UUmError_ReturnOnErrorMsgP(UUcError_Generic, "failed to find object group %s", (UUtUns32) inIdentifier, 0, 0);
+		UUmError_ReturnOnErrorMsgP(UUcError_Generic, "failed to find object group %s", (uintptr_t) inIdentifier, 0, 0);
 	}
 
 	OBJiObjectGroup_DeleteAllObjects(object_group);
@@ -4148,7 +4148,7 @@ void OBJrObjectType_BuildListBox(OBJtObjectType inObjectType, WMtWindow *ioListB
 	if (inAllowNone) {
 		base = 1;
 		WMrMessage_Send(ioListBox, LBcMessage_AddString, (UUtUns32) "<none>", 0);
-		WMrMessage_Send(ioListBox, LBcMessage_SetItemData, (UUtUns32) NULL, 0);
+		WMrMessage_Send(ioListBox, LBcMessage_SetItemData, (uintptr_t) NULL, 0);
 	} else {
 		base = 0;
 	}
@@ -4170,7 +4170,7 @@ void OBJrObjectType_BuildListBox(OBJtObjectType inObjectType, WMtWindow *ioListB
 
 		OBJrObject_GetName(list[itr], name, 128);
 
-		new_index = WMrMessage_Send(ioListBox, LBcMessage_AddString, (UUtUns32) name, 0);
+		new_index = WMrMessage_Send(ioListBox, LBcMessage_AddString, (uintptr_t) name, 0);
 		UUmAssert(new_index == itr + base);
 
 		WMrMessage_Send(ioListBox, LBcMessage_SetItemData, (UUtUns32) list[itr], itr + base);
@@ -4349,8 +4349,8 @@ static UUtBool
 OWiChooseObject_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	enum
 	{
@@ -4522,7 +4522,7 @@ OWiChooseObject_Callback(
 	}
 
 	if (finish_dialog || cancel_dialog) {
-		UUtUns32 result_object = (UUtUns32) internals->selected_object;
+		UUtUns32 result_object = (uintptr_t) internals->selected_object;
 
 		if (!cancel_dialog) {
 			if ((internals->allow_none) || (selected_object != NULL)) {

@@ -487,7 +487,7 @@ WMiScrollbar_Create(
 	// create the private data
 	private_data = (WMtScrollbar_PrivateData*)UUrMemory_Block_NewClear(sizeof(WMtScrollbar_PrivateData));
 	if (private_data == NULL) { goto cleanup; }
-	WMrWindow_SetLong(inScrollbar, 0, (UUtUns32)private_data);
+	WMrWindow_SetLong(inScrollbar, 0, (uintptr_t)private_data);
 
 	// get the active UI
 	partspec_ui = PSrPartSpecUI_GetActive();
@@ -570,8 +570,8 @@ static void
 WMiScrollbar_HandleMouseEvent(
 	WMtScrollbar				*inScrollbar,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	IMtPoint2D					global_mouse;
 	IMtPoint2D					local_mouse;
@@ -616,7 +616,7 @@ WMiScrollbar_HandleMouseEvent(
 					WMrWindow_GetParent(inScrollbar),
 					message,
 					(UUtUns32)UUmMakeLong(SBcNotify_ThumbPosition, scrollbar_id),
-					(UUtUns32)new_value);
+					(uintptr_t)new_value);
 			}
 		break;
 
@@ -655,25 +655,25 @@ WMiScrollbar_HandleMouseEvent(
 
 					case WMcSBPart_PageUp:
 						param1 = (UUtUns32)UUmMakeLong(SBcNotify_PageUp, scrollbar_id);
-						param2 = (UUtUns32)private_data->current_value;
+						param2 = (uintptr_t)private_data->current_value;
 						private_data->mouse_down_part = WMcSBPart_PageUp;
 					break;
 
 					case WMcSBPart_PageDown:
 						param1 = (UUtUns32)UUmMakeLong(SBcNotify_PageDown, scrollbar_id);
-						param2 = (UUtUns32)private_data->current_value;
+						param2 = (uintptr_t)private_data->current_value;
 						private_data->mouse_down_part = WMcSBPart_PageDown;
 					break;
 
 					case WMcSBPart_LineUp:
 						param1 = (UUtUns32)UUmMakeLong(SBcNotify_LineUp, scrollbar_id);
-						param2 = (UUtUns32)private_data->current_value;
+						param2 = (uintptr_t)private_data->current_value;
 						private_data->mouse_down_part = WMcSBPart_LineUp;
 					break;
 
 					case WMcSBPart_LineDown:
 						param1 = (UUtUns32)UUmMakeLong(SBcNotify_LineDown, scrollbar_id);
-						param2 = (UUtUns32)private_data->current_value;
+						param2 = (uintptr_t)private_data->current_value;
 						private_data->mouse_down_part = WMcSBPart_LineDown;
 					break;
 				}
@@ -886,12 +886,12 @@ WMiScrollbar_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiScrollbar_Callback(
 	WMtScrollbar			*inScrollbar,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtUns32					result;
 

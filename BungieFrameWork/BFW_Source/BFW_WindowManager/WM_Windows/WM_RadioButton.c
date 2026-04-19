@@ -50,8 +50,8 @@ static void
 WMiRadioButton_HandleMouseEvent(
 	WMtRadioButton			*inRadioButton,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtRect					radiobutton_rect;
 	UUtBool					mouse_over_radiobutton;
@@ -103,7 +103,7 @@ WMiRadioButton_HandleMouseEvent(
 			WMrWindow_GetParent(inRadioButton),
 			WMcMessage_Command,
 			UUmMakeLong(WMcNotify_Click, WMrWindow_GetID(inRadioButton)),
-			(UUtUns32)inRadioButton);
+			(uintptr_t)inRadioButton);
 	}
 }
 
@@ -194,12 +194,12 @@ WMiRadioButton_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiRadioButton_Callback(
 	WMtRadioButton			*inRadioButton,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtError				error;
 	UUtUns32				result;

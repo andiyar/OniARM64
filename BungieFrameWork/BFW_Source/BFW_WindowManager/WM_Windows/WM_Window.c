@@ -120,7 +120,7 @@ WMiWindow_GetPartSizes(
 static WMtWindowArea
 WMiWindow_NC_HitTest(
 	WMtWindow				*inWindow,
-	UUtUns32				inParam1)
+	uintptr_t				inParam1)
 {
 	UUtRect					window_rect;
 	IMtPoint2D				global_mouse;
@@ -472,8 +472,8 @@ static void
 WMiWindow_NC_HandleMouseEvent(
 	WMtWindow				*inWindow,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	IMtPoint2D				global_mouse;
 	IMtPoint2D				local_mouse;
@@ -678,7 +678,7 @@ WMiWindow_HandleCaptureChanged(
 static void
 WMiWindow_HandleResolutionChanged(
 	WMtWindow				*inWindow,
-	UUtUns32				inParam1)
+	uintptr_t				inParam1)
 {
 	WMtWindow				*child;
 
@@ -702,8 +702,8 @@ WMiWindow_HandleResolutionChanged(
 static void
 WMiWindow_HandleSizeMove(
 	WMtWindow				*inWindow,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	IMtPoint2D				global_mouse;
 	IMtPoint2D				local_mouse;
@@ -917,14 +917,14 @@ WMiWindow_HandleSizeMove(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 WMrWindow_DefaultCallback(
 	WMtWindow				*inWindow,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
-	UUtUns32				result;
+	uintptr_t				result;
 
 	result = WMcResult_Handled;
 

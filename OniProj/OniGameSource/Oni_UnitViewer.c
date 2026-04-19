@@ -89,19 +89,19 @@ UUtBool
 ONrDialogCallbac_UnitViewerControls(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 // ======================================================================
 // functions
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 ONiCharViewBoxCallback(
 	VMtView					*inView,
 	VMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	// let the box callback handle all of the received messages
 	VMrView_Box_Callback(inView, inMessage, inParam1, inParam2);
@@ -852,8 +852,8 @@ UUtBool
 ONrDialogCallback_UnitViewer(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 	UUtError				error;
@@ -916,8 +916,8 @@ UUtBool
 ONrDialogCallbac_UnitViewerControls(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 

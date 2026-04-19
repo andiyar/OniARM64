@@ -125,7 +125,7 @@ ONiLevelList_Initialize(
 				levels,
 				LBcMessage_AddString,
 				0,
-				(UUtUns32)descriptor->level_name);
+				(uintptr_t)descriptor->level_name);
 		}
 
 		// set the selection to the first entry
@@ -311,7 +311,7 @@ ONiMP_RestoreMPInfo(
 	// ------------------------------
 	// set the host name
 	view = DMrDialog_GetViewByID(inDialog, ONcMPHG_EF_HostName);
-	VMrView_SetValue(view, (UUtUns32)&ONgMP_HostInfo.host_name);
+	VMrView_SetValue(view, (uintptr_t)&ONgMP_HostInfo.host_name);
 
 	// set the number of bots
 	if (ONgMP_HostInfo.game_options.game_parameters & ONcNetGameParam_HasAIs)
@@ -322,7 +322,7 @@ ONiMP_RestoreMPInfo(
 
 		sprintf(string, "%d", ONgMP_HostInfo.game_options.num_AIs);
 		view = DMrDialog_GetViewByID(inDialog, ONcMPHG_EF_NumBots);
-		VMrView_SetValue(view, (UUtUns32)string);
+		VMrView_SetValue(view, (uintptr_t)string);
 	}
 
 	// ------------------------------
@@ -330,11 +330,11 @@ ONiMP_RestoreMPInfo(
 	// ------------------------------
 	// set the host address
 	view = DMrDialog_GetViewByID(inDialog, ONcMPJG_EF_HostAddress);
-	VMrView_SetValue(view, (UUtUns32)&ONgMP_PlayerInfo.host_address);
+	VMrView_SetValue(view, (uintptr_t)&ONgMP_PlayerInfo.host_address);
 
 	// set the password
 	view = DMrDialog_GetViewByID(inDialog, ONcMPJG_EF_Password);
-	VMrView_SetValue(view, (UUtUns32)&ONgMP_PlayerInfo.password);
+	VMrView_SetValue(view, (uintptr_t)&ONgMP_PlayerInfo.password);
 
 	// set the remember password checkbox
 	view = DMrDialog_GetViewByID(inDialog, ONcMPJG_CB_RememberPassword);
@@ -345,11 +345,11 @@ ONiMP_RestoreMPInfo(
 	// ------------------------------
 	// set the players name
 	view = DMrDialog_GetViewByID(inDialog, ONcMPO_EF_PlayerName);
-	VMrView_SetValue(view, (UUtUns32)&ONgMP_PlayerInfo.player_name);
+	VMrView_SetValue(view, (uintptr_t)&ONgMP_PlayerInfo.player_name);
 
 	// set the team name
 	view = DMrDialog_GetViewByID(inDialog, ONcMPO_EF_TeamName);
-	VMrView_SetValue(view, (UUtUns32)&ONgMP_PlayerInfo.team_name);
+	VMrView_SetValue(view, (uintptr_t)&ONgMP_PlayerInfo.team_name);
 }
 
 // ----------------------------------------------------------------------
@@ -496,7 +496,7 @@ ONiMPJG_FindServers_Callback(
 		list_view,
 		LBcMessage_InsertString,
 		index,
-		(UUtUns32)inServerInfo->server_name);
+		(uintptr_t)inServerInfo->server_name);
 }
 
 // ----------------------------------------------------------------------
@@ -530,7 +530,7 @@ ONiMPJG_SetIPAddress(
 		VMrView_SendMessage(
 			server_address,
 			VMcMessage_SetValue,
-			(UUtUns32)server_address_string,
+			(uintptr_t)server_address_string,
 			0);
 	}
 	else
@@ -550,7 +550,7 @@ ONiMPJG_SetIPAddress(
 			VMrView_SendMessage(
 				server_address,
 				VMcMessage_SetValue,
-				(UUtUns32)server_address_string,
+				(uintptr_t)server_address_string,
 				0);
 		}
 	}
@@ -561,8 +561,8 @@ static UUtBool
 ONiMPJG_TabCallback(
 	VMtView					*inTab,
 	VMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 	UUtError				error;
@@ -579,7 +579,7 @@ ONiMPJG_TabCallback(
 				// find available local servers
 				ONrNet_FindServers_Start(
 					ONiMPJG_FindServers_Callback,
-					(UUtUns32)inTab);
+					(uintptr_t)inTab);
 			}
 
 			// allocate memory for the server info
@@ -643,8 +643,8 @@ UUtBool
 ONrDialogCallback_Multiplayer(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -755,8 +755,8 @@ UUtBool
 ONrDialogCallback_NewGame(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -844,7 +844,7 @@ ONiOptns_Control_Set(
 	if (string[0] == '\0')
 	{
 		LIrTranslate_InputCode(inBoundInput, input_name);
-		VMrView_SendMessage(control_view, VMcMessage_SetValue, (UUtUns32)input_name, 0);
+		VMrView_SendMessage(control_view, VMcMessage_SetValue, (uintptr_t)input_name, 0);
 		return UUcTrue;
 	}
 
@@ -868,7 +868,7 @@ ONiOptns_Control_Set(
 	if (string[0] == '\0')
 	{
 		LIrTranslate_InputCode(inBoundInput, input_name);
-		VMrView_SendMessage(control_view, VMcMessage_SetValue, (UUtUns32)input_name, 0);
+		VMrView_SendMessage(control_view, VMcMessage_SetValue, (uintptr_t)input_name, 0);
 		return UUcTrue;
 	}
 
@@ -880,8 +880,8 @@ static UUtBool
 ONiOptns_Tab_AVCallback(
 	VMtView					*inTab,
 	VMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 	VMtView					*view;
@@ -944,8 +944,8 @@ static UUtBool
 ONiOptns_Tab_CntrlsCallback(
 	VMtView					*inTab,
 	VMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 	VMtView					*view;
@@ -956,7 +956,7 @@ ONiOptns_Tab_CntrlsCallback(
 	switch(inMessage)
 	{
 		case TbcMessage_InitTab:
-			LIrBindings_Enumerate(ONiOptns_Control_Set, (UUtUns32)inTab);
+			LIrBindings_Enumerate(ONiOptns_Control_Set, (uintptr_t)inTab);
 
 			// set invert mouse checkbox
 			view = DMrDialog_GetViewByID(inTab, ONcOC_CB_InvertMouse);
@@ -985,8 +985,8 @@ UUtBool
 ONrDialogCallback_Options(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -1058,8 +1058,8 @@ UUtBool
 ONrDialogCallback_LoadSave(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -1115,8 +1115,8 @@ UUtBool
 ONrDialogCallback_Quit(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -1169,8 +1169,8 @@ UUtBool
 ONrDialogCallback_Joining(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 	UUtError				error;
@@ -1220,8 +1220,8 @@ UUtBool
 ONrDialogCallback_MainMenu(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtUns32				message;
 	UUtBool					handled;
@@ -1326,8 +1326,8 @@ static UUtBool
 ONrDialogCallback_PasswordSplashScreen(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 	UUtUns16				len;

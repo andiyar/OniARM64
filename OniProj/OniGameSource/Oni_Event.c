@@ -453,7 +453,7 @@ UUtError ONrEventList_FillListBox( ONtEventList *inEventList, WMtWindow* inWindo
 	{
 		event = &inEventList->events[i];
 		ONrEvent_GetName( event, event_name, 32 );
-		WMrMessage_Send( inWindow, LBcMessage_AddString, (UUtUns32) event_name, 0);
+		WMrMessage_Send( inWindow, LBcMessage_AddString, (uintptr_t) event_name, 0);
 	}
 
 	return UUcError_None;

@@ -142,7 +142,7 @@ OWiMPHost_SaveInfo(
 	window = WMrDialog_GetItemByID(inDialog, OWcMPHost_EF_NumBots);
 	if (window)
 	{
-		string_length = WMrMessage_Send(window, EFcMessage_GetText, (UUtUns32)string, 255);
+		string_length = WMrMessage_Send(window, EFcMessage_GetText, (uintptr_t)string, 255);
 		sscanf((char*)string, "%d", &num_bots);
 		if (num_bots > 0)
 		{
@@ -155,7 +155,7 @@ OWiMPHost_SaveInfo(
 	window = WMrDialog_GetItemByID(inDialog, OWcMPHost_EF_MaxKills);
 	if (window)
 	{
-		string_length = WMrMessage_Send(window, EFcMessage_GetText, (UUtUns32)string, 255);
+		string_length = WMrMessage_Send(window, EFcMessage_GetText, (uintptr_t)string, 255);
 		sscanf((char*)string, "%d", &max_kills);
 		if (max_kills > 0)
 		{
@@ -168,7 +168,7 @@ OWiMPHost_SaveInfo(
 	window = WMrDialog_GetItemByID(inDialog, OWcMPHost_EF_NumMinutes);
 	if (window)
 	{
-		string_length = WMrMessage_Send(window, EFcMessage_GetText, (UUtUns32)string, 255);
+		string_length = WMrMessage_Send(window, EFcMessage_GetText, (uintptr_t)string, 255);
 		sscanf((char*)string, "%d", &time_limit);
 		if (time_limit > 0)
 		{
@@ -198,7 +198,7 @@ OWiMPHost_SetInfo(
 	if (window != NULL)
 	{
 		sprintf(string, "%d", OWgMPHost_Info.game_options.num_AIs);
-		WMrMessage_Send(window, EFcMessage_SetText, (UUtUns32)string, 0);
+		WMrMessage_Send(window, EFcMessage_SetText, (uintptr_t)string, 0);
 	}
 
 	// set the kill limit
@@ -206,7 +206,7 @@ OWiMPHost_SetInfo(
 	if (window != NULL)
 	{
 		sprintf(string, "%d", OWgMPHost_Info.game_options.kill_limit);
-		WMrMessage_Send(window, EFcMessage_SetText, (UUtUns32)string, 0);
+		WMrMessage_Send(window, EFcMessage_SetText, (uintptr_t)string, 0);
 	}
 
 	// set the time limit
@@ -214,7 +214,7 @@ OWiMPHost_SetInfo(
 	if (window != NULL)
 	{
 		sprintf(string, "%d", OWgMPHost_Info.game_options.time_limit);
-		WMrMessage_Send(window, EFcMessage_SetText, (UUtUns32)string, 0);
+		WMrMessage_Send(window, EFcMessage_SetText, (uintptr_t)string, 0);
 	}
 }
 
@@ -223,8 +223,8 @@ UUtBool
 OWrMPHost_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -401,7 +401,7 @@ OWiMPJoin_FindServers_Callback(
 	WMrMessage_Send(
 		server_listbox,
 		LBcMessage_InsertString,
-		(UUtUns32)inServerInfo->server_name,
+		(uintptr_t)inServerInfo->server_name,
 		index);
 }
 
@@ -458,7 +458,7 @@ OWiMPJoin_Initialize(
 	}
 
 	// find the available servers
-	ONrNet_FindServers_Start(OWiMPJoin_FindServers_Callback, (UUtUns32)inDialog);
+	ONrNet_FindServers_Start(OWiMPJoin_FindServers_Callback, (uintptr_t)inDialog);
 }
 
 // ----------------------------------------------------------------------
@@ -504,8 +504,8 @@ UUtBool
 OWrMPJoin_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 

@@ -335,12 +335,12 @@ typedef UUtUns16				WMtWindowType;
 typedef struct WMtWindow		WMtWindow;
 typedef struct WMtCaret			WMtCaret;
 
-typedef UUtUns32
+typedef uintptr_t
 (*WMtWindowCallback)(
 	WMtWindow				*inWindow,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 typedef UUtBool
 (*WMtWindowEnumCallback)(
@@ -361,8 +361,8 @@ typedef struct WMtEvent
 {
 	WMtWindow				*window;
 	WMtMessage				message;
-	UUtUns32				param1;
-	UUtUns32				param2;
+	uintptr_t				param1;
+	uintptr_t				param2;
 
 } WMtEvent;
 
@@ -415,12 +415,12 @@ typedef struct WMtCompareItems
 // ======================================================================
 // prototypes
 // ======================================================================
-UUtUns32
+uintptr_t
 WMrWindow_DefaultCallback(
 	WMtWindow				*inWindow,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 // ----------------------------------------------------------------------
 WMtWindow*
@@ -465,7 +465,7 @@ UUtUns16
 WMrWindow_GetID(
 	WMtWindow				*inWindow);
 
-UUtUns32
+uintptr_t
 WMrWindow_GetLong(
 	WMtWindow				*inWindow,
 	UUtInt32				inOffset);
@@ -540,7 +540,7 @@ WMrWindow_New(
 	UUtInt16				inWidth,
 	UUtInt16				inHeight,
 	WMtWindow				*inParent,
-	UUtUns32				inCreationData);
+	uintptr_t				inCreationData);
 
 UUtBool
 WMrWindow_PointInWindow(
@@ -567,11 +567,11 @@ WMrWindow_SetLocation(
 	UUtInt16				inX,
 	UUtInt16				inY);
 
-UUtUns32
+uintptr_t
 WMrWindow_SetLong(
 	WMtWindow				*inWindow,
 	UUtInt32				inOffset,
-	UUtUns32				inData);
+	uintptr_t				inData);
 
 WMtWindow*
 WMrWindow_SetParent(
@@ -663,15 +663,15 @@ UUtBool
 WMrMessage_Post(
 	WMtWindow				*inWindow,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
-UUtUns32
+uintptr_t
 WMrMessage_Send(
 	WMtWindow				*inWindow,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 WMrMessage_TranslateKeyCommand(

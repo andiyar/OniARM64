@@ -119,12 +119,12 @@ VMiView_RadioGroup_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 VMrView_RadioGroup_Callback(
 	VMtView				*inView,
 	VMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2)
+	uintptr_t			inParam1,
+	uintptr_t			inParam2)
 {
 	VMtView_RadioGroup				*radiogroup;
 	VMtView_RadioGroup_PrivateData	*private_data;

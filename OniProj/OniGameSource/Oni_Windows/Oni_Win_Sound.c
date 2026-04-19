@@ -132,8 +132,8 @@ static UUtBool
 OWiCN_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 	WMtWindow					*editfield;
@@ -155,7 +155,7 @@ OWiCN_Callback(
 			WMrMessage_Send(editfield, EFcMessage_SetMaxChars, OScMaxNameLength, 0);
 
 			// set the name
-			WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)name, 0);
+			WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)name, 0);
 
 			// set focus to the editfield
 			WMrWindow_SetFocus(editfield);
@@ -175,7 +175,7 @@ OWiCN_Callback(
 					WMrMessage_Send(
 						editfield,
 						EFcMessage_GetText,
-						(UUtUns32)name,
+						(uintptr_t)name,
 						OScMaxNameLength);
 
 					// end the dialog
@@ -226,7 +226,7 @@ OWiWS_SelectSoundData(
 	UUmAssert(listbox);
 
 	// get the selected file's name
-	WMrMessage_Send(listbox, LBcMessage_GetText, (UUtUns32)selected_file_name, (UUtUns32)-1);
+	WMrMessage_Send(listbox, LBcMessage_GetText, (uintptr_t)selected_file_name, (UUtUns32)-1);
 	UUrString_MakeLowerCase(selected_file_name, BFcMaxFileNameLength);
 
 	// get the SStSoundData* corresponding to this file
@@ -283,8 +283,8 @@ OWiWS_FillListbox(
 	WMrMessage_Send(
 		listbox,
 		LBcMessage_SetDirectoryInfo,
-		(UUtUns32)&directory_info,
-		(UUtUns32)UUcTrue);
+		(uintptr_t)&directory_info,
+		(uintptr_t)UUcTrue);
 
 	// add .aif files to listbox
 	directory_info.flags = LBcDirectoryInfoFlag_Files;
@@ -292,8 +292,8 @@ OWiWS_FillListbox(
 	WMrMessage_Send(
 		listbox,
 		LBcMessage_SetDirectoryInfo,
-		(UUtUns32)&directory_info,
-		(UUtUns32)UUcFalse);
+		(uintptr_t)&directory_info,
+		(uintptr_t)UUcFalse);
 
 	// add .aif files to listbox
 	directory_info.flags = LBcDirectoryInfoFlag_Files;
@@ -301,11 +301,11 @@ OWiWS_FillListbox(
 	WMrMessage_Send(
 		listbox,
 		LBcMessage_SetDirectoryInfo,
-		(UUtUns32)&directory_info,
-		(UUtUns32)UUcFalse);
+		(uintptr_t)&directory_info,
+		(uintptr_t)UUcFalse);
 
 	// select the first item in the list
-	WMrMessage_Send(listbox, LBcMessage_SetSelection, (UUtUns32)UUcTrue, 0);
+	WMrMessage_Send(listbox, LBcMessage_SetSelection, (uintptr_t)UUcTrue, 0);
 
 	// set the focus on the listbox
 	WMrWindow_SetFocus(listbox);
@@ -375,7 +375,7 @@ OWiWS_SelectItem(
 		num_elements = UUrMemory_Array_GetUsedElems(ws->dir_array);
 
 		// get the selected directories name
-		WMrMessage_Send(inListBox, LBcMessage_GetText, (UUtUns32)selected_dir_name, (UUtUns32)-1);
+		WMrMessage_Send(inListBox, LBcMessage_GetText, (uintptr_t)selected_dir_name, (UUtUns32)-1);
 
 		// build a directory ref to the selected directory
 		error =
@@ -537,8 +537,8 @@ OWiWS_Destroy(
 static void
 OWiWS_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtUns16					command_type;
 	UUtUns16					control_id;
@@ -614,8 +614,8 @@ static UUtBool
 OWiWS_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 
@@ -671,23 +671,23 @@ OWiSPP_SaveFields(
 
 	// get the fields
 	editfield = WMrDialog_GetItemByID(inDialog, OWcSPP_EF_Weight);
-	WMrMessage_Send(editfield, EFcMessage_GetText, (UUtUns32)string, 128);
+	WMrMessage_Send(editfield, EFcMessage_GetText, (uintptr_t)string, 128);
 	sscanf(string, "%d", &weight);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcSPP_EF_MinVol);
-	WMrMessage_Send(editfield, EFcMessage_GetText, (UUtUns32)string, 128);
+	WMrMessage_Send(editfield, EFcMessage_GetText, (uintptr_t)string, 128);
 	sscanf(string, "%f", &min_volume_percent);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcSPP_EF_MaxVol);
-	WMrMessage_Send(editfield, EFcMessage_GetText, (UUtUns32)string, 128);
+	WMrMessage_Send(editfield, EFcMessage_GetText, (uintptr_t)string, 128);
 	sscanf(string, "%f", &max_volume_percent);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcSPP_EF_MinPitch);
-	WMrMessage_Send(editfield, EFcMessage_GetText, (UUtUns32)string, 128);
+	WMrMessage_Send(editfield, EFcMessage_GetText, (uintptr_t)string, 128);
 	sscanf(string, "%f", &min_pitch_percent);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcSPP_EF_MaxPitch);
-	WMrMessage_Send(editfield, EFcMessage_GetText, (UUtUns32)string, 128);
+	WMrMessage_Send(editfield, EFcMessage_GetText, (uintptr_t)string, 128);
 	sscanf(string, "%f", &max_pitch_percent);
 
 	// check ranges
@@ -754,30 +754,30 @@ OWiSPP_InitDialog(
 	// set the edit fields
 	editfield = WMrDialog_GetItemByID(inDialog, OWcSPP_EF_Weight);
 	sprintf(string, "%d", perm->weight);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcSPP_EF_MinVol);
 	sprintf(string, "%1.2f", perm->min_volume_percent);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcSPP_EF_MaxVol);
 	sprintf(string, "%1.2f", perm->max_volume_percent);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcSPP_EF_MinPitch);
 	sprintf(string, "%1.2f", perm->min_pitch_percent);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcSPP_EF_MaxPitch);
 	sprintf(string, "%1.2f", perm->max_pitch_percent);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 }
 
 // ----------------------------------------------------------------------
 static void
 OWiSPP_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1)
+	uintptr_t					inParam1)
 {
 	switch(UUmLowWord(inParam1))
 	{
@@ -800,8 +800,8 @@ static UUtBool
 OWiSPP_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 
@@ -881,7 +881,7 @@ OWiSGP_SaveGroup(
 	WMrMessage_Send(
 		WMrDialog_GetItemByID(inDialog, OWcSGP_EF_Name),
 		EFcMessage_GetText,
-		(UUtUns32)name,
+		(uintptr_t)name,
 		OScMaxNameLength);
 
 	// save the item name
@@ -912,7 +912,7 @@ OWiSGP_SetFields(
 	WMrMessage_Send(
 		editfield,
 		EFcMessage_SetText,
-		(UUtUns32)inSGP->item_name,
+		(uintptr_t)inSGP->item_name,
 		0);
 
 	// reset the permutations list box
@@ -926,7 +926,7 @@ OWiSGP_SetFields(
 	}
 
 	// select the first item
-	WMrMessage_Send(listbox, LBcMessage_SetSelection, (UUtUns32)UUcTrue, 0);
+	WMrMessage_Send(listbox, LBcMessage_SetSelection, (uintptr_t)UUcTrue, 0);
 }
 
 // ----------------------------------------------------------------------
@@ -949,7 +949,7 @@ OWiSGP_AddPermutation(
 			OWcDialog_WAV_Select,
 			inDialog,
 			OWiWS_Callback,
-			(UUtUns32)&ws,
+			(uintptr_t)&ws,
 			&message);
 	UUmError_ReturnOnError(error);
 	if (message == OWcWS_Btn_Cancel) { return UUcError_None; }
@@ -983,7 +983,7 @@ OWiSGP_AddPermutation(
 			OWcDialog_Sound_Perm_Prop,
 			inDialog,
 			OWiSPP_Callback,
-			(UUtUns32)perm,
+			(uintptr_t)perm,
 			&message);
 	UUmError_ReturnOnError(error);
 
@@ -999,7 +999,7 @@ OWiSGP_AddPermutation(
 		UUmAssert(listbox);
 
 		// select the permutation that was just added
-		WMrMessage_Send(listbox, LBcMessage_SetSelection, (UUtUns32)UUcTrue, perm_index);
+		WMrMessage_Send(listbox, LBcMessage_SetSelection, (uintptr_t)UUcTrue, perm_index);
 	}
 
 	return UUcError_None;
@@ -1039,7 +1039,7 @@ OWiSGP_EditPermutation(
 			OWcDialog_Sound_Perm_Prop,
 			inDialog,
 			OWiSPP_Callback,
-			(UUtUns32)perm,
+			(uintptr_t)perm,
 			&message);
 	UUmError_ReturnOnError(error);
 
@@ -1109,7 +1109,7 @@ OWiSGP_DeletePermutation(
 	SSrGroup_Permutation_Delete(inSGP->group, perm_index);
 
 	// select the permutation
-	WMrMessage_Send(listbox, LBcMessage_SetSelection, (UUtUns32)UUcTrue, 0);
+	WMrMessage_Send(listbox, LBcMessage_SetSelection, (uintptr_t)UUcTrue, 0);
 
 	return UUcError_None;
 }
@@ -1171,7 +1171,7 @@ OWiSGP_InitDialog(
 	}
 
 	// store the sgp in the user data
-	WMrDialog_SetUserData(inDialog, (UUtUns32)sgp);
+	WMrDialog_SetUserData(inDialog, (uintptr_t)sgp);
 
 	// fill the editfield and the listbox
 	OWiSGP_SetFields(inDialog, sgp);
@@ -1215,7 +1215,7 @@ OWiSGP_Destroy(
 static void
 OWiSGP_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
+	uintptr_t					inParam1,
 	WMtWindow					*inControl)
 {
 	UUtUns16					command_type;
@@ -1256,7 +1256,7 @@ OWiSGP_HandleCommand(
 				WMrMessage_Send(
 					WMrDialog_GetItemByID(inDialog, OWcSGP_EF_Name),
 					EFcMessage_GetText,
-					(UUtUns32)name,
+					(uintptr_t)name,
 					OScMaxNameLength);
 				if (TSrString_GetLength(name) == 0)
 				{
@@ -1309,7 +1309,7 @@ OWiSGP_HandleCommand(
 				WMrMessage_Send(
 					inControl,
 					EFcMessage_GetText,
-					(UUtUns32)sgp->item_name,
+					(uintptr_t)sgp->item_name,
 					OScMaxNameLength);
 			break;
 		}
@@ -1408,8 +1408,8 @@ static UUtBool
 OWiSGP_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 
@@ -1517,7 +1517,7 @@ OWiEditGroup(
 			OWcDialog_Sound_Group_Prop,
 			inParentDialog,
 			OWiSGP_Callback,
-			(UUtUns32)item,
+			(uintptr_t)item,
 			NULL);
 	UUmError_ReturnOnError(error);
 
@@ -1574,7 +1574,7 @@ OWiASP_SaveAmbient(
 	WMrMessage_Send(
 		WMrDialog_GetItemByID(inDialog, OWcASP_EF_Name),
 		EFcMessage_GetText,
-		(UUtUns32)name,
+		(uintptr_t)name,
 		OScMaxNameLength);
 
 	// get the priority from the popup menu
@@ -1639,7 +1639,7 @@ OWiASP_SetFields(
 
 	// set the ambient sound's name
 	editfield = WMrDialog_GetItemByID(inDialog, OWcASP_EF_Name);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)inASP->item_name, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)inASP->item_name, 0);
 
 	// set the priority
 	popup = WMrDialog_GetItemByID(inDialog, OWcASP_PM_Priority);
@@ -1671,27 +1671,27 @@ OWiASP_SetFields(
 	// set the minimum elapsed time
 	editfield = WMrDialog_GetItemByID(inDialog, OWcASP_EF_MinElapsedTime);
 	sprintf(string, "%5.3f", inASP->ambient->min_detail_time);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 
 	// set the maximum elapse time
 	editfield = WMrDialog_GetItemByID(inDialog, OWcASP_EF_MaxElapsedTime);
 	sprintf(string, "%5.3f", inASP->ambient->max_detail_time);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 
 	// set the sphere radius
 	editfield = WMrDialog_GetItemByID(inDialog, OWcASP_EF_SphereRadius);
 	sprintf(string, "%5.3f", inASP->ambient->sphere_radius);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 
 	// set the maximum volume distance
 	editfield = WMrDialog_GetItemByID(inDialog, OWcASP_EF_MaxVolDist);
 	sprintf(string, "%5.3f", inASP->ambient->max_volume_distance);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 
 	// set the minumum volume distance
 	editfield = WMrDialog_GetItemByID(inDialog, OWcASP_EF_MinVolDist);
 	sprintf(string, "%5.3f", inASP->ambient->min_volume_distance);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 
 	OWiASP_EnableButtons(inDialog, inASP);
 }
@@ -1748,7 +1748,7 @@ OWiASP_InitDialog(
 	}
 
 	// store the asp in the user data
-	WMrDialog_SetUserData(inDialog, (UUtUns32)asp);
+	WMrDialog_SetUserData(inDialog, (uintptr_t)asp);
 
 	// set the fields
 	OWiASP_SetFields(inDialog, asp);
@@ -1798,7 +1798,7 @@ OWiASP_Destroy(
 static void
 OWiASP_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
+	uintptr_t					inParam1,
 	WMtWindow					*inControl)
 {
 	OWtASP						*asp;
@@ -1826,7 +1826,7 @@ OWiASP_HandleCommand(
 				WMrMessage_Send(
 					WMrDialog_GetItemByID(inDialog, OWcASP_EF_Name),
 					EFcMessage_GetText,
-					(UUtUns32)name,
+					(uintptr_t)name,
 					OScMaxNameLength);
 
 				if (TSrString_GetLength(name) == 0)
@@ -1974,7 +1974,7 @@ OWiASP_HandleCommand(
 	{
 		char					string[128];
 
-		WMrMessage_Send(inControl, EFcMessage_GetText, (UUtUns32)string, 128);
+		WMrMessage_Send(inControl, EFcMessage_GetText, (uintptr_t)string, 128);
 
 		switch (control_id)
 		{
@@ -2016,8 +2016,8 @@ static UUtBool
 OWiASP_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 
@@ -2058,7 +2058,7 @@ OWrASP_Display(
 			OWcDialog_Ambient_Sound_Prop,
 			NULL,
 			OWiASP_Callback,
-			(UUtUns32)inItem,
+			(uintptr_t)inItem,
 			NULL);
 	UUmError_ReturnOnError(error);
 
@@ -2082,28 +2082,28 @@ OWiISP_SaveImpulse(
 
 	// set the impulse sound's name
 	editfield = WMrDialog_GetItemByID(inDialog, OWcISP_EF_Name);
-	WMrMessage_Send(editfield, EFcMessage_GetText, (UUtUns32)string, 128);
+	WMrMessage_Send(editfield, EFcMessage_GetText, (uintptr_t)string, 128);
 	OSrCollection_Item_SetName(inISP->collection, OSrItem_GetID(inISP->item), string);
 
 	// save the floats
 	editfield = WMrDialog_GetItemByID(inDialog, OWcISP_EF_MaxVolDist);
-	WMrMessage_Send(editfield, EFcMessage_GetText, (UUtUns32)string, 128);
+	WMrMessage_Send(editfield, EFcMessage_GetText, (uintptr_t)string, 128);
 	sscanf(string, "%f", &inISP->impulse->max_volume_distance);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcISP_EF_MinVolDist);
-	WMrMessage_Send(editfield, EFcMessage_GetText, (UUtUns32)string, 128);
+	WMrMessage_Send(editfield, EFcMessage_GetText, (uintptr_t)string, 128);
 	sscanf(string, "%f", &inISP->impulse->min_volume_distance);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcISP_EF_MinVolAngle);
-	WMrMessage_Send(editfield, EFcMessage_GetText, (UUtUns32)string, 128);
+	WMrMessage_Send(editfield, EFcMessage_GetText, (uintptr_t)string, 128);
 	sscanf(string, "%f", &inISP->impulse->min_volume_angle);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcISP_EF_MaxVolAngle);
-	WMrMessage_Send(editfield, EFcMessage_GetText, (UUtUns32)string, 128);
+	WMrMessage_Send(editfield, EFcMessage_GetText, (uintptr_t)string, 128);
 	sscanf(string, "%f", &inISP->impulse->max_volume_angle);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcISP_EF_MinAngleAttn);
-	WMrMessage_Send(editfield, EFcMessage_GetText, (UUtUns32)string, 128);
+	WMrMessage_Send(editfield, EFcMessage_GetText, (uintptr_t)string, 128);
 	sscanf(string, "%f", &inISP->impulse->min_angle_attenuation);
 
 	// check ranges
@@ -2147,7 +2147,7 @@ OWiISP_SetFields(
 
 	// set the impulse sound's name
 	editfield = WMrDialog_GetItemByID(inDialog, OWcISP_EF_Name);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)inISP->item_name, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)inISP->item_name, 0);
 
 	// set the group name
 	OWiSetGroupText(inDialog, OWcISP_Txt_Group, &inISP->impulse->impulse_sound, "Impulse Sound");
@@ -2159,25 +2159,25 @@ OWiISP_SetFields(
 	// set the rest of the edit fields
 	editfield = WMrDialog_GetItemByID(inDialog, OWcISP_EF_MaxVolDist);
 	sprintf(string, "%5.3f", inISP->impulse->max_volume_distance);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcISP_EF_MinVolDist);
 	sprintf(string, "%5.3f", inISP->impulse->min_volume_distance);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcISP_EF_MinVolAngle);
 	sprintf(string, "%5.3f", inISP->impulse->min_volume_angle);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 	WMrWindow_SetEnabled(editfield, UUcFalse);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcISP_EF_MaxVolAngle);
 	sprintf(string, "%5.3f", inISP->impulse->max_volume_angle);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 	WMrWindow_SetEnabled(editfield, UUcFalse);
 
 	editfield = WMrDialog_GetItemByID(inDialog, OWcISP_EF_MinAngleAttn);
 	sprintf(string, "%5.3f", inISP->impulse->min_angle_attenuation);
-	WMrMessage_Send(editfield, EFcMessage_SetText, (UUtUns32)string, 0);
+	WMrMessage_Send(editfield, EFcMessage_SetText, (uintptr_t)string, 0);
 	WMrWindow_SetEnabled(editfield, UUcFalse);
 
 	// set the button states
@@ -2246,7 +2246,7 @@ OWiISP_InitDialog(
 	}
 
 	// stop the isp in the user data
-	WMrDialog_SetUserData(inDialog, (UUtUns32)isp);
+	WMrDialog_SetUserData(inDialog, (uintptr_t)isp);
 
 	// set the fields
 	OWiISP_SetFields(inDialog, isp);
@@ -2286,7 +2286,7 @@ OWiISP_Destroy(
 static void
 OWiISP_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
+	uintptr_t					inParam1,
 	WMtWindow					*inControl)
 {
 	OWtISP						*isp;
@@ -2305,7 +2305,7 @@ OWiISP_HandleCommand(
 				WMrMessage_Send(
 					WMrDialog_GetItemByID(inDialog, OWcISP_EF_Name),
 					EFcMessage_GetText,
-					(UUtUns32)name,
+					(uintptr_t)name,
 					OScMaxNameLength);
 
 				if (TSrString_GetLength(name) == 0)
@@ -2399,7 +2399,7 @@ OWiISP_HandleCommand(
 				WMrMessage_Send(
 					inControl,
 					EFcMessage_GetText,
-					(UUtUns32)isp->item_name,
+					(uintptr_t)isp->item_name,
 					OScMaxNameLength);
 			break;
 		}
@@ -2427,8 +2427,8 @@ static UUtBool
 OWiISP_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 
@@ -2474,7 +2474,7 @@ OWrImpulseSoundProp_Display(
 		OWcDialog_Impulse_Sound_Prop,
 		inParentDialog,
 		OWiISP_Callback,
-		(UUtUns32)inItem,
+		(uintptr_t)inItem,
 		NULL);
 }
 
@@ -2516,7 +2516,7 @@ OWiSCM_Listbox_Fill(
 		// get the category
 		category = OSrCollection_Category_GetByIndex(inSCM->collection, i);
 		if (category == NULL) { continue; }
-		if (OSrCategory_GetParentCategoryID(category) != (UUtUns32)category_id) { continue; }
+		if (OSrCategory_GetParentCategoryID(category) != (uintptr_t)category_id) { continue; }
 
 		// add the category
 		WMrMessage_Send(
@@ -2545,7 +2545,7 @@ OWiSCM_Listbox_Fill(
 	}
 
 	// select the first item in the list
-	WMrMessage_Send(listbox, LBcMessage_SetSelection, (UUtUns32)UUcTrue, 0);
+	WMrMessage_Send(listbox, LBcMessage_SetSelection, (uintptr_t)UUcTrue, 0);
 
 	return UUcError_None;
 }
@@ -2602,7 +2602,7 @@ OWiSCM_Enable_Buttons(
 	is_item = UUcFalse;
 	can_paste = inSCM->clip_ss_id != SScInvalidID;
 
-	result = WMrMessage_Send(listbox, LBcMessage_GetText, (UUtUns32)&item_id, (UUtUns32)-1);
+	result = WMrMessage_Send(listbox, LBcMessage_GetText, (uintptr_t)&item_id, (UUtUns32)-1);
 	if (result != LBcError)
 	{
 		if (item_id & OWcCatToData) { is_category = UUcTrue; }
@@ -2727,7 +2727,7 @@ OWiSCM_NewItem(
 		&category_id);
 
 	// create a new item in the collection
-	error = OSrCollection_Item_New(inSCM->collection, (UUtUns32)category_id, new_ss_id, "");
+	error = OSrCollection_Item_New(inSCM->collection, (uintptr_t)category_id, new_ss_id, "");
 	if (error != UUcError_None) { goto cleanup; }
 
 	// get the item
@@ -2740,7 +2740,7 @@ OWiSCM_NewItem(
 			dialog_id,
 			inDialog,
 			dialog_callback,
-			(UUtUns32)item,
+			(uintptr_t)item,
 			&message);
 	if (error != UUcError_None) { goto cleanup; }
 
@@ -2760,7 +2760,7 @@ OWiSCM_NewItem(
 	list_index = WMrMessage_Send(listbox, LBcMessage_AddString, new_ss_id, 0);
 
 	// select the item that was just added
-	WMrMessage_Send(listbox, LBcMessage_SetSelection, (UUtUns32)UUcTrue, list_index);
+	WMrMessage_Send(listbox, LBcMessage_SetSelection, (uintptr_t)UUcTrue, list_index);
 
 	return UUcError_None;
 
@@ -2827,7 +2827,7 @@ OWiSCM_EditItem(
 			dialog_id,
 			inDialog,
 			dialog_callback,
-			(UUtUns32)item,
+			(uintptr_t)item,
 			NULL);
 	UUmError_ReturnOnError(error);
 
@@ -2922,7 +2922,7 @@ OWiSCM_DeleteItem(
 		WMrMessage_Send(listbox, LBcMessage_DeleteString, 0, item_index);
 
 		// select the first item in the listbox
-		WMrMessage_Send(listbox, LBcMessage_SetSelection, (UUtUns32)UUcTrue, 0);
+		WMrMessage_Send(listbox, LBcMessage_SetSelection, (uintptr_t)UUcTrue, 0);
 
 		// enabled the buttons
 		OWiSCM_Enable_Buttons(inDialog, inSCM);
@@ -3066,7 +3066,7 @@ OWiSCM_PasteItem(
 		error =
 			OSrCollection_Item_New(
 				inSCM->collection,
-				(UUtUns32)category_id,
+				(uintptr_t)category_id,
 				new_ss_id,
 				name);
 		if (error != UUcError_None)
@@ -3114,7 +3114,7 @@ OWiSCM_PasteItem(
 	list_index = WMrMessage_Send(listbox, LBcMessage_AddString, new_ss_id, 0);
 
 	// select the item that was just added
-	WMrMessage_Send(listbox, LBcMessage_SetSelection, (UUtUns32)UUcTrue, list_index);
+	WMrMessage_Send(listbox, LBcMessage_SetSelection, (uintptr_t)UUcTrue, list_index);
 
 	return UUcError_None;
 
@@ -3160,7 +3160,7 @@ OWiSCM_NewCategory(
 			OWcDialog_Category_Name,
 			inDialog,
 			OWiCN_Callback,
-			(UUtUns32)category_name,
+			(uintptr_t)category_name,
 			&message);
 	UUmError_ReturnOnError(error);
 
@@ -3182,7 +3182,7 @@ OWiSCM_NewCategory(
 		error =
 			OSrCollection_Category_New(
 				inSCM->collection,
-				(UUtUns32)parent_category_id,
+				(uintptr_t)parent_category_id,
 				category_name,
 				&category_id);
 		if (error != UUcError_None)
@@ -3209,7 +3209,7 @@ OWiSCM_NewCategory(
 				0);
 
 		// select the new category
-		WMrMessage_Send(listbox, LBcMessage_SetSelection, (UUtUns32)UUcTrue, listbox_index);
+		WMrMessage_Send(listbox, LBcMessage_SetSelection, (uintptr_t)UUcTrue, listbox_index);
 	}
 
 	return UUcError_None;
@@ -3239,7 +3239,7 @@ OWiSCM_RenameCategory(
 			OWcDialog_Category_Name,
 			inDialog,
 			OWiCN_Callback,
-			(UUtUns32)category_name,
+			(uintptr_t)category_name,
 			&message);
 	UUmError_ReturnOnError(error);
 
@@ -3296,7 +3296,7 @@ OWiSCM_DeleteCategory(
 		WMrMessage_Send(listbox, LBcMessage_DeleteString, 0, selected_index);
 
 		// select the first item in the listbox
-		WMrMessage_Send(listbox, LBcMessage_SetSelection, (UUtUns32)UUcTrue, 0);
+		WMrMessage_Send(listbox, LBcMessage_SetSelection, (uintptr_t)UUcTrue, 0);
 	}
 
 	return UUcError_None;
@@ -3352,7 +3352,7 @@ OWiSCM_InitDialog(
 	}
 
 	// save the scm
-	WMrDialog_SetUserData(inDialog, (UUtUns32)scm);
+	WMrDialog_SetUserData(inDialog, (uintptr_t)scm);
 
 	// initialize the popup menu
 	error = OWiSCM_Popup_Init(inDialog, scm);
@@ -3403,8 +3403,8 @@ OWiSCM_Destroy(
 static void
 OWiSCM_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	OWtSCM						*scm;
 	UUtUns16					command_type;
@@ -3426,7 +3426,7 @@ OWiSCM_HandleCommand(
 	UUmAssert(listbox);
 
 	// get the selected item's item_id
-	result = WMrMessage_Send(listbox, LBcMessage_GetText, (UUtUns32)&item_id, (UUtUns32)-1);
+	result = WMrMessage_Send(listbox, LBcMessage_GetText, (uintptr_t)&item_id, (UUtUns32)-1);
 	if (result == LBcError) { item_id = UUcMaxUns32; }
 
 	if (control_id == OWcSCM_LB_Items)
@@ -3716,8 +3716,8 @@ static UUtBool
 OWiSCM_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 
@@ -3801,7 +3801,7 @@ OWrSCM_Display(
 			dialog_id,
 			NULL,
 			OWiSCM_Callback,
-			(UUtUns32)inCollectionType,
+			(uintptr_t)inCollectionType,
 			NULL);
 
 	// save
@@ -3872,7 +3872,7 @@ OWiSS_InitDialog(
 	}
 
 	// save the scm
-	WMrDialog_SetUserData(inDialog, (UUtUns32)scm);
+	WMrDialog_SetUserData(inDialog, (uintptr_t)scm);
 
 	// initialize the popup menu
 	error = OWiSCM_Popup_Init(inDialog, scm);
@@ -3918,7 +3918,7 @@ OWiSS_Destroy(
 static void
 OWiSS_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
+	uintptr_t					inParam1,
 	WMtWindow					*inControl)
 {
 	OWtSCM						*scm;
@@ -3942,7 +3942,7 @@ OWiSS_HandleCommand(
 	UUmAssert(listbox);
 
 	// get the selected item's item_id
-	result = WMrMessage_Send(listbox, LBcMessage_GetText, (UUtUns32)&item_id, (UUtUns32)-1);
+	result = WMrMessage_Send(listbox, LBcMessage_GetText, (uintptr_t)&item_id, (UUtUns32)-1);
 	if (result == LBcError) { item_id = UUcMaxUns32; }
 
 	// get ss
@@ -4000,8 +4000,8 @@ static UUtBool
 OWiSS_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 
@@ -4065,7 +4065,7 @@ OWiSSG_Display(
 			OWcDialog_Select_Sound,
 			inParentDialog,
 			OWiSS_Callback,
-			(UUtUns32)&ss,
+			(uintptr_t)&ss,
 			&message);
 	UUmError_ReturnOnError(error);
 
@@ -4104,7 +4104,7 @@ OWrSAS_Display(
 			OWcDialog_Select_Sound,
 			inParentDialog,
 			OWiSS_Callback,
-			(UUtUns32)&ss,
+			(uintptr_t)&ss,
 			&message);
 	UUmError_ReturnOnError(error);
 
@@ -4143,7 +4143,7 @@ OWrSIS_Display(
 			OWcDialog_Select_Sound,
 			inParentDialog,
 			OWiSS_Callback,
-			(UUtUns32)&ss,
+			(uintptr_t)&ss,
 			&message);
 	UUmError_ReturnOnError(error);
 
@@ -4215,7 +4215,7 @@ OWiSelectAnimation_InitDialog(
 		WMrMessage_Send(listbox, LBcMessage_AddString, 0, 0);
 	}
 
-	WMrMessage_Send(listbox, LBcMessage_SetSelection, (UUtUns32)UUcFalse, 0);
+	WMrMessage_Send(listbox, LBcMessage_SetSelection, (uintptr_t)UUcFalse, 0);
 
 	// init the progressbar
 	progressbar = WMrDialog_GetItemByID(inDialog, OWcSA_PB_LoadProgress);
@@ -4318,8 +4318,8 @@ OWiSelectAnimation_HandleSelect(
 static void
 OWiSelectAnimation_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	OWtSA						*sa;
 
@@ -4403,7 +4403,7 @@ OWiSelectAnimation_HandleTimer(
 		}
 		else
 		{
-			WMrMessage_Send(listbox, LBcMessage_SetSelection, (UUtUns32)UUcFalse, 0);
+			WMrMessage_Send(listbox, LBcMessage_SetSelection, (uintptr_t)UUcFalse, 0);
 		}
 
 		// stop the timer
@@ -4483,8 +4483,8 @@ static UUtBool
 OWiSelectAnimation_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 	UUtError					error;
@@ -4702,8 +4702,8 @@ OWiStAP_InitDialog(
 static void
 OWiStAP_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	OWtStAP						*properties;
 	UUtError					error;
@@ -4725,7 +4725,7 @@ OWiStAP_HandleCommand(
 					OWcDialog_Select_Animation,
 					inDialog,
 					OWiSelectAnimation_Callback,
-					(UUtUns32)&sa,
+					(uintptr_t)&sa,
 					&message);
 			if (error != UUcError_None) { break; }
 
@@ -4896,8 +4896,8 @@ static UUtBool
 OWiStAP_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 
@@ -4954,7 +4954,7 @@ OWiStA_FillListBox(
 			UUtUns32					item_data;
 
 			item_data = UUmMakeLong(i, j);
-			WMrMessage_Send(inListBox, LBcMessage_AddString, (UUtUns32)item_data, 0);
+			WMrMessage_Send(inListBox, LBcMessage_AddString, (uintptr_t)item_data, 0);
 		}
 	}
 }
@@ -5076,7 +5076,7 @@ OWiStA_HandleEdit(
 			OWcDialog_Sound_to_Anim_Prop,
 			inDialog,
 			OWiStAP_Callback,
-			(UUtUns32)&properties,
+			(uintptr_t)&properties,
 			&message);
 	UUmError_ReturnOnError(error);
 
@@ -5133,7 +5133,7 @@ OWiStA_HandleNew(
 			OWcDialog_Sound_to_Anim_Prop,
 			inDialog,
 			OWiStAP_Callback,
-			(UUtUns32)&properties,
+			(uintptr_t)&properties,
 			&message);
 	UUmError_ReturnOnError(error);
 
@@ -5182,8 +5182,8 @@ OWiStA_InitDialog(
 static void
 OWiStA_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	switch (UUmLowWord(inParam1))
 	{
@@ -5364,8 +5364,8 @@ static UUtBool
 OWiStA_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 

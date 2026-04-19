@@ -48,7 +48,7 @@ OWiTtM_InitDialog(
 	texture_list = (M3tTextureMap**)UUrMemory_Block_New(sizeof(M3tTextureMap*) * num_textures);
 	if (texture_list == NULL) { return UUcError_Generic; }
 
-	WMrDialog_SetUserData(inDialog, (UUtUns32)texture_list);
+	WMrDialog_SetUserData(inDialog, (uintptr_t)texture_list);
 
 	// get a list of the textures
 	error =
@@ -104,7 +104,7 @@ OWiTtM_Destroy(
 static UUtError
 OWiTtM_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
+	uintptr_t					inParam1,
 	WMtWindow					*inControl)
 {
 	MAtMaterialType				selected_material;
@@ -227,8 +227,8 @@ static UUtBool
 OWiTtM_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 

@@ -154,7 +154,7 @@ WMiPopupMenu_Create(
 		(WMtPopupMenu_PrivateData*)UUrMemory_Block_NewClear(
 			sizeof(WMtPopupMenu_PrivateData));
 	if (private_data == NULL) { return WMcResult_Error; }
-	WMrWindow_SetLong(inPopupMenu, 0, (UUtUns32)private_data);
+	WMrWindow_SetLong(inPopupMenu, 0, (uintptr_t)private_data);
 
 	// initialize
 	private_data->mouse_sticky_time	= 0;
@@ -254,8 +254,8 @@ WMiPopupMenu_HandleCaptureChanged(
 static UUtUns32
 WMiPopupMenu_HandleMenuCommand(
 	WMtPopupMenu			*inPopupMenu,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	WMtPopupMenu_PrivateData	*private_data;
 	UUtUns32					result;
@@ -286,7 +286,7 @@ WMiPopupMenu_HandleMenuCommand(
 			WMrWindow_GetParent(inPopupMenu),
 			WMcMessage_MenuCommand,
 			inParam1,
-			(UUtUns32)inPopupMenu);
+			(uintptr_t)inPopupMenu);
 	return result;
 }
 
@@ -295,8 +295,8 @@ static void
 WMiPopupMenu_HandleMouseEvent(
 	WMtPopupMenu			*inPopupMenu,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	WMtPopupMenu_PrivateData	*private_data;
 	IMtPoint2D					global_mouse;
@@ -359,7 +359,7 @@ WMiPopupMenu_HandleMouseEvent(
 				WMrMessage_Send(
 					WMrWindow_GetParent(inPopupMenu),
 					WMcMessage_MenuInit,
-					(UUtUns32)private_data->menu,
+					(uintptr_t)private_data->menu,
 					UUmMakeLong(WMrWindow_GetID(private_data->menu), 0));
 
 				// make the menu visible
@@ -491,12 +491,12 @@ WMiPopupMenu_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiPopupMenu_Callback(
 	WMtWindow				*inPopupMenu,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtUns32				result;
 
@@ -756,7 +756,7 @@ WMrPopupMenu_SetSelection(
 		WMrWindow_GetParent(inPopupMenu),
 		WMcMessage_MenuCommand,
 		UUmMakeLong(flags, inItemID),
-		(UUtUns32)inPopupMenu);
+		(uintptr_t)inPopupMenu);
 
 	return UUcError_None;
 }

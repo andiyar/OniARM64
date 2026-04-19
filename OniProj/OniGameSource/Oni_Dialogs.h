@@ -184,51 +184,51 @@ UUtBool
 ONrDialogCallback_Joining(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 ONrDialogCallback_MainMenu(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 // ----------------------------------------------------------------------
 UUtBool
 ONrDialogCallback_NewGame(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 ONrDialogCallback_LoadSave(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 ONrDialogCallback_Multiplayer(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 ONrDialogCallback_Options(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtBool
 ONrDialogCallback_Quit(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 // ----------------------------------------------------------------------
 void

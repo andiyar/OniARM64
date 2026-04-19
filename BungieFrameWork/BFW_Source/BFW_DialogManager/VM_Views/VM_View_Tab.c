@@ -200,12 +200,12 @@ VMrView_Tab_SetTabCallback(
 }
 
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 VMrView_Tab_Callback(
 	VMtView				*inView,
 	VMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2)
+	uintptr_t			inParam1,
+	uintptr_t			inParam2)
 {
 	VMtView_Tab					*tab;
 	VMtView_Tab_PrivateData		*private_data;

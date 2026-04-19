@@ -132,7 +132,7 @@ DMiDialog_HandleKeyEvent(
 	UUtUns32					param2;
 
 	// set param1 and param2
-	param1 = (UUtUns32)inInputEvent->key;
+	param1 = (uintptr_t)inInputEvent->key;
 	param2 = 0;
 
 	// set the message
@@ -350,10 +350,10 @@ DMiDialog_MessageBox_Initialize(
 	}
 
 	child = DMrDialog_GetViewByID(inDialog, DMcMB_Title);
-	VMrView_SetValue(child, (UUtUns32)ONgMessageBox_Title);
+	VMrView_SetValue(child, (uintptr_t)ONgMessageBox_Title);
 
 	child = DMrDialog_GetViewByID(inDialog, DMcMB_Message);
-	VMrView_SetValue(child, (UUtUns32)ONgMessageBox_Message);
+	VMrView_SetValue(child, (uintptr_t)ONgMessageBox_Message);
 }
 
 // ----------------------------------------------------------------------
@@ -374,8 +374,8 @@ static UUtBool
 DMiDialog_MessageBox_Callback(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 

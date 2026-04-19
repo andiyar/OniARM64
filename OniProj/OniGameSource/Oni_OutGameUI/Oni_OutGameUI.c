@@ -104,8 +104,8 @@ static UUtBool
 ONiOGU_ChangeRestart_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -166,8 +166,8 @@ static UUtBool
 ONiOGU_QuitYesNo_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -514,7 +514,7 @@ ONiOGU_Options_InitDialog(
 static void
 ONiOGU_Options_HandleCommand(
 	WMtDialog				*inDialog,
-	UUtUns32				inParam1,
+	uintptr_t				inParam1,
 	WMtWindow				*inControl)
 {
 	UUtUns16				control_id;
@@ -594,7 +594,7 @@ ONiOGU_Options_HandleCommand(
 static void
 ONiOGU_Options_HandleMenuCommand(
 	WMtDialog				*inDialog,
-	UUtUns32				inParam1,
+	uintptr_t				inParam1,
 	WMtWindow				*inMenu)
 {
 	UUtUns16				item_id;
@@ -618,8 +618,8 @@ static UUtBool
 ONiOGU_Options_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -703,7 +703,7 @@ ONiOGU_LoadGame_InitDialog(
 static void
 ONiOGU_LoadGame_HandleCommand(
 	WMtDialog				*inDialog,
-	UUtUns32				inParam1,
+	uintptr_t				inParam1,
 	WMtWindow				*inControl)
 {
 	UUtUns16				control_id;
@@ -745,8 +745,8 @@ static UUtBool
 ONiOGU_LoadGame_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -810,8 +810,8 @@ static UUtBool
 ONiOGU_NewGame_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -1031,7 +1031,7 @@ ONiOGU_MainMenu_HandleQuit(
 static void
 ONiOGU_MainMenu_HandleCommand(
 	WMtDialog				*inDialog,
-	UUtUns32				inParam1,
+	uintptr_t				inParam1,
 	WMtWindow				*inControl)
 {
 	UUtUns16				control_id;
@@ -1078,8 +1078,8 @@ static UUtBool
 ONiOGU_MainMenu_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 

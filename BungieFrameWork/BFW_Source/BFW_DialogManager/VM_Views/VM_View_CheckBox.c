@@ -171,12 +171,12 @@ VMiView_CheckBox_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 VMrView_CheckBox_Callback(
 	VMtView				*inView,
 	VMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2)
+	uintptr_t			inParam1,
+	uintptr_t			inParam2)
 {
 	VMtView_CheckBox				*checkbox;
 	VMtView_CheckBox_PrivateData	*private_data;

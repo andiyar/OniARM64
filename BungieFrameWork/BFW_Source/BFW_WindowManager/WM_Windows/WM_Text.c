@@ -47,7 +47,7 @@ WMiText_Paint(
 			WMrWindow_GetOwner(inText),
 			WMcMessage_DrawItem,
 			(UUtUns32)draw_item.window_id,
-			(UUtUns32)&draw_item);
+			(uintptr_t)&draw_item);
 	}
 	else
 	{
@@ -91,12 +91,12 @@ WMiText_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiText_Callback(
 	WMtText					*inText,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	switch(inMessage)
 	{

@@ -67,8 +67,8 @@ static void
 VMiView_TabGroup_Paint(
 	VMtView							*inView,
 	VMtView_TabGroup_PrivateData	*private_data,
-	UUtUns32						inParam1,
-	UUtUns32						inParam2)
+	uintptr_t						inParam1,
+	uintptr_t						inParam2)
 {
 	if ((private_data->current_tab) &&
 		(private_data->current_tab->flags & VMcViewFlag_Visible))
@@ -142,12 +142,12 @@ VMrView_TabGroup_ActivateTab(
 }
 
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 VMrView_TabGroup_Callback(
 	VMtView				*inView,
 	VMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2)
+	uintptr_t			inParam1,
+	uintptr_t			inParam2)
 {
 	VMtView_TabGroup_PrivateData	*private_data;
 

@@ -2890,7 +2890,7 @@ ONiPS_WeaponPage_Init(
 
 	// find the page for this weapon if we can
 	if (cur_weapon != NULL) {
-		for (i = 0; i < (UUtUns32) inData->num_weapon_pages; i++) {
+		for (i = 0; i < (uintptr_t) inData->num_weapon_pages; i++) {
 			if (inData->weapons[i]->weaponClass == cur_weapon) {
 				inData->weapon_page_num = (UUtInt16) i;
 				break;
@@ -3327,7 +3327,7 @@ ONiPauseScreen_InitDialog(
 
 	// create the data
 	data = &ONgPauseScreenData;
-	WMrDialog_SetUserData(inDialog, (UUtUns32)data);
+	WMrDialog_SetUserData(inDialog, (uintptr_t)data);
 
 	// initialize
 	error = ONiPS_ItemPage_Init(inDialog, data);
@@ -3449,7 +3449,7 @@ ONiPauseScreen_DrawItem(
 static void
 ONiPauseScreen_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
+	uintptr_t					inParam1,
 	WMtWindow					*inControl)
 {
 	UUtUns16					control_id;
@@ -3587,8 +3587,8 @@ static UUtBool
 ONiPauseScreen_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 
@@ -4412,7 +4412,7 @@ ONiTC_HandleDrawItem(
 static void
 ONiTC_HandleCommand(
 	WMtDialog					*inDialog,
-	UUtUns32					inParam1,
+	uintptr_t					inParam1,
 	WMtWindow					*inControl)
 {
 	ONtTextConsoleData			*tcd;
@@ -4468,7 +4468,7 @@ ONiTC_HandleKeyDown(
 		inDialog,
 		WMcMessage_Command,
 		UUmMakeLong(WMcNotify_Click, WMrWindow_GetID(control)),
-		(UUtUns32)control);
+		(uintptr_t)control);
 }
 
 // ----------------------------------------------------------------------
@@ -4476,8 +4476,8 @@ static UUtBool
 ONiTextConsole_Callback(
 	WMtDialog					*inDialog,
 	WMtMessage					inMessage,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtBool						handled;
 
@@ -4544,7 +4544,7 @@ ONrInGameUI_TextConsole_Display(
 		ONcTextConsoleID,
 		NULL,
 		ONiTextConsole_Callback,
-		(UUtUns32)&tcd,
+		(uintptr_t)&tcd,
 		NULL);
 
 	WMrDeactivate();

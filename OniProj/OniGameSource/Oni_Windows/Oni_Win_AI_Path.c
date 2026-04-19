@@ -531,8 +531,8 @@ static UUtBool
 OWiPathPoint_Edit_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	enum
 	{
@@ -732,7 +732,7 @@ OWiPathPoint_Edit_Callback(
 		char flag_text_set_buffer[128];
 
 		sprintf(flag_text_set_buffer, "%d", flag_id);
-		WMrMessage_Send(flag_edittext, EFcMessage_SetText, (UUtUns32) flag_text_set_buffer, 0);
+		WMrMessage_Send(flag_edittext, EFcMessage_SetText, (uintptr_t) flag_text_set_buffer, 0);
 
 		AIrWaypoint_SetFlag(waypoint, flag_id);
 	}
@@ -907,7 +907,7 @@ static void OWrPath_BuildListBox(
 			break;
 		}
 
-		WMrMessage_Send(inWindow, LBcMessage_AddString, (UUtUns32) buffer, 0);
+		WMrMessage_Send(inWindow, LBcMessage_AddString, (uintptr_t) buffer, 0);
 		WMrMessage_Send(inWindow, LBcMessage_SetItemData, itr, itr);
 
 	}
@@ -919,8 +919,8 @@ UUtBool
 OWrPath_Edit_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	enum
 	{
@@ -1129,7 +1129,7 @@ OWrPath_Edit_Callback(
 			UUtUns32 out_message;
 
 			OWgWaypointHasDefaultFlag = UUcFalse;
-			WMrDialog_ModalBegin(OWcDialog_AI_EditPathPoint, NULL, OWiPathPoint_Edit_Callback, (UUtUns32) selected_waypoint, &out_message);
+			WMrDialog_ModalBegin(OWcDialog_AI_EditPathPoint, NULL, OWiPathPoint_Edit_Callback, (uintptr_t) selected_waypoint, &out_message);
 
 			dirty = out_message ? UUcTrue : UUcFalse;
 		}
@@ -1208,7 +1208,7 @@ OWrAI_DropAndAddFlag(
 	// edit this waypoint
 	OWgWaypointHasDefaultFlag = UUcTrue;
 	OWgWaypointDefaultFlagID = flag_id;
-	WMrDialog_ModalBegin(OWcDialog_AI_EditPathPoint, NULL, OWiPathPoint_Edit_Callback, (UUtUns32) waypoint, &dialog_msg);
+	WMrDialog_ModalBegin(OWcDialog_AI_EditPathPoint, NULL, OWiPathPoint_Edit_Callback, (uintptr_t) waypoint, &dialog_msg);
 
 	if ((!dialog_msg) || (!AIrWaypoint_HasFlag(waypoint)) || (AIrWaypoint_GetFlag(waypoint) != flag_id)) {
 		OBJtOSD_All					osd_all;

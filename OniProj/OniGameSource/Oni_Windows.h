@@ -425,8 +425,8 @@ UUtBool
 OWrSettings_Player_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 char*
 OWrSettings_GetCharacterClass(

@@ -50,8 +50,8 @@ static void
 WMiCheckBox_HandleMouseEvent(
 	WMtCheckBox				*inCheckBox,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtRect					checkbox_rect;
 	UUtBool					mouse_over_checkbox;
@@ -110,7 +110,7 @@ WMiCheckBox_HandleMouseEvent(
 			WMrWindow_GetParent(inCheckBox),
 			WMcMessage_Command,
 			UUmMakeLong(WMcNotify_Click, WMrWindow_GetID(inCheckBox)),
-			(UUtUns32)inCheckBox);
+			(uintptr_t)inCheckBox);
 	}
 }
 
@@ -202,12 +202,12 @@ WMiCheckBox_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiCheckBox_Callback(
 	WMtCheckBox				*inCheckBox,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtError				error;
 	UUtUns32				result;

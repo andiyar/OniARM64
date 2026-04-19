@@ -90,7 +90,7 @@ static PHtNode *AI2gManeuver_PathfindingCurrentNode;
 static UUtBool AI2iManeuver_PathfindAndCheckViability(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 										 AI2tPrimaryMovementType inManeuverType, float inWeightToBeat);
 static UUtBool AI2iManeuver_PathfindingErrorHandler(ONtCharacter *inCharacter, UUtUns32 inErrorID,
-													UUtUns32 inParam1, UUtUns32 inParam2,
+													uintptr_t inParam1, uintptr_t inParam2,
 													UUtUns32 inParam3, UUtUns32 inParam4);
 
 static UUtBool AI2iManeuver_CheckAdvance(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
@@ -196,7 +196,7 @@ void AI2rManeuver_DecidePrimaryMovement(ONtCharacter *ioCharacter, AI2tCombatSta
 }
 
 static UUtBool AI2iManeuver_PathfindingErrorHandler(ONtCharacter *inCharacter, UUtUns32 inErrorID,
-													UUtUns32 inParam1, UUtUns32 inParam2,
+													uintptr_t inParam1, uintptr_t inParam2,
 													UUtUns32 inParam3, UUtUns32 inParam4)
 {
 	// AI2_ERROR inside AI2_Movement.c passes in phNodeStart as parameter 3

@@ -218,12 +218,12 @@ VMtView
 
 } VMtView;
 
-typedef UUtUns32
+typedef uintptr_t
 (*VMtViewCallback)(
 	VMtView					*inView,
 	VMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 typedef struct VMtView_PrivateData
 {
@@ -330,12 +330,12 @@ extern TMtPrivateData*	DMgTemplate_View_PrivateData;
 // ======================================================================
 // prototypes
 // ======================================================================
-UUtUns32
+uintptr_t
 VMrView_DefaultCallback(
 	VMtView					*inView,
 	VMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 // ----------------------------------------------------------------------
 void
@@ -379,12 +379,12 @@ VMrView_ProcHandler(
 	void					*inInstancePtr,
 	void*					inPrivateData);
 
-UUtUns32
+uintptr_t
 VMrView_SendMessage(
 	VMtView					*inView,
 	VMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 void
 VMrView_SetActive(

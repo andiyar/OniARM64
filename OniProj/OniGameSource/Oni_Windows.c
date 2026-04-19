@@ -324,8 +324,8 @@ static UUtBool
 OWiLevelLoad_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 	UUtUns32				level;
@@ -379,8 +379,8 @@ static UUtBool
 OWiTest_Callback(
 	WMtWindow				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -425,7 +425,7 @@ OWiTest_Callback(
 
 					sprintf(string, "line %d", i);
 
-					WMrMessage_Send(listbox, LBcMessage_AddString, (UUtUns32)string, 0);
+					WMrMessage_Send(listbox, LBcMessage_AddString, (uintptr_t)string, 0);
 				}
 			}
 
@@ -438,7 +438,7 @@ OWiTest_Callback(
 
 				for (i = 0; i < 30; i++)
 				{
-					WMrMessage_Send(listbox, LBcMessage_AddString, (UUtUns32)nothing, 0);
+					WMrMessage_Send(listbox, LBcMessage_AddString, (uintptr_t)nothing, 0);
 				}
 			}
 		}
@@ -600,7 +600,7 @@ OWiOniWindow_Create(
 		return UUcError_Generic;
 	}
 
-	WMrWindow_SetLong(inWindow, 0, (UUtUns32)menubar);
+	WMrWindow_SetLong(inWindow, 0, (uintptr_t)menubar);
 
 	return UUcError_None;
 }
@@ -609,8 +609,8 @@ OWiOniWindow_Create(
 static void
 OWiOniWindow_HandleMenuInit(
 	WMtWindow				*inWindow,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	WMtMenu					*menu;
 
@@ -682,8 +682,8 @@ OWiOniWindow_HandleMenuInit(
 static void
 OWiOniWindow_HandleMenuCommand(
 	WMtWindow				*inWindow,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtError				error;
 	WMtDialog				*dialog = NULL;
@@ -1183,12 +1183,12 @@ OWiOniWindow_Paint(
 }
 
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 OWiOniWindow_Callback(
 	WMtWindow				*inWindow,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtError				error;
 
@@ -1494,7 +1494,7 @@ OWiEnumCallback_FindFirstWindow(
 // ----------------------------------------------------------------------
 static void
 OWiHandleKeyCommands(
-	UUtUns32			inParam1)
+	uintptr_t			inParam1)
 {
 	WMtWindow *window;
 
@@ -1547,7 +1547,7 @@ OWiTranslateKeyDown(
 
 	// check for windows being open
 	window_open = UUcFalse;
-	WMrEnumWindows(OWiEnumCallback, (UUtUns32)&window_open);
+	WMrEnumWindows(OWiEnumCallback, (uintptr_t)&window_open);
 	if (window_open) { return; }
 
 	inEvent->window = NULL;
@@ -1556,7 +1556,7 @@ OWiTranslateKeyDown(
 // ----------------------------------------------------------------------
 static void
 OWiHandleCameraMove(
-	UUtUns32			inParam1)
+	uintptr_t			inParam1)
 {
 	LItAction			action;
 
@@ -1648,7 +1648,7 @@ OWiHandleSelectedObjects_SetLock(
 // ----------------------------------------------------------------------
 static void
 OWiHandleObjectKeys(
-	UUtUns32			inParam1)
+	uintptr_t			inParam1)
 {
 	UUtError	error;
 
@@ -1734,8 +1734,8 @@ OWiHandleObjectKeys(
 // ----------------------------------------------------------------------
 static void
 OWiHandleKeyDown(
-	UUtUns32			inParam1,
-	UUtUns32			inParam2)
+	uintptr_t			inParam1,
+	uintptr_t			inParam2)
 {
 	UUtUns32			mode;
 
@@ -1864,7 +1864,7 @@ static void
 OWiHandleMouseMoveEvent(
 	WMtMessage			inMessage,
 	IMtPoint2D			*inMousePos,
-	UUtUns32			inParam2)
+	uintptr_t			inParam2)
 {
 	OBJtObject			*object;
 	UUtUns32			i;
@@ -1988,7 +1988,7 @@ static void
 OWiHandleMouseRotateEvent(
 	WMtMessage			inMessage,
 	IMtPoint2D			*inMousePos,
-	UUtUns32			inParam2)
+	uintptr_t			inParam2)
 {
 	OBJtObject			*object;
 	OBJtObject			*selected;
@@ -2075,8 +2075,8 @@ OWiHandleMouseRotateEvent(
 static void
 OWiHandleMouseEvent(
 	WMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2)
+	uintptr_t			inParam1,
+	uintptr_t			inParam2)
 {
 	IMtPoint2D			global_mouse;
 
@@ -2350,8 +2350,8 @@ static UUtBool
 OWrGetMask_Callback(
 	WMtDialog			*inDialog,
 	WMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2)
+	uintptr_t			inParam1,
+	uintptr_t			inParam2)
 {
 	UUtBool handled = UUcFalse;
 	OWtGetMask_Internals *internals = (OWtGetMask_Internals *) WMrDialog_GetUserData(inDialog);

@@ -127,7 +127,7 @@ WMiDialog_Create(
 	// get the private data
 	private_data = (WMtDialog_PrivateData*)UUrMemory_Block_NewClear(sizeof(WMtDialog_PrivateData));
 	if (private_data == NULL) { goto cleanup; }
-	WMrWindow_SetLong(inDialog, 0, (UUtUns32)private_data);
+	WMrWindow_SetLong(inDialog, 0, (uintptr_t)private_data);
 
 	if (inDialogCreationData == NULL) return WMcResult_Handled;
 
@@ -211,12 +211,12 @@ WMiDialog_GetDefaultID(
 }
 
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiDialog_HandleCommand(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					user_result;
 	WMtDialog_PrivateData	*private_data;
@@ -255,8 +255,8 @@ static void
 WMiDialog_HandleKeyEvent(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtUns32				result;
 
@@ -279,7 +279,7 @@ WMiDialog_HandleKeyEvent(
 						inDialog,
 						WMcMessage_Command,
 						UUmMakeLong(WMcNotify_Click, WMrWindow_GetID(default_dialog_item)),
-						(UUtUns32)default_dialog_item);
+						(uintptr_t)default_dialog_item);
 				}
 			}
 		break;
@@ -315,8 +315,8 @@ static UUtBool
 WMiDialog_HandleDefault(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	WMtDialog_PrivateData	*private_data;
 	UUtBool					result;
@@ -386,7 +386,7 @@ WMiDialog_HandleResolutionChanged(
 static void
 WMiDialog_SetDefaultID(
 	WMtDialog				*inDialog,
-	UUtUns32				inParam1)
+	uintptr_t				inParam1)
 {
 	WMtDialog_PrivateData	*private_data;
 
@@ -442,12 +442,12 @@ WMiDialog_TranslateModalEvent(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiDialog_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtUns32				result;
 
@@ -482,7 +482,7 @@ WMiDialog_Callback(
 				inDialog,
 				WMcMessage_Command,
 				UUmMakeLong(WMcNotify_Click, WMcDialogItem_Cancel),
-				(UUtUns32)NULL);
+				(uintptr_t)NULL);
 		return WMcResult_Handled;
 
 		case WMcMessage_Create:
@@ -603,8 +603,8 @@ WMiMessageBox_InitDialog(
 static void
 WMiMessageBox_HandleCommand(
 	WMtDialog				*inDialog,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtUns32				style;
 
@@ -684,8 +684,8 @@ static UUtBool
 WMiMessageBox_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 
@@ -713,8 +713,8 @@ WMiMessageBox_Callback(
 static UUtBool WMiGetString_Callback(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 	WMtGetString_Private	*privateData = (WMtGetString_Private *) WMrDialog_GetUserData(inDialog);
@@ -737,7 +737,7 @@ static UUtBool WMiGetString_Callback(
 				WMrWindow_SetVisible(prompt, UUcTrue);
 			}
 
-			WMrMessage_Send(edit_field, EFcMessage_SetText, (UUtUns32) privateData->ioBuffer, 0);
+			WMrMessage_Send(edit_field, EFcMessage_SetText, (uintptr_t) privateData->ioBuffer, 0);
 			WMrMessage_Send(edit_field, EFcMessage_SetMaxChars, privateData->inBufferSize, 0);
 		break;
 
@@ -745,14 +745,14 @@ static UUtBool WMiGetString_Callback(
 			switch (UUmLowWord(inParam1))
 			{
 				case WMcDialogItem_Cancel:
-					WMrDialog_ModalEnd(inDialog, (UUtUns32) NULL);
+					WMrDialog_ModalEnd(inDialog, (uintptr_t) NULL);
 				break;
 
 				case WMcDialogItem_OK:
-					WMrMessage_Send(edit_field, EFcMessage_GetText, (UUtUns32) privateData->ioBuffer, privateData->inBufferSize);
+					WMrMessage_Send(edit_field, EFcMessage_GetText, (uintptr_t) privateData->ioBuffer, privateData->inBufferSize);
 
 					if ((NULL == privateData->inHook) || (privateData->inHook(inDialog, privateData->ioBuffer))) {
-						WMrDialog_ModalEnd(inDialog, (UUtUns32) privateData->ioBuffer);
+						WMrDialog_ModalEnd(inDialog, (uintptr_t) privateData->ioBuffer);
 					}
 				break;
 			}
@@ -831,7 +831,7 @@ WMrDialog_Create(
 			dialog_data[i]->width,
 			dialog_data[i]->height,
 			inParent,
-			(UUtUns32)&creation_data);
+			(uintptr_t)&creation_data);
 	if (dialog == NULL)
 	{
 		UUmAssert(!"unable to create the dialog");
@@ -1063,7 +1063,7 @@ WMrDialog_RadioButtonCheck(
 		WMrMessage_Send(
 			radiobutton,
 			RBcMessage_SetCheck,
-			(UUtUns32)UUcFalse,
+			(uintptr_t)UUcFalse,
 			0);
 	}
 
@@ -1073,7 +1073,7 @@ WMrDialog_RadioButtonCheck(
 		WMrMessage_Send(
 			radiobutton,
 			RBcMessage_SetCheck,
-			(UUtUns32)UUcTrue,
+			(uintptr_t)UUcTrue,
 			0);
 	}
 }
@@ -1097,7 +1097,7 @@ WMrDialog_ToggleButtonCheck(
 		WMrMessage_Send(
 			togglebutton,
 			TBcMessage_SetToggle,
-			(UUtUns32)UUcFalse,
+			(uintptr_t)UUcFalse,
 			0);
 	}
 
@@ -1107,7 +1107,7 @@ WMrDialog_ToggleButtonCheck(
 		WMrMessage_Send(
 			togglebutton,
 			TBcMessage_SetToggle,
-			(UUtUns32)UUcTrue,
+			(uintptr_t)UUcTrue,
 			0);
 	}
 }

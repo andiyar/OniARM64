@@ -71,8 +71,8 @@ static void
 WMiButton_HandleMouseEvent(
 	WMtButton				*inButton,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtRect					button_rect;
 	UUtBool					mouse_over_button;
@@ -148,7 +148,7 @@ WMiButton_HandleMouseEvent(
 					WMrWindow_GetParent(inButton),
 					WMcMessage_Command,
 					UUmMakeLong(WMcNotify_Click, WMrWindow_GetID(inButton)),
-					(UUtUns32)inButton);
+					(uintptr_t)inButton);
 			}
 		}
 		break;
@@ -272,12 +272,12 @@ WMiButton_HandleSetToggle(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiButton_Callback(
 	WMtButton				*inButton,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtError				error;
 

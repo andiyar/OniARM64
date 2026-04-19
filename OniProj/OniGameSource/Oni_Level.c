@@ -160,8 +160,8 @@ static UUtBool
 ONiDialog_LevelLoadProgress(
 	WMtDialog				*inDialog,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtBool					handled;
 	WMtWindow				*progress_bar;
@@ -244,7 +244,7 @@ ONrLevel_LevelLoadDialog_Update(
 	if (ONgLevelLoadProgress == NULL) { return; }
 
 	// update the dialog's progress bar
-	WMrMessage_Send(ONgLevelLoadProgress, WMcMessage_SetValue, (UUtUns32)inPercentComplete, 0);
+	WMrMessage_Send(ONgLevelLoadProgress, WMcMessage_SetValue, (uintptr_t)inPercentComplete, 0);
 
 	// display the dialog on the screen
 	M3rGeom_Frame_Start(0);
@@ -741,7 +741,7 @@ ONiFlagArray_TemplateHandler(
 			OBJrObjectType_EnumerateObjects(
 				OBJcType_Flag,
 				ONiFlagsExist,
-				(UUtUns32)&flags_exist);
+				(uintptr_t)&flags_exist);
 			if (flags_exist) { break; }
 
 			// set up default flag properties
@@ -986,7 +986,7 @@ ONrLevel_Flag_Location_To_Flag(
 	find_loc.position = *inLocation;
 
 	// enumerate the objects
-	OBJrObjectType_EnumerateObjects(OBJcType_Flag, ONiLevel_Flag_GetByLocation, (UUtUns32)&find_loc);
+	OBJrObjectType_EnumerateObjects(OBJcType_Flag, ONiLevel_Flag_GetByLocation, (uintptr_t)&find_loc);
 
 	// if no object was found, return NULL
 	if (find_loc.closest_object == NULL) { return UUcFalse; }

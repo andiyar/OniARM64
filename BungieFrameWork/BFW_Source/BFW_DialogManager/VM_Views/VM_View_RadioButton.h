@@ -63,12 +63,12 @@ extern TMtPrivateData*	DMgTemplate_RadioButton_PrivateData;
 // ======================================================================
 // prototypes
 // ======================================================================
-UUtUns32
+uintptr_t
 VMrView_RadioButton_Callback(
 	VMtView				*inView,
 	VMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2);
+	uintptr_t			inParam1,
+	uintptr_t			inParam2);
 
 UUtError
 VMrView_RadioButton_ProcHandler(

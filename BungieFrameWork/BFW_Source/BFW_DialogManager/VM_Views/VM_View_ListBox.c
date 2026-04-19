@@ -871,8 +871,8 @@ VMiView_ListBox_HandleVerticalScroll(
 	VMtView						*inView,
 	VMtView_ListBox				*inListBox,
 	VMtView_ListBox_PrivateData	*inPrivateData,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtInt32					scroll_increment;
 
@@ -935,12 +935,12 @@ VMiView_ListBox_HandleVerticalScroll(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 VMrView_ListBox_Callback(
 	VMtView				*inView,
 	VMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2)
+	uintptr_t			inParam1,
+	uintptr_t			inParam2)
 {
 	VMtView_PrivateData				*view_private_data;
 	VMtView_ListBox					*listbox;

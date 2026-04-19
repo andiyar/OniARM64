@@ -152,12 +152,12 @@ VMiView_RadioButton_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 VMrView_RadioButton_Callback(
 	VMtView				*inView,
 	VMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2)
+	uintptr_t			inParam1,
+	uintptr_t			inParam2)
 {
 	VMtView_RadioButton				*radiobutton;
 	VMtView_RadioButton_PrivateData	*private_data;

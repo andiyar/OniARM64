@@ -391,7 +391,7 @@ WMiMenu_Create(
 	// create the private data
 	private_data = (WMtMenu_PrivateData*)UUrMemory_Block_NewClear(sizeof(WMtMenu_PrivateData));
 	if (private_data == NULL) { goto cleanup; }
-	WMrWindow_SetLong(inMenu, 0, (UUtUns32)private_data);
+	WMrWindow_SetLong(inMenu, 0, (uintptr_t)private_data);
 
 	// initialize
 	private_data->rect_width		= 0;
@@ -487,8 +487,8 @@ static void
 WMiMenu_HandleMouseEvent(
 	WMtMenu					*inMenu,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	IMtPoint2D				global_mouse_location;
 	IMtPoint2D				mouse_location;
@@ -545,7 +545,7 @@ WMiMenu_HandleMouseEvent(
 					UUmMakeLong(
 						menu_items[selected_item].item_data.flags,
 						menu_items[selected_item].item_data.id),
-					(UUtUns32)inMenu);
+					(uintptr_t)inMenu);
 			}
 		}
 		break;
@@ -740,12 +740,12 @@ WMiMenu_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiMenu_Callback(
 	WMtMenu					*inMenu,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtUns32				result;
 
@@ -818,7 +818,7 @@ WMrMenu_Create(
 			0,
 			0,
 			inParent,
-			(UUtUns32)inMenuData);
+			(uintptr_t)inMenuData);
 
 	return menu;
 }

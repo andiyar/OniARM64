@@ -67,8 +67,8 @@ UUtBool
 ONrDialogCallback_UnitViewer(
 	DMtDialog				*inDialog,
 	DMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 UUtError
 ONrUnitViewer_RegisterTemplates(

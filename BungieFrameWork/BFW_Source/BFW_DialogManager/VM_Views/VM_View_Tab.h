@@ -17,8 +17,8 @@ typedef UUtBool
 (*VMtTabCallback)(
 	VMtView					*inTab,
 	VMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2);
+	uintptr_t				inParam1,
+	uintptr_t				inParam2);
 
 #define VMcTemplate_View_Tab			UUm4CharToUns32('V', 'M', 'T', 'B')
 typedef tm_template('V', 'M', 'T', 'B', "VM View Tab")
@@ -53,12 +53,12 @@ VMrView_Tab_SetTabCallback(
 	VMtView				*inView,
 	VMtTabCallback		inTabCallback);
 
-UUtUns32
+uintptr_t
 VMrView_Tab_Callback(
 	VMtView				*inView,
 	VMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2);
+	uintptr_t			inParam1,
+	uintptr_t			inParam2);
 
 UUtError
 VMrView_Tab_ProcHandler(

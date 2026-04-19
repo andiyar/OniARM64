@@ -212,12 +212,12 @@ VMiView_GetViewUnderPoint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 VMrView_DefaultCallback(
 	VMtView					*inView,
 	VMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	VMtView_PrivateData		*private_data;
 	UUtUns16				i;
@@ -417,7 +417,7 @@ VMrView_Draw(
 			inView,
 			VMcMessage_Paint,
 			0,
-			(UUtUns32)inDestination);
+			(uintptr_t)inDestination);
 	}
 }
 
@@ -698,12 +698,12 @@ VMrView_ProcHandler(
 }
 
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 VMrView_SendMessage(
 	VMtView					*inView,
 	VMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	VMtView_PrivateData		*private_data;
 
@@ -784,7 +784,7 @@ VMrView_SetFocus(
 		VMrView_SendMessage(
 			inView,
 			VMcMessage_SetFocus,
-			(UUtUns32)inIsFocused,
+			(uintptr_t)inIsFocused,
 			0);
 	}
 }

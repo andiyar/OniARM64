@@ -266,7 +266,7 @@ WMiEditField_Create(
 		(WMtEditField_PrivateData*)UUrMemory_Block_NewClear(
 			sizeof(WMtEditField_PrivateData));
 	UUmError_ReturnOnNull(private_data);
-	WMrWindow_SetLong(inEditField, 0, (UUtUns32)private_data);
+	WMrWindow_SetLong(inEditField, 0, (uintptr_t)private_data);
 
 	// initialize
 	private_data->max_chars = WMcEditField_DefaultMaxChars;
@@ -539,7 +539,7 @@ WMiEditField_HandleKeyDown(
 			WMrWindow_GetParent(inEditField),
 			WMcMessage_Command,
 			UUmMakeLong(EFcNotify_ContentChanged, WMrWindow_GetID(inEditField)),
-			(UUtUns32)inEditField);
+			(uintptr_t)inEditField);
 	}
 }
 
@@ -547,7 +547,7 @@ WMiEditField_HandleKeyDown(
 static void
 WMiEditField_HandleMouseEvent(
 	WMtEditField				*inEditField,
-	UUtUns32					inParam1)
+	uintptr_t					inParam1)
 {
 	WMtEditField_PrivateData	*private_data;
 	IMtPoint2D					global_mouse;
@@ -577,7 +577,7 @@ WMiEditField_HandleMouseEvent(
 		WMrWindow_GetParent(inEditField),
 		WMcMessage_Command,
 		UUmMakeLong(WMcNotify_Click, WMrWindow_GetID(inEditField)),
-		(UUtUns32)inEditField);
+		(uintptr_t)inEditField);
 }
 
 // ----------------------------------------------------------------------
@@ -728,12 +728,12 @@ WMiEditField_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiEditField_Callback(
 	WMtEditField			*inEditField,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	UUtError				error;
 	UUtUns32				result;
@@ -873,7 +873,7 @@ WMrEditField_SetInt32(WMtEditField *inEditField, UUtInt32 inNumber)
 
 	sprintf(buffer, "%d", inNumber);
 
-	WMrMessage_Send(inEditField, EFcMessage_SetText, (UUtUns32) buffer, 0);
+	WMrMessage_Send(inEditField, EFcMessage_SetText, (uintptr_t) buffer, 0);
 
 	return;
 }
@@ -894,7 +894,7 @@ WMrEditField_SetFloat(WMtEditField *inEditField, float inFloat)
 		}
 	}
 
-	WMrMessage_Send(inEditField, EFcMessage_SetText, (UUtUns32) buffer, 0);
+	WMrMessage_Send(inEditField, EFcMessage_SetText, (uintptr_t) buffer, 0);
 
 	return;
 }
@@ -902,7 +902,7 @@ WMrEditField_SetFloat(WMtEditField *inEditField, float inFloat)
 void
 WMrEditField_SetText(WMtEditField *inEditField, const char *inString)
 {
-	WMrMessage_Send(inEditField, EFcMessage_SetText, (UUtUns32) inString, 0);
+	WMrMessage_Send(inEditField, EFcMessage_SetText, (uintptr_t) inString, 0);
 
 	return;
 }
@@ -910,7 +910,7 @@ WMrEditField_SetText(WMtEditField *inEditField, const char *inString)
 void
 WMrEditField_GetText(WMtEditField *inEditField, char *outString, UUtUns32 inStringLength)
 {
-	WMrMessage_Send(inEditField, EFcMessage_GetText, (UUtUns32) outString, inStringLength);
+	WMrMessage_Send(inEditField, EFcMessage_GetText, (uintptr_t) outString, inStringLength);
 
 	return;
 }

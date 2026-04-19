@@ -37,8 +37,8 @@ VMiView_Slider_HandleHorizontalScroll(
 	VMtView						*inView,
 	VMtView_Slider				*inSlider,
 	VMtView_Slider_PrivateData	*inPrivateData,
-	UUtUns32					inParam1,
-	UUtUns32					inParam2)
+	uintptr_t					inParam1,
+	uintptr_t					inParam2)
 {
 	UUtInt32					scroll_increment;
 	UUtInt32					scroll_range;
@@ -227,12 +227,12 @@ VMiView_Slider_Paint(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 VMrView_Slider_Callback(
 	VMtView					*inView,
 	VMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	VMtView_Slider				*slider;
 	VMtView_Slider_PrivateData	*private_data;

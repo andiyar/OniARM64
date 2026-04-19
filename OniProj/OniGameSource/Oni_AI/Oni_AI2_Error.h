@@ -97,15 +97,15 @@ extern AI2tPathfindingErrorStorage AI2gPathfindingErrorStorage;
 // -- error table definitions
 
 typedef void (*AI2tErrorReportFunction)(ONtCharacter *inCharacter,
-								  UUtUns32 inParam1, UUtUns32 inParam2,
+								  uintptr_t inParam1, uintptr_t inParam2,
 								  UUtUns32 inParam3, UUtUns32 inParam4);
 
 typedef UUtBool (*AI2tErrorHandleFunction)(ONtCharacter *inCharacter,
-								  UUtUns32 inParam1, UUtUns32 inParam2,
+								  uintptr_t inParam1, uintptr_t inParam2,
 								  UUtUns32 inParam3, UUtUns32 inParam4);
 
 typedef UUtBool (*AI2tPathfindingErrorHandler)(ONtCharacter *inCharacter, UUtUns32 inErrorID,
-								  UUtUns32 inParam1, UUtUns32 inParam2,
+								  uintptr_t inParam1, uintptr_t inParam2,
 								  UUtUns32 inParam3, UUtUns32 inParam4);
 
 typedef struct AI2tErrorTableEntry {
@@ -227,7 +227,7 @@ void AI2rError_Terminate(void);
 
 // handle an error - can be used to catch problems before they blow up
 UUtBool AI2rHandleError(AI2tErrorSubsystem inSystem, UUtUns32 inErrorID, ONtCharacter *inCharacter,
-						UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4,
+						uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4,
 						AI2tErrorTableEntry **outEntry);
 
 // install a temporary error handler for pathfinding
@@ -252,7 +252,7 @@ void AI2rError_RestorePathfindingHandler(AI2tPathfindingErrorHandler inHandler);
 #endif	// AI2_ERROR_REPORT
 
 UUtBool AI2rReportError(AI2tErrorSubsystem inSystem, UUtUns32 inErrorID, ONtCharacter *inCharacter,
-						UUtUns32 inParam1, UUtUns32 inParam2, UUtUns32 inParam3, UUtUns32 inParam4,
+						uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4,
 						const char *inFile, UUtUns32 inLine, AI2tErrorSeverity inSeverity);
 
 void AI2rError_ReportLine(char *inLine);
@@ -276,7 +276,7 @@ void AI2rError_DisplayPathfindingErrors(void);
 
 /* default pathfinding error handling */
 UUtBool AI2rError_DefaultPathfindingHandler(ONtCharacter *inCharacter, UUtUns32 inErrorID,
-											UUtUns32 inParam1, UUtUns32 inParam2,
+											uintptr_t inParam1, uintptr_t inParam2,
 											UUtUns32 inParam3, UUtUns32 inParam4);
 
 #endif // ONI_AI2_ERROR_H

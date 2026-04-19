@@ -226,7 +226,7 @@ OWiProp_Char_HandleCommand(
 		}
 
 		if (is_inventory) {
-			WMrMessage_Send(inControl, EFcMessage_GetText, (UUtUns32) string, 64);
+			WMrMessage_Send(inControl, EFcMessage_GetText, (uintptr_t) string, 64);
 
 			if (UUrString_To_Uns16(string, dataptr) == UUcError_None) {
 				// write our OSD
@@ -272,8 +272,8 @@ UUtBool
 OWrProp_Char_Callback(
 	WMtDialog			*inDialog,
 	WMtMessage			inMessage,
-	UUtUns32			inParam1,
-	UUtUns32			inParam2)
+	uintptr_t			inParam1,
+	uintptr_t			inParam2)
 {
 	UUtBool				handled;
 	WMtPopupMenu		*team_menu;
@@ -478,7 +478,7 @@ OWrProp_Char_Callback(
 			WMrCheckBox_SetCheck(no_autodrop, (object_specific_data.osd.character_osd.flags & OBJcCharFlags_NoAutoDrop) > 0);
 
 			BitMaskToString(object_specific_data.osd.character_osd.alarm_groups, string, 100);
-			WMrMessage_Send(alarm_groups, EFcMessage_SetText, (UUtUns32) string, 0);
+			WMrMessage_Send(alarm_groups, EFcMessage_SetText, (uintptr_t) string, 0);
 
 			{
 				UUtUns16 item_id;

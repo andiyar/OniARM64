@@ -678,13 +678,13 @@ WMrWindow_Activate(
 		WMrMessage_Send(
 			WMgActiveWindow,
 			WMcMessage_Activate,
-			(UUtUns32)UUcFalse,
+			(uintptr_t)UUcFalse,
 			0);
 
 		WMrMessage_Send(
 			WMgActiveWindow,
 			WMcMessage_NC_Activate,
-			(UUtUns32)UUcFalse,
+			(uintptr_t)UUcFalse,
 			0);
 	}
 
@@ -700,13 +700,13 @@ WMrWindow_Activate(
 	WMrMessage_Send(
 		inWindow,
 		WMcMessage_NC_Activate,
-		(UUtUns32)UUcTrue,
+		(uintptr_t)UUcTrue,
 		0);
 
 	WMrMessage_Send(
 		inWindow,
 		WMcMessage_Activate,
-		(UUtUns32)UUcTrue,
+		(uintptr_t)UUcTrue,
 		0);
 
 	return old_active;
@@ -810,7 +810,7 @@ WMrWindow_CaptureMouse(
 		WMrMessage_Send(
 			old_focus,
 			WMcMessage_CaptureChanged,
-			(UUtUns32)inWindow,
+			(uintptr_t)inWindow,
 			0);
 	}
 
@@ -879,7 +879,7 @@ WMrWindow_Delete(
 			parent,
 			WMcMessage_ParentNotify,
 			WMcMessage_Destroy,
-			(UUtUns32)inWindow);
+			(uintptr_t)inWindow);
 	}
 
 	// remove the window from the list
@@ -904,7 +904,7 @@ WMrWindow_Delete(
 	}
 
 	// destroy the owned windows
-	WMrEnumWindows(WMiWindow_DeleteOwned, (UUtUns32)inWindow);
+	WMrEnumWindows(WMiWindow_DeleteOwned, (uintptr_t)inWindow);
 
 	WMrMessage_Send(inWindow, WMcMessage_NC_Destroy, 0, 0);
 
@@ -987,12 +987,12 @@ WMrWindow_GetID(
 }
 
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 WMrWindow_GetLong(
 	WMtWindow				*inWindow,
 	UUtInt32				inOffset)
 {
-	UUtUns32				data;
+	uintptr_t				data;
 
 	if (!WMiWA_Valid(inWindow)) { return 0; }
 
@@ -1001,7 +1001,7 @@ WMrWindow_GetLong(
 		return 0;
 	}
 
-	data = *((UUtUns32*)((char*)inWindow + sizeof(WMtWindow) + inOffset));
+	data = *((uintptr_t*)((char*)inWindow + sizeof(WMtWindow) + inOffset));
 
 	return data;
 }
@@ -1243,7 +1243,7 @@ WMrWindow_New(
 	UUtInt16				inWidth,
 	UUtInt16				inHeight,
 	WMtWindow				*inParent,
-	UUtUns32				inCreationData)
+	uintptr_t				inCreationData)
 {
 	UUtError				error;
 	WMtWindow				*window;
@@ -1360,7 +1360,7 @@ WMrWindow_New(
 		WMrMessage_Send(
 			window,
 			WMcMessage_NC_CalcClientSize,
-			(UUtUns32)&window->client_rect,
+			(uintptr_t)&window->client_rect,
 			0);
 
 		// send WMcMessage_Create
@@ -1382,7 +1382,7 @@ WMrWindow_New(
 				window->parent,
 				WMcMessage_ParentNotify,
 				WMcMessage_Create,
-				(UUtUns32)window);
+				(uintptr_t)window);
 		}
 
 		// activate the new window
@@ -1454,7 +1454,7 @@ WMrWindow_SetFocus(
 		WMrMessage_Send(
 			WMgKeyboardFocus,
 			WMcMessage_KillFocus,
-			(UUtUns32)inWindow,
+			(uintptr_t)inWindow,
 			0);
 	}
 
@@ -1469,7 +1469,7 @@ WMrWindow_SetFocus(
 		WMrMessage_Send(
 			inWindow,
 			WMcMessage_SetFocus,
-			(UUtUns32)window_losing_focus,
+			(uintptr_t)window_losing_focus,
 			0);
 	}
 
@@ -1528,13 +1528,13 @@ WMrWindow_SetLocation(
 }
 
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 WMrWindow_SetLong(
 	WMtWindow				*inWindow,
 	UUtInt32				inOffset,
-	UUtUns32				inData)
+	uintptr_t				inData)
 {
-	UUtUns32				data;
+	uintptr_t				data;
 
 	if (!WMiWA_Valid(inWindow)) { return 0; }
 
@@ -1543,9 +1543,9 @@ WMrWindow_SetLong(
 		return 0;
 	}
 
-	data = *((UUtUns32*)((char*)inWindow + sizeof(WMtWindow) + inOffset));
+	data = *((uintptr_t*)((char*)inWindow + sizeof(WMtWindow) + inOffset));
 
-	*(UUtUns32*)((char*)inWindow + sizeof(WMtWindow) + inOffset) = inData;
+	*(uintptr_t*)((char*)inWindow + sizeof(WMtWindow) + inOffset) = inData;
 
 	return data;
 }
@@ -1613,7 +1613,7 @@ WMrWindow_SetPosition(
 	WMrMessage_Send(
 		inWindow,
 		WMcMessage_PositionChanging,
-		(UUtUns32)&pos_change,
+		(uintptr_t)&pos_change,
 		0);
 
 	// change the location field
@@ -1644,14 +1644,14 @@ WMrWindow_SetPosition(
 	WMrMessage_Send(
 		inWindow,
 		WMcMessage_NC_CalcClientSize,
-		(UUtUns32)&inWindow->client_rect,
+		(uintptr_t)&inWindow->client_rect,
 		0);
 
 	// tell the window that the position changed
 	WMrMessage_Send(
 		inWindow,
 		WMcMessage_PositionChanged,
-		(UUtUns32)&pos_change,
+		(uintptr_t)&pos_change,
 		0);
 
 	return UUcTrue;
@@ -1728,7 +1728,7 @@ WMrWindow_SetVisible(
 	WMrMessage_Send(
 		inWindow,
 		WMcMessage_Visible,
-		(UUtUns32)inVisible,
+		(uintptr_t)inVisible,
 		0);
 
 	return UUcTrue;
@@ -2346,8 +2346,8 @@ WMiEvents_HandleKeyEvent(
 	if (WMgKeyboardFocus == NULL) return;
 
 	// set param1 and param2
-	param1 = (UUtUns32)inInputEvent->key;
-	param2 = (UUtUns32)inInputEvent->modifiers;
+	param1 = (uintptr_t)inInputEvent->key;
+	param2 = (uintptr_t)inInputEvent->modifiers;
 
 	// set the message
 	switch (inInputEvent->type)
@@ -2562,12 +2562,12 @@ WMiDesktop_Paint(
 }
 
 // ----------------------------------------------------------------------
-static UUtUns32
+static uintptr_t
 WMiDesktop_Callback(
 	WMtWindow				*inDesktop,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	switch(inMessage)
 	{
@@ -2752,8 +2752,8 @@ UUtBool
 WMrMessage_Post(
 	WMtWindow				*inWindow,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	// store the event at the tail
 	WMgEvents[WMgEventTail].window = inWindow;
@@ -2777,12 +2777,12 @@ WMrMessage_Post(
 }
 
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 WMrMessage_Send(
 	WMtWindow				*inWindow,
 	WMtMessage				inMessage,
-	UUtUns32				inParam1,
-	UUtUns32				inParam2)
+	uintptr_t				inParam1,
+	uintptr_t				inParam2)
 {
 	if (inWindow == NULL) { return 0; }
 
@@ -3047,7 +3047,7 @@ WMrSetDesktopBackground(
 		WMrMessage_Send(
 			WMgDesktop,
 			DTcMessage_SetBackground,
-			(UUtUns32)inBackground,
+			(uintptr_t)inBackground,
 			0);
 	}
 }
