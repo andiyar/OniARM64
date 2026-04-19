@@ -193,6 +193,85 @@ iWalkSwapCodes(TMtBuildState* ioState, UUtUns8* inSwapCodes)
             break;
         }
 
+        case TMcSwapCode_BeginVarArray:
+        {
+            UUtUns8 count_kind = *cur++;
+            UUtUns32 count_src_size;
+            UUtUns32 count_dst_size;
+            UUtUns32 count_align;
+            TMtFieldKind count_field_kind;
+
+            switch (count_kind) {
+            case TMcSwapCode_2Byte:
+                count_src_size = 2; count_dst_size = 2; count_align = 2;
+                count_field_kind = TMcFieldKind_2Byte;
+                break;
+            case TMcSwapCode_4Byte:
+                count_src_size = 4; count_dst_size = 4; count_align = 4;
+                count_field_kind = TMcFieldKind_4Byte;
+                break;
+            case TMcSwapCode_8Byte:
+                count_src_size = 8; count_dst_size = 8; count_align = 8;
+                count_field_kind = TMcFieldKind_8Byte;
+                break;
+            default:
+                fprintf(stderr,
+                    "[bridge] unsupported var-array count kind 0x%02x\n",
+                    count_kind);
+                return NULL;
+            }
+
+            /* The count lives in-data, so it's a regular scalar field
+               from the layout's perspective. */
+            if (!iAppendScalar(ioState, count_field_kind,
+                               count_src_size, count_dst_size, count_align)) {
+                return NULL;
+            }
+
+            /* Build sub-descriptor for one element. */
+            TMtBuildState sub_state;
+            iBuildState_Init(&sub_state);
+            UUtUns8* after_elem = iWalkSwapCodes(&sub_state, cur);
+            if (after_elem == NULL || sub_state.overflowed) return NULL;
+            cur = after_elem;  /* past EndVarArray */
+
+            UUtUns32 elem_src  = sub_state.src_cursor;
+            UUtUns32 elem_dst  = iAlignUp(sub_state.dst_cursor, sub_state.alignment);
+            UUtUns32 elem_algn = sub_state.alignment;
+
+            /* Record the var-array field. Its extent is zero — the
+               actual array content is sized by the runtime count. */
+            TMtFieldDescriptor* f = iBuildState_AppendField(ioState);
+            if (f == NULL) return NULL;
+
+            f->kind       = (UUtUns8)TMcFieldKind_VarArray;
+            f->src_offset = ioState->src_cursor;
+            f->dst_offset = iAlignUp(ioState->dst_cursor, elem_algn);
+            f->src_size   = 0;  /* variable */
+            f->dst_size   = 0;  /* variable */
+            f->count      = 0;  /* resolved per instance */
+
+            /* Allocate sub-descriptor for the element. */
+            UUtUns32 block_size = sizeof(TMtLayoutDescriptor)
+                                + sub_state.num_fields * sizeof(TMtFieldDescriptor);
+            TMtLayoutDescriptor* sub = (TMtLayoutDescriptor*)UUrMemory_Block_New(block_size);
+            if (sub == NULL) return NULL;
+            sub->num_fields = sub_state.num_fields;
+            sub->src_size   = elem_src;
+            sub->dst_size   = elem_dst;
+            sub->alignment  = elem_algn;
+            sub->fields     = (TMtFieldDescriptor*)((UUtUns8*)sub + sizeof(TMtLayoutDescriptor));
+            memcpy(sub->fields, sub_state.fields,
+                   sub_state.num_fields * sizeof(TMtFieldDescriptor));
+            f->sub = sub;
+
+            /* Cursors stay put — the var-array starts here but has
+               unknown runtime length. The descriptor's dst_size is
+               the base size; the caller adds runtime varArrayElemSize * N. */
+            if (elem_algn > ioState->alignment) ioState->alignment = elem_algn;
+            break;
+        }
+
         default:
             /* unsupported in this task — handled in later tasks */
             fprintf(stderr,
