@@ -559,10 +559,30 @@ TMrBridge_TranslateNameDescriptorArray(
     UUtUns32                inCount,
     UUtBool                 inNeedsSwapping)
 {
-    (void)inSrc;
-    (void)inCount;
-    (void)inNeedsSwapping;
-    return NULL; /* stub */
+    if (inCount == 0) return NULL;
+
+    TMtNameDescriptor* dst = (TMtNameDescriptor*)
+        UUrMemory_Block_New(inCount * sizeof(TMtNameDescriptor));
+    if (dst == NULL) return NULL;
+
+    const UUtUns8* src = (const UUtUns8*)inSrc;
+    memset(dst, 0, inCount * sizeof(TMtNameDescriptor));
+
+    for (UUtUns32 i = 0; i < inCount; i++, src += 8) {
+        UUtUns32 instanceDescIndex32, namePtr32;
+        memcpy(&instanceDescIndex32, src + 0, 4);
+        memcpy(&namePtr32,           src + 4, 4);
+
+        if (inNeedsSwapping) {
+            UUrSwap_4Byte(&instanceDescIndex32);
+            UUrSwap_4Byte(&namePtr32);
+        }
+
+        dst[i].instanceDescIndex = instanceDescIndex32;
+        dst[i].namePtr           = (char*)(uintptr_t)namePtr32;
+    }
+
+    return dst;
 }
 
 #endif /* UUmPlatform_PointerSize == 8 */
