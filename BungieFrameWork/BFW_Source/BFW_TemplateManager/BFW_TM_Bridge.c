@@ -115,9 +115,34 @@ iWalkSwapCodes(TMtBuildState* ioState, UUtUns8* inSwapCodes)
             if (!iAppendScalar(ioState, TMcFieldKind_8Byte, 8, 8, 8)) return NULL;
             break;
 
+        case TMcSwapCode_RawPtr:
+            /* 4-byte on-disk offset into rawMapping widens to an 8-byte
+               pointer in memory. No extra marker in the swap-code stream. */
+            if (!iAppendScalar(ioState, TMcFieldKind_RawPtr, 4, 8, 8)) return NULL;
+            break;
+
+        case TMcSwapCode_TemplatePtr:
+            /* 4-byte on-disk placeholder (instance-index tag) widens to an
+               8-byte pointer in memory. The swap-code stream carries an
+               additional 4-byte template-tag marker immediately after this
+               code — see BFW_TM_Game.c:750 (TMiGame_Instance_ByteSwap's
+               TemplatePtr case: curSwapCode += 4). Consume it here so the
+               next iteration reads a real swap code, not a tag byte. */
+            if (!iAppendScalar(ioState, TMcFieldKind_TemplatePtr, 4, 8, 8)) return NULL;
+            cur += 4;
+            break;
+
+        case TMcSwapCode_SeparateIndex:
+            /* 4-byte index into the separate-data file; stays 4 bytes. */
+            if (!iAppendScalar(ioState, TMcFieldKind_SeparateIndex, 4, 4, 4)) return NULL;
+            break;
+
         case TMcSwapCode_EndArray:
         case TMcSwapCode_EndVarArray:
-            /* terminator for a nested walk — return to caller */
+            /* Terminator for a nested walk. Also used at the top level:
+               every gSwapCodes_XXX array in templatechecksum.c ends with
+               0x06 (TMcSwapCode_EndArray), and TMiGame_Instance_ByteSwap
+               stops on that same code — no extra sentinel exists. */
             return cur;
 
         default:
