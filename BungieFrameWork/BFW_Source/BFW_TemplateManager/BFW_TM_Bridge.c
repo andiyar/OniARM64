@@ -516,10 +516,41 @@ TMrBridge_TranslateInstanceDescriptorArray(
     UUtUns32                inCount,
     UUtBool                 inNeedsSwapping)
 {
-    (void)inSrc;
-    (void)inCount;
-    (void)inNeedsSwapping;
-    return NULL; /* stub */
+    if (inCount == 0) return NULL;
+
+    TMtInstanceDescriptor* dst = (TMtInstanceDescriptor*)
+        UUrMemory_Block_New(inCount * sizeof(TMtInstanceDescriptor));
+    if (dst == NULL) return NULL;
+
+    const UUtUns8* src = (const UUtUns8*)inSrc;
+
+    for (UUtUns32 i = 0; i < inCount; i++, src += 20) {
+        UUtUns32 templatePtr32, dataPtr32, namePtr32, size32, flags32;
+        memcpy(&templatePtr32, src +  0, 4);
+        memcpy(&dataPtr32,     src +  4, 4);
+        memcpy(&namePtr32,     src +  8, 4);
+        memcpy(&size32,        src + 12, 4);
+        memcpy(&flags32,       src + 16, 4);
+
+        if (inNeedsSwapping) {
+            UUrSwap_4Byte(&templatePtr32);
+            UUrSwap_4Byte(&dataPtr32);
+            UUrSwap_4Byte(&namePtr32);
+            UUrSwap_4Byte(&size32);
+            UUrSwap_4Byte(&flags32);
+        }
+
+        /* Zero-extend the 32-bit pointer-slot values into 64-bit
+           destinations. These still hold file-offsets/tags at this
+           stage; they get fixed up in PrepareForMemory. */
+        dst[i].templatePtr = (TMtTemplateDefinition*)(uintptr_t)templatePtr32;
+        dst[i].dataPtr     = (UUtUns8*)(uintptr_t)dataPtr32;
+        dst[i].namePtr     = (char*)(uintptr_t)namePtr32;
+        dst[i].size        = size32;
+        dst[i].flags       = (TMtDescriptorFlags)flags32;
+    }
+
+    return dst;
 }
 
 TMtNameDescriptor*
