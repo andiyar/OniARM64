@@ -337,6 +337,11 @@ TMrTemplate_Register(
 				(curTemplateDefinition->tag >> 16) & 0xFF,
 				(curTemplateDefinition->tag >> 8) & 0xFF,
 				(curTemplateDefinition->tag >> 0) & 0xFF);
+		} else {
+			UUtUns32 expected = curTemplateDefinition->size; /* already excludes preamble */
+			UUtError verr = TMrBridge_ValidateDescriptor(
+				curTemplateDefinition, desc, expected);
+			(void)verr; /* log only — do not abort here (becomes fatal in Task 12) */
 		}
 	}
 #endif

@@ -320,10 +320,20 @@ TMrBridge_ValidateDescriptor(
     TMtLayoutDescriptor*    inDescriptor,
     UUtUns32                inCompilerSize)
 {
-    (void)inTemplate;
-    (void)inDescriptor;
-    (void)inCompilerSize;
-    return UUcError_None; /* stub */
+    /* inCompilerSize is the compiler's sizeof(struct) minus TMcPreDataSize.
+       inDescriptor->dst_size is our runtime-computed size of the same. */
+    if (inDescriptor->dst_size != inCompilerSize) {
+        UUrStartupMessage(
+            "[bridge] SIZE MISMATCH template %c%c%c%c: computed=%u compiler=%u",
+            (inTemplate->tag >> 24) & 0xFF,
+            (inTemplate->tag >> 16) & 0xFF,
+            (inTemplate->tag >> 8) & 0xFF,
+            (inTemplate->tag >> 0) & 0xFF,
+            (unsigned)inDescriptor->dst_size,
+            (unsigned)inCompilerSize);
+        return UUcError_Generic;
+    }
+    return UUcError_None;
 }
 
 void
