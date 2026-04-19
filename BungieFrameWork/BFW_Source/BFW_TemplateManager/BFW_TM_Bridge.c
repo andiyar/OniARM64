@@ -303,8 +303,32 @@ TMrBridge_BuildDescriptor(
         return NULL;
     }
 
-    /* Round dst_size up to overall struct alignment. */
-    UUtUns32 dst_size = iAlignUp(state.dst_cursor, state.alignment);
+    /* Derive body alignment from body fields only (skipping the 2 fixed
+       preamble 4Byte fields at the head of every template). The compiler's
+       sizeof(STRUCT) rounds the body up to max-alignment of body members;
+       the preamble is not declared in the C struct, so its 4-byte alignment
+       must not inflate the struct's trailing pad.
+
+       Without this, templates whose body max-alignment is strictly less than
+       4 (e.g. ONSA: pad0[22] + UUtUns16 + UUtUns16 vararray, body-align=2)
+       get rounded to 4 and report an extra 2 bytes vs compiler sizeof. */
+    UUtUns32 body_alignment = 1;
+    for (UUtUns32 i = 2; i < state.num_fields; i++) {
+        TMtFieldDescriptor* f = &state.fields[i];
+        UUtUns32 field_align;
+        if (f->sub != NULL) {
+            field_align = f->sub->alignment;
+        } else {
+            /* Scalars: alignment == dst_size (1,2,4,8). Pointers widen to 8. */
+            field_align = f->dst_size;
+        }
+        if (field_align > body_alignment) body_alignment = field_align;
+    }
+
+    /* Round only the body (after the 8-byte preamble) up to body_alignment. */
+    UUtUns32 body_cursor = (state.dst_cursor > TMcPreDataSize)
+                         ? (state.dst_cursor - TMcPreDataSize) : 0;
+    UUtUns32 dst_size = TMcPreDataSize + iAlignUp(body_cursor, body_alignment);
 
     /* Allocate descriptor + fields as one block for easy dispose. */
     UUtUns32 block_size = sizeof(TMtLayoutDescriptor)
@@ -437,7 +461,8 @@ TMrBridge_ValidateDescriptor(
             UUtBool dump =
                 (strcmp(tag, "IDXA") == 0) ||
                 (strcmp(tag, "Mtrl") == 0) ||
-                (strcmp(tag, "TRAM") == 0);
+                (strcmp(tag, "TRAM") == 0) ||
+                (strcmp(tag, "ONSA") == 0);
             if (dump) {
                 UUrStartupMessage(
                     "[bridge-dump] === %s === template->size=%u varArrayElemSize=%u compilerSize=%u",
