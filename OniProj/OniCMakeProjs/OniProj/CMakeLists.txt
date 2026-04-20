@@ -603,6 +603,7 @@ target_compile_definitions(Oni
 	PRIVATE
 		BINK_VIDEO=$<BOOL:${ONI_BINK_VIDEO}>
 		ONI_MAP_FILE="${ONI_MAP_PATH}"
+		SHIPPING_VERSION=1
 )
 
 # check if linking math library is required

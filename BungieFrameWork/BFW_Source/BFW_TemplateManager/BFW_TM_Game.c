@@ -47,8 +47,10 @@ UUtBool TMgTimeLevelLoad = UUcFalse;
 	#define TMcDynamic_Instance_Perm_Max			(16)
 	#define TMcDynamic_Memory_Perm_Size				(100 * 1024)
 #else
-	#define TMcDynamic_Instance_Perm_Max			(8)
-	#define TMcDynamic_Memory_Perm_Size				(70 * 1024)
+	// ARM64 port: match TOOL caps — bridge descriptors need more headroom than
+	// the original shipping limits (8 / 70KB) provided on 32-bit builds.
+	#define TMcDynamic_Instance_Perm_Max			(16)
+	#define TMcDynamic_Memory_Perm_Size				(100 * 1024)
 #endif
 	#define TMcDynamic_InstanceFileIndex_Perm		(0xFFFFFFFF)
 
