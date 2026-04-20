@@ -59,7 +59,11 @@ static boolean set_display_settings(
 		Uint32 fullscreenFlags;
 		if (M3gResolutionSwitch)
 		{
-			fullscreenFlags = SDL_WINDOW_FULLSCREEN;
+			// FULLSCREEN_DESKTOP, not exclusive FULLSCREEN: on macOS the
+			// mode-switching variant blanks secondary displays, clips the
+			// viewport into a corner when the requested mode doesn't match
+			// native, and orphans the mouse on the wrong monitor.
+			fullscreenFlags = SDL_WINDOW_FULLSCREEN_DESKTOP;
 		}
 		else
 		{
