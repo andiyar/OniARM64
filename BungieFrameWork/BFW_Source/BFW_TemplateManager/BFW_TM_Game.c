@@ -1769,14 +1769,25 @@ TMiGame_InstanceFile_New_FromFileRef(
 				UUtUns32 misalign;
 				UUtUns32 k;
 				if (lyt == NULL) {
-					/* Template is in the checksum table but no subsystem called
-					   TMrTemplate_Register for it (e.g. WM dialog/cursor templates
-					   may exist in .dat files without a live code path). 32-bit
-					   behavior: leave dataPtr pointing into the mmap'd data and
-					   continue with name resolution — the instance is inert but
-					   the descriptor list stays walkable. */
-					curDesc2->dataPtr = (UUtUns8*)src_data;
-					goto skip_translation_resolve_name;
+					/* Template has no layout descriptor — no subsystem called
+					   TMrTemplate_Register for it. The 32-bit byte-swap walker
+					   doesn't require registration (it reads swap codes
+					   directly), so several subsystems (WM, InGameUI,
+					   UnitViewer) never call their _RegisterTemplates at
+					   runtime — only in the Importer tool. Build the
+					   descriptor lazily from swap codes and cache it on tdef.
+					   Registered-path validation is skipped here; the swap
+					   codes and C struct are authored together and the risk
+					   of mismatch is the same as in the 32-bit walker. */
+					lyt = TMrBridge_BuildDescriptor(tdef);
+					if (lyt == NULL) {
+						/* No swap codes or build failure — keep legacy
+						   fallback behavior (instance is inert, descriptor
+						   list stays walkable). */
+						curDesc2->dataPtr = (UUtUns8*)src_data;
+						goto skip_translation_resolve_name;
+					}
+					tdef->layoutDescriptor = lyt;
 				}
 
 				/* Extract var_count from the in-data count field (mirrors
