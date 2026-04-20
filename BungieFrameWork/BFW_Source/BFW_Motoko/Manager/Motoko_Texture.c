@@ -137,7 +137,7 @@ M3rTextureMap_Prepare_Internal(
 			#endif
 
 			offset = TMrInstance_GetRawOffset(ioTextureMap);
-			ioTextureMap->pixels = (void *) (((UUtUns32) ioTextureMap->pixels) + ((UUtUns32) offset));
+			ioTextureMap->pixels = (void *) (((uintptr_t) ioTextureMap->pixels) + ((uintptr_t) offset));
 
 			if (swap) {
 				M3iTextureByteSwapper(ioTextureMap, ioTextureMap->pixels);
@@ -848,10 +848,10 @@ static void iBuildMipMapRGB555(M3tTextureMap *inTextureMap, UUtUns16 width, UUtU
 			UUtUns16 red,grn,blu;
 			UUtUns16 rowBytes = width * 2;
 
-			a = *((UUtUns16 *) (((UUtUns32) (src)) + (j * 2 + 0) * rowBytes + (i * 2 + 0) * 2));
-			b = *((UUtUns16 *) (((UUtUns32) (src)) + (j * 2 + 0) * rowBytes + (i * 2 + 1) * 2));
-			c = *((UUtUns16 *) (((UUtUns32) (src)) + (j * 2 + 1) * rowBytes + (i * 2 + 0) * 2));
-			d = *((UUtUns16 *) (((UUtUns32) (src)) + (j * 2 + 1) * rowBytes + (i * 2 + 1) * 2));
+			a = *((UUtUns16 *) (((uintptr_t) (src)) + (j * 2 + 0) * rowBytes + (i * 2 + 0) * 2));
+			b = *((UUtUns16 *) (((uintptr_t) (src)) + (j * 2 + 0) * rowBytes + (i * 2 + 1) * 2));
+			c = *((UUtUns16 *) (((uintptr_t) (src)) + (j * 2 + 1) * rowBytes + (i * 2 + 0) * 2));
+			d = *((UUtUns16 *) (((uintptr_t) (src)) + (j * 2 + 1) * rowBytes + (i * 2 + 1) * 2));
 
 			red = 0;
 			grn = 0;
@@ -924,7 +924,7 @@ M3rTextureMap_BuildMipMap(
 	{
 		UUtUns16 dst_width = UUmMax((width >> 1)/* S.S. / 2*/, 1);
 		UUtUns16 dst_height = UUmMax((height >> 1)/* S.S. / 2*/, 1);
-		dstPtr = (void *) ((UUtUns32) srcPtr + (width * height * texelSize));
+		dstPtr = (void *) ((uintptr_t) srcPtr + (width * height * texelSize));
 
 		if (fast) {
 			error = IMrImage_Scale(
