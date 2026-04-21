@@ -164,9 +164,13 @@ OBJiObjectGroup_AddObject(
 	// create the object list if it doesn't already exist
 	if (inObjectGroup->object_list == NULL)
 	{
+		// Element size is sizeof(OBJtObject*) — the list stores pointers, not
+		// OBJtObjectType enums. 32-bit platforms hid this because both happen
+		// to be 4 bytes there; on 64-bit, 8-byte pointer writes into 4-byte
+		// slots corrupt the heap and truncate subsequent reads.
 		inObjectGroup->object_list
 			= UUrMemory_Array_New(
-				sizeof(OBJtObjectType),
+				sizeof(OBJtObject*),
 				5,
 				0,
 				1);
