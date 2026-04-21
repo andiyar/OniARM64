@@ -2491,11 +2491,13 @@ static void iAnimationCollection_DiskToMemory(TRtAnimationCollection *ioCollecti
 
 	for(itr = 0; itr < ioCollection->numAnimations; itr++) {
 		TRtAnimationCollectionPart *part;
-		UUmAssert(ioCollection->entry[itr].animation != NULL);
+		TRtAnimation *anim_ptr = ioCollection->entry[itr].animation;
+
+		UUmAssert(anim_ptr != NULL);
 
 		part = ioCollection->entry + itr;
 
-		part->virtualFromState = ioCollection->entry[itr].animation->fromState;
+		part->virtualFromState = anim_ptr->fromState;
 		part->lookupValue = (part->animation->type << 16) | (part->virtualFromState << 0);
 	}
 
@@ -2618,7 +2620,9 @@ TRrTemplateHandler_Body(
 
 static void TRrAnimation_Prepare(TRtAnimation *animation)
 {
+#if UUmPlatform_PointerSize != 8
 	void *raw_offset;
+#endif
 
 	if (animation->flags & (1 << TRcAnimFlag_Prepared))
 	{
@@ -2627,6 +2631,17 @@ static void TRrAnimation_Prepare(TRtAnimation *animation)
 
 	animation->instanceName = TMrInstance_GetInstanceName(animation);
 
+	/* On 64-bit the template-manager bridge (iBridgePrepare_ResolveRawPtr)
+	   already converted every tm_raw pointer from its on-disk u32 offset
+	   into a resolved 8-byte pointer = rawPtr_base + offset. The original
+	   32-bit code below expects those slots to still be u32 offsets and
+	   adds rawPtr_base itself — running it on 64-bit produces a
+	   double-offset pointer that lands in unmapped memory (see
+	   docs/handoff-2026-04-20-newgame-crash-part3.md). Skip the
+	   offset-apply entirely on 64-bit; the byte-swap pass below is safe
+	   either way (it operates on resolved pointers on 64-bit, and
+	   UUmSwapLittle_* is a no-op on little-endian ARM64). */
+#if UUmPlatform_PointerSize != 8
 	raw_offset = TMrInstance_GetRawOffset(animation);
 
 	if (NULL != animation->attacks) {
@@ -2678,6 +2693,7 @@ static void TRrAnimation_Prepare(TRtAnimation *animation)
 	}
 
 	animation->data = UUmOffsetPtr(animation->data, raw_offset);
+#endif
 
 	TRrAnimation_SwapHeights(animation);
 	TRrAnimation_SwapPositions(animation);

@@ -119,7 +119,6 @@ M3rTextureMap_Prepare_Internal(
 	if (0 == (ioTextureMap->flags & M3cTextureFlags_Prepared)) {
 		if (ioTextureMap->pixels != NULL) {
 			// CB: this texturemap has permanently-resident data that must be byte-swapped now
-			void *offset;
 			UUtBool swap;
 
 			// CB: note that I changed this code so that it no longer sets the flag
@@ -136,8 +135,17 @@ M3rTextureMap_Prepare_Internal(
 			swap = ((ioTextureMap->flags & M3cTextureFlags_LittleEndian) > 0);
 			#endif
 
-			offset = TMrInstance_GetRawOffset(ioTextureMap);
-			ioTextureMap->pixels = (void *) (((uintptr_t) ioTextureMap->pixels) + ((uintptr_t) offset));
+			/* On 64-bit the bridge has already resolved tm_raw pointers
+			   (pixels) to real addresses. The 32-bit code below converts an
+			   on-disk u32 offset into a pointer by adding rawPtr_base —
+			   running it on 64-bit would double-offset into unmapped
+			   memory. See docs/handoff-2026-04-20-newgame-crash-part3.md */
+#if UUmPlatform_PointerSize != 8
+			{
+				void *offset = TMrInstance_GetRawOffset(ioTextureMap);
+				ioTextureMap->pixels = (void *) (((uintptr_t) ioTextureMap->pixels) + ((uintptr_t) offset));
+			}
+#endif
 
 			if (swap) {
 				M3iTextureByteSwapper(ioTextureMap, ioTextureMap->pixels);

@@ -104,7 +104,14 @@ static void AKiPrepareGrids(AKtEnvironment *inEnvironment)
 	UUtUns32 itr, itr2;
 	UUtUns32 count = inEnvironment->bnvNodeArray->numNodes;
 	AKtBNVNode *nodes = inEnvironment->bnvNodeArray->nodes;
+	/* On 64-bit the bridge has already resolved tm_raw pointers; adding
+	   rawPtr_base (truncated to u32) here would double-offset. See
+	   docs/handoff-2026-04-20-newgame-crash-part3.md */
+#if UUmPlatform_PointerSize == 8
+	UUtUns32 offset = 0;
+#else
 	UUtUns32 offset = (UUtUns32) TMrInstance_GetRawOffset(inEnvironment);
+#endif
 	PHtDebugInfo *debug_info;
 
 	for(itr = 0; itr < count; itr++)
@@ -231,7 +238,13 @@ AKrEnvironment_TemplateHandler(
 			if (environment->gqDebugArray != NULL)
 			{
 				AKtGQ_Debug *gqDebug;
+				/* 64-bit: bridge already resolved the tm_raw name pointers.
+				   See docs/handoff-2026-04-20-newgame-crash-part3.md */
+#if UUmPlatform_PointerSize == 8
+				UUtUns32 offset = 0;
+#else
 				UUtUns32 offset = (UUtUns32) TMrInstance_GetRawOffset(environment);
+#endif
 
 				gqDebug = environment->gqDebugArray->gqDebug;
 

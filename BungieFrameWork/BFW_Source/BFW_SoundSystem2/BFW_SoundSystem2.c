@@ -669,7 +669,14 @@ SSiSubtitleArray_FindByName(
 	{
 		UUtInt32 itr;
 		UUtInt32 count = inArray->numSubtitles;
+		/* 64-bit: inArray->data is already a resolved pointer (rawPtr+off);
+		   adding rawPtr again would double-offset.
+		   See docs/handoff-2026-04-20-newgame-crash-part3.md */
+#if UUmPlatform_PointerSize == 8
+		UUtUns32 offset = 0;
+#else
 		UUtUns32 offset = (UUtUns32) TMrInstance_GetRawOffset(inArray);
+#endif
 
 		for(itr = 0; itr < count; itr++)
 		{
@@ -705,7 +712,12 @@ SSiSubtitleArray_FindByNumber(
 	{
 		UUtInt32 itr;
 		UUtInt32 count = inArray->numSubtitles;
+		/* 64-bit: same double-offset bug as FindByName above. */
+#if UUmPlatform_PointerSize == 8
+		UUtUns32 offset = 0;
+#else
 		UUtUns32 offset = (UUtUns32) TMrInstance_GetRawOffset(inArray);
+#endif
 
 		for(itr = 0; itr < count; itr++)
 		{
@@ -892,7 +904,12 @@ SSiSoundData_ProcHandler(
 	switch (inMessage)
 	{
 		case TMcTemplateProcMessage_LoadPostProcess:
+			/* 64-bit: sound_data->data (tm_raw) is already a resolved ptr.
+			   Adding rawPtr again would double-offset into unmapped memory.
+			   See docs/handoff-2026-04-20-newgame-crash-part3.md */
+#if UUmPlatform_PointerSize != 8
 			sound_data->data = (void*)(((uintptr_t)sound_data->data) + ((uintptr_t)TMrInstance_GetRawOffset(sound_data)));
+#endif
 		break;
 
 		case TMcTemplateProcMessage_DisposePreProcess:
