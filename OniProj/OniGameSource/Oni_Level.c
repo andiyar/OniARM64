@@ -468,6 +468,8 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	UUtError		error;
 	ONtCharacter *	player_character;
 
+	UUrStartupMessage("[lvl-load] enter ONrLevel_Load level=%u", (unsigned)inLevelNum);
+
 	ONgLevel		= NULL;
 	TRgLevelNumber = inLevelNum;
 
@@ -482,9 +484,11 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 		ONrLevel_LevelLoadDialog_Update(10);
 	}
 
+	UUrStartupMessage("[lvl-load] about to TMrLevel_Load");
 	// load the level from storage
 	error = TMrLevel_Load(inLevelNum, TMcPrivateData_Yes);
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] TMrLevel_Load done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(20);
@@ -493,6 +497,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	// prepare the object system for data read by the binary data loader
 	error = OBJrLevel_Load(inLevelNum);
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] OBJrLevel_Load done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(24);
@@ -501,6 +506,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	// load binary data for the level (p3 particles, furniture, object placement etc)
 	error = OBDrLevel_Load(inLevelNum);
 	UUmError_ReturnOnErrorMsg(error, "Could not load binary data");
+	UUrStartupMessage("[lvl-load] OBDrLevel_Load done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(25);
@@ -508,6 +514,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 
 	// Reset all the textures for the card
 	M3rDrawContext_ResetTextures();
+	UUrStartupMessage("[lvl-load] M3rDrawContext_ResetTextures done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(28);
@@ -516,6 +523,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	// Initialize the game state
 	error = ONrGameState_LevelBegin(inLevelNum);
 	UUmError_ReturnOnErrorMsg(error, "Could not initialize game state");
+	UUrStartupMessage("[lvl-load] ONrGameState_LevelBegin done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(30);
@@ -523,10 +531,12 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 
 	// texture materials must be loaded before akira (needed to set up breakable flag)
 	ONrTextureMaterials_LevelLoad();
+	UUrStartupMessage("[lvl-load] ONrTextureMaterials_LevelLoad done");
 
 	// akira
 	error = AKrLevel_Begin(ONgGameState->level->environment);
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] AKrLevel_Begin done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(35);
@@ -538,10 +548,12 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 
 	error = OSrLevel_Load(inLevelNum);
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] OSrLevel_Load done");
 
 	// particles must be after AKrLevel_Begin due to decal creation against the environment
 	error = ONrLevel_ParticleLoad();
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] ONrLevel_ParticleLoad done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(40);
@@ -550,6 +562,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	// Weapons (call before charcters)
 	error = WPrLevel_Begin();
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] WPrLevel_Begin done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(50);
@@ -558,6 +571,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	// Objects (before characters)
 	error = ONrGameState_LevelBegin_Objects();
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] ONrGameState_LevelBegin_Objects done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(55);
@@ -574,6 +588,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	// Doors (after objects)
 	error = OBrDoor_Array_LevelBegin(&ONgGameState->doors,ONgGameState->level->doorArray);
 	UUmError_ReturnOnErrorMsg(error, "Door init failed");
+	UUrStartupMessage("[lvl-load] OBrDoor_Array_LevelBegin done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(65);
@@ -582,51 +597,64 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	// Set up the camera for a level
 	error = CArLevelBegin(/*ONgGameState->local.playerCharacter*/);
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] CArLevelBegin done");
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Init objects (must come before characters)
 	error = OBJrObject_LevelBegin();
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] OBJrObject_LevelBegin done");
 
 	// Pathfinding - must come after doors have been loaded and initialized
 	error = PHrBuildGraph(&ONgGameState->local.pathGraph, ONgGameState->level->environment);
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] PHrBuildGraph done");
 
 	// set up furniture particles
 	error = OBJrFurniture_CreateParticles();
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] OBJrFurniture_CreateParticles done");
 
 	// initialize the AI
 	error = AIrLevelBegin();
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] AIrLevelBegin done");
 
 	// Initialize the script system - this must come before the AI2 system is initialized
 	// or else spawn scripts will not function on characters
 	error = ONrScript_LevelBegin(ONgGameState->level->name);
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] ONrScript_LevelBegin done");
 
 	// initialize the new AI system:
 	// creates characters from OBJcType_Character objects
 	error = AI2rLevelBegin();
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] AI2rLevelBegin done");
 
 	// make sure that we have a player character by now. if there has not been one made
 	// by the AI2 system, creates character 0 as player character.
 	player_character = ONrGameState_GetPlayerCharacter();
+	UUrStartupMessage("[lvl-load] GetPlayerCharacter -> %p", (void*)player_character);
 	if (player_character == NULL) {
 		error = AIrCreatePlayerFromTextFile();
 		UUmError_ReturnOnError(error);
+		UUrStartupMessage("[lvl-load] AIrCreatePlayerFromTextFile done");
 
 		player_character = ONrGameState_GetPlayerCharacter();
+		UUrStartupMessage("[lvl-load] GetPlayerCharacter (2) -> %p", (void*)player_character);
 	}
 
 	// initialize the camera
 	CAgCamera.star = player_character;
+	UUrStartupMessage("[lvl-load] CAgCamera.star set");
 	CArFollow_Enter();
+	UUrStartupMessage("[lvl-load] CArFollow_Enter done");
 
 	// Sky (after characters)
 	error = ONrSky_LevelBegin( &ONgGameState->sky, ONgLevel->sky_class );
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] ONrSky_LevelBegin done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(70);
@@ -656,9 +684,11 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	// initialize level mechanics
 	error = ONrLevel_InitializeActionMarkerArray();
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] InitializeActionMarkerArray done");
 
 	error = ONrMechanics_LevelBegin( );
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] ONrMechanics_LevelBegin done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(87);
@@ -666,12 +696,14 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 
 	error = ONrInGameUI_LevelLoad(inLevelNum);
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[lvl-load] ONrInGameUI_LevelLoad done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(90);
 	}
 
 	ONrLevel_Preload_Textures();
+	UUrStartupMessage("[lvl-load] ONrLevel_Preload_Textures done");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(100);
@@ -687,9 +719,12 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	// creates legacy characters from script IDs which are used to
 	// find appropriate AItCharacterSetup instances.
 
+	UUrStartupMessage("[lvl-load] before SLrScript_ExecuteOnce(main)");
 	error = SLrScript_ExecuteOnce("main", 0, NULL, NULL, NULL);
+	UUrStartupMessage("[lvl-load] after SLrScript_ExecuteOnce(main) err=%d", (int)error);
 
 	ONrGameState_SplashScreen("intro_splash_screen", NULL, UUcFalse);
+	UUrStartupMessage("[lvl-load] after SplashScreen");
 
 	// enable all sound
 	OSrSetScriptOnly(UUcFalse);
@@ -1313,11 +1348,15 @@ static void ONrLevel_Preload_Textures_Characters(void)
 
 void ONrLevel_Preload_Textures(void)
 {
+	UUrStartupMessage("[preload] enter");
 	ONrLevel_Preload_Textures_Environment();
+	UUrStartupMessage("[preload] Environment done");
 	ONrLevel_Preload_Textures_Characters();
+	UUrStartupMessage("[preload] Characters done");
 
 	// precache all placed particles' textures (those on environment, furniture, objects)
 	EPrPrecacheParticles();
+	UUrStartupMessage("[preload] EPrPrecacheParticles done");
 
 	return;
 }

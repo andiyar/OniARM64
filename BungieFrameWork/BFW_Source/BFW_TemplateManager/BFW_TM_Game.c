@@ -2303,6 +2303,34 @@ TMiGame_InstanceFile_PrepareForMemory(
 		curDescIndex < inInstanceFile->numInstanceDescriptors;
 		curDescIndex++, curDesc++)
 	{
+		if (curDescIndex >= 9335) {
+			UUrStartupMessage("[PrepFM-raw] idx=%u templatePtr=%p flags=0x%x dataPtr=%p size=%u",
+				(unsigned)curDescIndex,
+				(void*)curDesc->templatePtr,
+				(unsigned)curDesc->flags,
+				(void*)curDesc->dataPtr,
+				(unsigned)curDesc->size);
+			if (curDesc->templatePtr != NULL) {
+				UUrStartupMessage("[PrepFM-raw] idx=%u tag=%c%c%c%c tflags=0x%x lyt=%p",
+					(unsigned)curDescIndex,
+					(curDesc->templatePtr->tag >> 24) & 0xFF,
+					(curDesc->templatePtr->tag >> 16) & 0xFF,
+					(curDesc->templatePtr->tag >> 8) & 0xFF,
+					(curDesc->templatePtr->tag >> 0) & 0xFF,
+					(unsigned)curDesc->templatePtr->flags,
+					(void*)curDesc->templatePtr->layoutDescriptor);
+			}
+		}
+		if (curDescIndex >= 9000 && (curDescIndex % 10) == 0) {
+			UUrStartupMessage("[PrepFM-loop] idx=%u/%u",
+				(unsigned)curDescIndex,
+				(unsigned)inInstanceFile->numInstanceDescriptors);
+		} else if ((curDescIndex % 1000) == 0) {
+			UUrStartupMessage("[PrepFM-loop] idx=%u/%u",
+				(unsigned)curDescIndex,
+				(unsigned)inInstanceFile->numInstanceDescriptors);
+		}
+
 		if(curDesc->templatePtr == NULL) continue;  /* unregistered template (see Tasks 12+13 guard) */
 
 		if(curDesc->templatePtr->flags & TMcTemplateFlag_Leaf) continue;
@@ -2316,6 +2344,14 @@ TMiGame_InstanceFile_PrepareForMemory(
 			TMtLayoutDescriptor* lyt =
 				(TMtLayoutDescriptor*)curDesc->templatePtr->layoutDescriptor;
 			UUtUns32 var_count = 0;
+			if (curDescIndex >= 9000) {
+				UUrStartupMessage("[PrepFM-tag] idx=%u tag=%c%c%c%c",
+					(unsigned)curDescIndex,
+					(curDesc->templatePtr->tag >> 24) & 0xFF,
+					(curDesc->templatePtr->tag >> 16) & 0xFF,
+					(curDesc->templatePtr->tag >> 8) & 0xFF,
+					(curDesc->templatePtr->tag >> 0) & 0xFF);
+			}
 			if (lyt == NULL) continue;  /* same guard as translation pass */
 
 			if (curDesc->templatePtr->varArrayElemSize > 0) {
@@ -2643,7 +2679,14 @@ TMiGame_LoadedInstanceFiles_PrepareForMemory(
 
 	for(itr = 0; itr < TMgGame_LoadedInstanceFiles_Num; itr++)
 	{
-		TMiGame_InstanceFile_PrepareForMemory(TMgGame_LoadedInstanceFiles_List[itr]);
+		TMtInstanceFile* f = TMgGame_LoadedInstanceFiles_List[itr];
+		UUrStartupMessage("[PrepFM] file %u/%u name=%s numDesc=%u",
+			(unsigned)itr, (unsigned)TMgGame_LoadedInstanceFiles_Num,
+			(f && f->fileName[0]) ? f->fileName : "(dynamic)",
+			(unsigned)(f ? f->numInstanceDescriptors : 0));
+		TMiGame_InstanceFile_PrepareForMemory(f);
+		UUrStartupMessage("[PrepFM] file %u/%u done",
+			(unsigned)itr, (unsigned)TMgGame_LoadedInstanceFiles_Num);
 	}
 }
 
@@ -2998,6 +3041,8 @@ TMrLevel_Load(
 		UUrTimer_Begin(timer);
 	}
 
+	UUrStartupMessage("[TMrLevel_Load] enter level=%u", (unsigned)inLevelNumber);
+
 	if(TMgGame_ValidLevels[inLevelNumber] == UUcFalse)
 	{
 		UUmError_ReturnOnErrorMsg(UUcError_Generic, "This level is not valid");
@@ -3008,11 +3053,15 @@ TMrLevel_Load(
 		TMiGame_InstanceFile_Dynamic_Reset(TMgGame_DynamicInstanceFile_Temp);	// XXX - Might want to do this at a "real" level load since we support multiple levels loaded simultaneously now
 	}
 
+	UUrStartupMessage("[TMrLevel_Load] before InstanceFileRef_LoadLevel");
 	error = TMiGame_InstanceFileRef_LoadLevel(inLevelNumber, inAllowPrivateData);
 	UUmError_ReturnOnError(error);
+	UUrStartupMessage("[TMrLevel_Load] after InstanceFileRef_LoadLevel, num_loaded=%u", (unsigned)TMgGame_LoadedInstanceFiles_Num);
 
 	// prepare for memory
+	UUrStartupMessage("[TMrLevel_Load] before PrepareForMemory");
 	TMiGame_LoadedInstanceFiles_PrepareForMemory();
+	UUrStartupMessage("[TMrLevel_Load] after PrepareForMemory");
 
 	if (TMgTimeLevelLoad) {
 		UUrTimer_End(timer);
