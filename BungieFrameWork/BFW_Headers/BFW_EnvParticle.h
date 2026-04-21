@@ -93,7 +93,7 @@ EPtEnvParticleArray
 typedef void
 (*EPtEnumCallback_EnvParticle)(
 	EPtEnvParticle	*inParticle,
-	UUtUns32				inUserData);
+	uintptr_t				inUserData);
 
 // =============================================
 // external globals
@@ -130,8 +130,8 @@ void EPrDisplay(void);
 void EPrPrintTags(void);
 
 // enumerate particles globally, or by tag
-void EPrEnumerateAllParticles(EPtEnumCallback_EnvParticle inCallback, UUtUns32 inUserData);
-void EPrEnumerateByTag(char *inTag, EPtEnumCallback_EnvParticle inCallback, UUtUns32 inUserData);
+void EPrEnumerateAllParticles(EPtEnumCallback_EnvParticle inCallback, uintptr_t inUserData);
+void EPrEnumerateByTag(char *inTag, EPtEnumCallback_EnvParticle inCallback, uintptr_t inUserData);
 
 // enumerate all environmental particle classes and possible child particle classes also
 void EPrEnumerateParticleClassesRecursively(void (*inCallback)(struct P3tParticleClass *particle_class, UUtUns32 user_data), UUtUns32 inUserData);

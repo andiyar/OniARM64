@@ -469,7 +469,7 @@ void EPrPrintTags(void)
 }
 
 // enumerate particles by tag
-void EPrEnumerateByTag(char *inTag, EPtEnumCallback_EnvParticle inCallback, UUtUns32 inUserData)
+void EPrEnumerateByTag(char *inTag, EPtEnumCallback_EnvParticle inCallback, uintptr_t inUserData)
 {
 	EPtEnvParticle *particle;
 
@@ -485,7 +485,7 @@ void EPrEnumerateByTag(char *inTag, EPtEnumCallback_EnvParticle inCallback, UUtU
 }
 
 // enumerate particles globally, or by tag
-void EPrEnumerateAllParticles(EPtEnumCallback_EnvParticle inCallback, UUtUns32 inUserData)
+void EPrEnumerateAllParticles(EPtEnumCallback_EnvParticle inCallback, uintptr_t inUserData)
 {
 	EPtEnvParticle *particle;
 
@@ -502,24 +502,29 @@ typedef struct EPtEnumerateRecursivelyUserData
 	UUtUns32 callback_data;
 } EPtEnumerateRecursivelyUserData;
 
-static void EPiTraverseParticleClassesRecursively(EPtEnvParticle *inParticle, UUtUns32 inUserData)
-{
-	EPtEnumerateRecursivelyUserData *user_data = (EPtEnumerateRecursivelyUserData *) inUserData;
+// File-scope because EPrEnumerateAllParticles's callback userdata slot is
+// UUtUns32 (engine-wide typedef). On 64-bit, casting a stack &user_data
+// through UUtUns32 slices the upper 32 bits of the address and the
+// callback dereferences garbage. Not recursive/reentrant, so a file-scope
+// static is safe here.
+static EPtEnumerateRecursivelyUserData EPgTraverseUserData;
 
-	UUmAssertReadPtr(user_data, sizeof(*user_data));
-	P3rTraverseParticleClass(inParticle->particle_class, user_data->callback, user_data->callback_data);
+static void EPiTraverseParticleClassesRecursively(EPtEnvParticle *inParticle, uintptr_t inUserData)
+{
+	(void)inUserData;
+	P3rTraverseParticleClass(inParticle->particle_class,
+		EPgTraverseUserData.callback,
+		EPgTraverseUserData.callback_data);
 }
 
 // enumerate all environmental particle classes and possible child particle classes also
 void EPrEnumerateParticleClassesRecursively(P3tClassCallback inCallback, UUtUns32 inUserData)
 {
-	EPtEnumerateRecursivelyUserData user_data;
-
-	user_data.callback = inCallback;
-	user_data.callback_data = inUserData;
+	EPgTraverseUserData.callback = inCallback;
+	EPgTraverseUserData.callback_data = inUserData;
 
 	P3rSetupTraverse();
-	EPrEnumerateAllParticles(EPiTraverseParticleClassesRecursively, (UUtUns32) &user_data);
+	EPrEnumerateAllParticles(EPiTraverseParticleClassesRecursively, 0);
 }
 
 // ======================================================================
@@ -541,7 +546,7 @@ static void EPiSetupParticle(EPtEnvParticle *inParticle, UUtUns32 inTime)
 }
 
 // set up a particle at level start
-static void EPiLevelStartEnumCallback(EPtEnvParticle *inParticle, UUtUns32 inUserData)
+static void EPiLevelStartEnumCallback(EPtEnvParticle *inParticle, uintptr_t inUserData)
 {
 	EPiSetupParticle(inParticle, inUserData);
 }
@@ -713,7 +718,7 @@ void EPrArray_Delete(EPtEnvParticleArray *inParticleArray)
 }
 
 // ----------------------------------------------------------------------
-static void EPiDrawPositionMarker(EPtEnvParticle *inParticle, UUtUns32 inUserData)
+static void EPiDrawPositionMarker(EPtEnvParticle *inParticle, uintptr_t inUserData)
 {
 	UUtUns8					block[(sizeof(M3tPoint3D) * 4) + (2 * UUcProcessor_CacheLineSize)];
 	M3tPoint3D				*tri = UUrAlignMemory(block);

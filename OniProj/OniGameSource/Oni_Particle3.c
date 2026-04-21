@@ -1496,7 +1496,7 @@ ONiParticle3_Debug_CallEvent(
 static void
 ONiParticle3_CommandCallback(
 	EPtEnvParticle *			inParticle,
-	UUtUns32					inUserData)
+	uintptr_t					inUserData)
 {
 	ONtParticleCommandData *command_data = (ONtParticleCommandData *) inUserData;
 	P3tParticle *particle;
@@ -1622,7 +1622,7 @@ ONiParticle3_Command(
 	command_data.param = &inParameterList[2];
 
 	// iterate over all environmental particles with this tag
-	EPrEnumerateByTag(inParameterList[0].val.str, ONiParticle3_CommandCallback, (UUtUns32) &command_data);
+	EPrEnumerateByTag(inParameterList[0].val.str, ONiParticle3_CommandCallback, (uintptr_t) &command_data);
 
 	return UUcError_None;
 }
@@ -1639,7 +1639,7 @@ void ONrParticle3_Explode(UUtUns32 inExplodeID)
 	command_data.param = NULL;
 	sprintf(temptag, "explode%d", inExplodeID);
 
-	EPrEnumerateByTag(temptag, ONiParticle3_CommandCallback, (UUtUns32) &command_data);
+	EPrEnumerateByTag(temptag, ONiParticle3_CommandCallback, (uintptr_t) &command_data);
 }
 
 static UUtError
@@ -1695,7 +1695,7 @@ typedef struct ONtParticle3_AllEnvParticleData {
 static void
 ONiParticle3_EnumerateAllCallback(
 	EPtEnvParticle		*inParticle,
-	UUtUns32			inUserData)
+	uintptr_t			inUserData)
 {
 	ONtParticle3_AllEnvParticleData *user_data = (ONtParticle3_AllEnvParticleData *) inUserData;
 	UUmAssertReadPtr(user_data, sizeof(*user_data));
@@ -1723,7 +1723,7 @@ ONiParticle3_StartAll(
 	user_data.time = ((float) user_data.tick) / UUcFramesPerSecond;
 	user_data.event = P3cEvent_Start;
 
-	EPrEnumerateAllParticles(ONiParticle3_EnumerateAllCallback, (UUtUns32) &user_data);
+	EPrEnumerateAllParticles(ONiParticle3_EnumerateAllCallback, (uintptr_t) &user_data);
 	return UUcError_None;
 }
 
@@ -1742,7 +1742,7 @@ ONiParticle3_StopAll(
 	user_data.time = ((float) user_data.tick) / UUcFramesPerSecond;
 	user_data.event = P3cEvent_Stop;
 
-	EPrEnumerateAllParticles(ONiParticle3_EnumerateAllCallback, (UUtUns32) &user_data);
+	EPrEnumerateAllParticles(ONiParticle3_EnumerateAllCallback, (uintptr_t) &user_data);
 	return UUcError_None;
 }
 
