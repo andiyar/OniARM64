@@ -485,7 +485,7 @@ static UUtError OBJiConsole_SetOSD( OBJtObject *inObject, const OBJtOSD_All *inO
 
 			UUmAssert( console_osd->action_marker );
 
-			console_osd->action_marker->object = (UUtUns32) inObject;
+			ONrActionMarker_SetObject(console_osd->action_marker, inObject);
 		}
 
 		console_osd->active_screen_texture = NULL;
@@ -1048,7 +1048,7 @@ static UUtError OBJiConsole_LevelBegin( OBJtObject *inObject )
 
 	UUmAssert( console_osd->action_marker );
 
-	console_osd->action_marker->object = (UUtUns32) inObject;
+	ONrActionMarker_SetObject(console_osd->action_marker, inObject);
 
 	OBJrConsole_CalculateMarker( inObject );
 

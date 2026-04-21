@@ -103,11 +103,35 @@ ONiFlagArray_TemplateHandler(
 	void*					inDataPtr,
 	void*					inPrivateData);
 
+/* 64-bit: side table holding the real OBJtObject* for each ActionMarker
+   slot. See Oni_Level.h for why the on-disk UUtUns32 field can't just be
+   widened. */
+static OBJtObject *iActionMarker_Objects[ONcMaxActionMarkers];
+
+static UUtUns32 iActionMarker_Index(const ONtActionMarker *inMarker)
+{
+	UUmAssert(ONgLevel != NULL);
+	UUmAssert(inMarker >= &ONgLevel->actionMarkerArray.markers[0]);
+	UUmAssert(inMarker <  &ONgLevel->actionMarkerArray.markers[ONcMaxActionMarkers]);
+	return (UUtUns32)(inMarker - &ONgLevel->actionMarkerArray.markers[0]);
+}
+
+void ONrActionMarker_SetObject(ONtActionMarker *inMarker, OBJtObject *inObject)
+{
+	iActionMarker_Objects[iActionMarker_Index(inMarker)] = inObject;
+}
+
+OBJtObject *ONrActionMarker_GetObject(const ONtActionMarker *inMarker)
+{
+	return iActionMarker_Objects[iActionMarker_Index(inMarker)];
+}
+
 static UUtError ONrLevel_InitializeActionMarkerArray()
 {
 	UUmAssert( ONgLevel );
 
 	UUrMemory_Clear( &ONgLevel->actionMarkerArray, sizeof(ONtActionMarkerArray));
+	UUrMemory_Clear( iActionMarker_Objects, sizeof(iActionMarker_Objects));
 
 	return UUcError_None;
 }

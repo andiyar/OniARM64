@@ -14400,7 +14400,7 @@ void ONrCharacter_ConsoleAction_Update(ONtCharacter *inCharacter, ONtActiveChara
 
 	// grab the action marker and console object...
 	action_marker = inCharacter->console_marker;
-	object = (OBJtObject*) action_marker->object;
+	object = ONrActionMarker_GetObject(action_marker);
 	console_osd = &((OBJtOSD_All *)object->object_data)->osd.console_osd;
 
 	// if we are already showing the console animation...

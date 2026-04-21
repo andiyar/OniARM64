@@ -486,7 +486,7 @@ void AI2rAlarm_Report(ONtCharacter *ioCharacter, AI2tAlarmState *ioAlarmState,
 
 	UUmAssertReadPtr(ioCharacter->ai2State.alarmStatus.action_marker, sizeof(ONtActionMarker));
 
-	object = (OBJtObject *) ioCharacter->ai2State.alarmStatus.action_marker->object;
+	object = ONrActionMarker_GetObject(ioCharacter->ai2State.alarmStatus.action_marker);
 	UUmAssertReadPtr(object, sizeof(OBJtObject));
 
 	console_osd = (OBJtOSD_Console *) object->object_data;

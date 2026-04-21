@@ -24,7 +24,9 @@
 
 typedef tm_struct ONtActionMarker
 {
-	UUtUns32				object;
+	UUtUns32				object;			// 32-bit slot — ONtLevel is template-serialized,
+											// layout is fixed. On 64-bit the real OBJtObject*
+											// is held in a side-table; see ONrActionMarker_Set/GetObject.
 	M3tPoint3D				position;
 	float					direction;		// direction character needs to face to use marker
 } ONtActionMarker;
@@ -245,6 +247,14 @@ ONrLevel_Trigger_Display(
 // action markers
 
 ONtActionMarker* ONrLevel_ActionMarker_New( void);
+
+/* 64-bit: ONtActionMarker.object must stay 4 bytes on disk (ONtLevel is
+   template-serialized). These accessors store the real OBJtObject*
+   pointer in a side table indexed by the marker's slot in
+   ONgLevel->actionMarkerArray.markers[]. */
+struct OBJtObject;
+void ONrActionMarker_SetObject(ONtActionMarker *inMarker, struct OBJtObject *inObject);
+struct OBJtObject *ONrActionMarker_GetObject(const ONtActionMarker *inMarker);
 
 ONtActionMarker* ONrLevel_ActionMarker_FindNearest(const M3tPoint3D	*inLocation);
 

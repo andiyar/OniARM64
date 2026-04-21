@@ -6949,7 +6949,7 @@ static void ONrGameState_UpdateAutoPrompt(void)
 			if (action_marker != NULL) {
 				use_console = ONrGameState_TryActionMarker(player, action_marker, UUcFalse);
 				if (use_console) {
-					console_object = (OBJtObject*) action_marker->object;
+					console_object = ONrActionMarker_GetObject(action_marker);
 					console_osd = (OBJtOSD_Console *) console_object->object_data;
 
 					if ((console_osd->flags & OBJcConsoleFlag_Active) &&
