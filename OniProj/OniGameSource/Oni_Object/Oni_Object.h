@@ -284,12 +284,12 @@ typedef UUtBool
 (*OBJtEnumCallback_ObjectType)(
 	OBJtObjectType			inObjectType,
 	const char				*inName,
-	UUtUns32				inUserData);
+	uintptr_t				inUserData);
 
 typedef UUtBool
 (*OBJtEnumCallback_Object)(
 	OBJtObject				*inObject,
-	UUtUns32				inUserData);
+	uintptr_t				inUserData);
 
 typedef UUtBool
 (*OBJtEnumCallback_ObjectName)(
@@ -1417,7 +1417,7 @@ UUtUns32
 OBJrObjectType_EnumerateObjects(
 	OBJtObjectType					inObjectType,
 	OBJtEnumCallback_Object			inEnumCallback,
-	UUtUns32						inUserData);
+	uintptr_t						inUserData);
 
 OBJtObject *OBJrObjectType_GetObject_ByNumber(
 	OBJtObjectType inObjectType,
@@ -1450,7 +1450,7 @@ OBJrObjectType_SetVisible(
 void
 OBJrObjectTypes_Enumerate(
 	OBJtEnumCallback_ObjectType		inEnumCallback,
-	UUtUns32						inUserData);
+	uintptr_t						inUserData);
 
 const char *
 OBJrObjectType_GetName(

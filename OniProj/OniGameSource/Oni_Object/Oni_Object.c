@@ -285,7 +285,7 @@ static UUtUns32
 OBJiObjectGroup_EnumerateObjects(
 	OBJtObjectGroup				*inObjectGroup,
 	OBJtEnumCallback_Object		inEnumCallback,
-	UUtUns32					inUserData)
+	uintptr_t					inUserData)
 {
 	UUtUns32					num_objects;
 	UUtUns32					i;
@@ -698,7 +698,7 @@ OBJiObjectGroups_Draw(
 static void
 OBJiObjectGroups_Enumerate(
 	OBJtEnumCallback_ObjectType	inEnumCallback,
-	UUtUns32					inUserData)
+	uintptr_t					inUserData)
 {
 	UUtUns32					i;
 	UUtUns32					num_groups;
@@ -843,7 +843,7 @@ UUtUns32
 OBJrObjectType_EnumerateObjects(
 	OBJtObjectType					inObjectType,
 	OBJtEnumCallback_Object			inEnumCallback,
-	UUtUns32						inUserData)
+	uintptr_t						inUserData)
 {
 	OBJtObjectGroup					*object_group;
 	UUtUns32						num_objects;
@@ -1002,7 +1002,7 @@ OBJrObjectType_SetVisible(
 void
 OBJrObjectTypes_Enumerate(
 	OBJtEnumCallback_ObjectType		inEnumCallback,
-	UUtUns32						inUserData)
+	uintptr_t						inUserData)
 {
 	UUmAssert(inEnumCallback);
 	OBJiObjectGroups_Enumerate(inEnumCallback, inUserData);
@@ -4244,7 +4244,7 @@ OBJtObject* OBJrObject_FindByID( UUtUns32 inID )
 		num_groups = UUrMemory_Array_GetUsedElems(OBJgObjectGroups);
 		for (i = 0; i < num_groups; i++)
 		{
-			OBJiObjectGroup_EnumerateObjects( object_group_list[i], OBJiObject_Enum_SearchRequest, (UUtUns32) &request );
+			OBJiObjectGroup_EnumerateObjects( object_group_list[i], OBJiObject_Enum_SearchRequest, (uintptr_t) &request );
 			if( request.object )
 				return request.object;
 		}

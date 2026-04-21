@@ -2262,7 +2262,7 @@ typedef struct OBJtDoor_TryActionEvent_UserData
 
 } OBJtDoor_TryActionEvent_UserData;
 
-static UUtBool OBJiDoor_TryActionEvent_Enum( OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJiDoor_TryActionEvent_Enum( OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Door *osd;
 	OBJtDoor_TryActionEvent_UserData *user_data;
@@ -2342,7 +2342,7 @@ UUtBool OBJrDoor_TryDoorAction(ONtCharacter *inCharacter, OBJtObject **outCloses
 	user_data.best_door = NULL;
 	user_data.best_door_canopen = UUcFalse;
 
-	OBJrObjectType_EnumerateObjects(OBJcType_Door, OBJiDoor_TryActionEvent_Enum, (UUtUns32) &user_data);
+	OBJrObjectType_EnumerateObjects(OBJcType_Door, OBJiDoor_TryActionEvent_Enum, (uintptr_t) &user_data);
 
 	*outClosestDoor = user_data.best_door;
 	return user_data.best_door_canopen;
