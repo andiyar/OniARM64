@@ -433,10 +433,18 @@ M3rEnv_DrawGQList(
 		}
 	}
 
+	{ extern void TMrAKOT_TripwireCheck(const char* where);
+	char m[64]; snprintf(m, sizeof(m), "pre envDrawGQList SOLID n=%u", (unsigned)M3gGeomGlobals.numSolidGQs);
+	TMrAKOT_TripwireCheck(m); }
 	error = (M3gGeomContext)->envDrawGQList(M3gGeomGlobals.numSolidGQs, M3gGeomGlobals.solidGQs, UUcFalse);
+	{ extern void TMrAKOT_TripwireCheck(const char* where); TMrAKOT_TripwireCheck("post envDrawGQList SOLID"); }
 	UUmError_ReturnOnErrorMsg(error, "failed to draw the solid GQs");
 
+	{ extern void TMrAKOT_TripwireCheck(const char* where);
+	char m[64]; snprintf(m, sizeof(m), "pre envDrawGQList JELLO n=%u", (unsigned)M3gGeomGlobals.numJelloGQs);
+	TMrAKOT_TripwireCheck(m); }
 	error = (M3gGeomContext)->envDrawGQList(M3gGeomGlobals.numJelloGQs, M3gGeomGlobals.jelloGQs, UUcTrue);
+	{ extern void TMrAKOT_TripwireCheck(const char* where); TMrAKOT_TripwireCheck("post envDrawGQList JELLO"); }
 	UUmError_ReturnOnErrorMsg(error, "failed to draw the jello GQs");
 
 	return error;

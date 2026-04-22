@@ -1826,7 +1826,9 @@ AKrEnvironment_EndFrame(
 {
 	AKtEnvironment_Private*	environmentPrivate = (AKtEnvironment_Private*)(TMrTemplate_PrivateData_GetDataPtr(AKgTemplate_PrivateData, inEnvironment));
 	UUtError				error;
+	extern void TMrAKOT_TripwireCheck(const char* where);
 
+	TMrAKOT_TripwireCheck("EndFrame entry");
 	gFrameNum++;
 
 	M3rGeom_State_Push();
@@ -1836,18 +1838,23 @@ AKrEnvironment_EndFrame(
 		0xFF);
 
 	M3rGeom_State_Commit();
+	TMrAKOT_TripwireCheck("EndFrame post State_Commit");
 
 #if PERFORMANCE_TIMER
 	UUrPerformanceTimer_Enter(AKg_ComputeVis_Timer);
 #endif
 
+	TMrAKOT_TripwireCheck("EndFrame pre ComputeVis");
 	AKiEnvironment_ComputeVis(inEnvironment);
+	TMrAKOT_TripwireCheck("EndFrame post ComputeVis");
 
 #if PERFORMANCE_TIMER
 	UUrPerformanceTimer_Exit(AKg_ComputeVis_Timer);
 #endif
 
+	TMrAKOT_TripwireCheck("EndFrame pre DrawGQList");
 	error = M3rEnv_DrawGQList(environmentPrivate->visGQ_Num, environmentPrivate->visGQ_List);
+	TMrAKOT_TripwireCheck("EndFrame post DrawGQList");
 	UUmError_ReturnOnError(error);
 
 #if OCT_TREE_TOOL_SUPPORT

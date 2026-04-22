@@ -5043,6 +5043,7 @@ ONiGameState_Display_NonReflectable(
 	M3tGeomCamera*	activeCamera;
 	UUtBool			render_sky_this_frame = UUcTrue;
 	UUtBool			is_skipping_cutscene = (ONgGameState->local.in_cutscene) && (ONcCutsceneSkip_skipping == ONgGameState->local.cutscene_skip_mode);
+	extern void TMrAKOT_TripwireCheck(const char* where);
 
 	// start the environment
 	if (ONgShow_Environment)
@@ -5051,9 +5052,12 @@ ONiGameState_Display_NonReflectable(
 		ioPerfVars->time_env -= UUrMachineTime_High();
 		#endif
 
+		TMrAKOT_TripwireCheck("NR pre Camera_GetActive");
 		M3rCamera_GetActive(&activeCamera);
 
+		TMrAKOT_TripwireCheck("NR pre AKrEnvironment_StartFrame");
 		error = AKrEnvironment_StartFrame(ONgGameState->level->environment, ONgVisibilityCamera, &render_sky_this_frame);
+		TMrAKOT_TripwireCheck("NR post AKrEnvironment_StartFrame");
 		UUmError_ReturnOnError(error);
 
 		render_sky_this_frame &= !is_skipping_cutscene;
@@ -5086,7 +5090,9 @@ ONiGameState_Display_NonReflectable(
 		M3rDraw_State_SetInt(M3cDrawStateIntType_ZCompare, M3cDrawState_ZCompare_Off);
 		M3rDraw_State_Commit();
 
+		TMrAKOT_TripwireCheck("NR pre Sky_Draw");
 		ONrSky_Draw(&ONgGameState->sky);
+		TMrAKOT_TripwireCheck("NR post Sky_Draw");
 
 		M3rDraw_State_Pop();
 	}
@@ -5121,7 +5127,9 @@ ONiGameState_Display_NonReflectable(
 
 		M3rDraw_State_SetInt(M3cDrawStateIntType_Time, ONgGameState->gameTime);
 
+		TMrAKOT_TripwireCheck("NR pre AKrEnvironment_EndFrame");
 		error = AKrEnvironment_EndFrame(ONgGameState->level->environment);
+		TMrAKOT_TripwireCheck("NR post AKrEnvironment_EndFrame");
 		UUmError_ReturnOnError(error);
 
 		#if defined(BRENTS_CHEESY_GSD_PERF) && BRENTS_CHEESY_GSD_PERF
