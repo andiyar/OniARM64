@@ -5146,6 +5146,10 @@ ONiGameState_Display_Reflectable(
 	UUtStallTimer reflectable;
 	UUtStallTimer reflectable_internal;
 	UUtBool is_skipping_cutscene = (ONgGameState->local.in_cutscene) && (ONcCutsceneSkip_skipping == ONgGameState->local.cutscene_skip_mode);
+	static UUtUns32 refl_call_count = 0;
+	UUtBool refl_log = (refl_call_count == 0);
+	refl_call_count++;
+	if (refl_log) UUrStartupMessage("[REFL] entry");
 
 	UUrStallTimer_Begin(&reflectable);
 
@@ -5172,8 +5176,11 @@ ONiGameState_Display_Reflectable(
 
 		M3rDraw_State_SetInt(M3cDrawStateIntType_Time, ONgGameState->gameTime);
 
+		if (refl_log) UUrStartupMessage("[REFL] pre DisplayCharacters");
 		ONrGameState_DisplayCharacters();
+		if (refl_log) UUrStartupMessage("[REFL] pre MotionBlur_Display");
 		ONrGameState_MotionBlur_Display();
+		if (refl_log) UUrStartupMessage("[REFL] post character block");
 
 		#if defined(BRENTS_CHEESY_GSD_PERF) && BRENTS_CHEESY_GSD_PERF
 		ioPerfVars->time_chr += UUrMachineTime_High();
@@ -5190,19 +5197,23 @@ ONiGameState_Display_Reflectable(
 	if (ONgShow_Objects) {
 		M3rDraw_State_SetInt(M3cDrawStateIntType_Time, ONgGameState->gameTime);
 
+		if (refl_log) UUrStartupMessage("[REFL] pre OBrList_Draw");
 		UUrStallTimer_Begin(&reflectable_internal);
 		OBrList_Draw(ONgGameState->objects);
 		UUrStallTimer_End(&reflectable_internal, "ONiGameState_Display_Reflectable - ONiGameState_Display_Reflectable");
 
+		if (refl_log) UUrStartupMessage("[REFL] pre OBJrDrawObjects");
 		UUrStallTimer_Begin(&reflectable_internal);
 		OBJrDrawObjects();
 		UUrStallTimer_End(&reflectable_internal, "ONiGameState_Display_Reflectable - OBJrDrawObjects");
 
+		if (refl_log) UUrStartupMessage("[REFL] pre EPrDisplay");
 		// CB: this isn't actually particle drawing, but rather just the
 		// little marker triangles around environmental particles.
 		UUrStallTimer_Begin(&reflectable_internal);
 		EPrDisplay();
 		UUrStallTimer_End(&reflectable_internal, "ONiGameState_Display_Reflectable - EPrDisplay");
+		if (refl_log) UUrStartupMessage("[REFL] post object block");
 	}
 
 	#if defined(BRENTS_CHEESY_GSD_PERF) && BRENTS_CHEESY_GSD_PERF
@@ -5210,11 +5221,13 @@ ONiGameState_Display_Reflectable(
 	#endif
 
 	// Draw the weapons
+	if (refl_log) UUrStartupMessage("[REFL] pre WPrDisplay");
 	UUrStallTimer_Begin(&reflectable_internal);
 
 	WPrDisplay();
 
 	UUrStallTimer_End(&reflectable_internal, "ONiGameState_Display_Reflectable - WPrDisplay");
+	if (refl_log) UUrStartupMessage("[REFL] post WPrDisplay");
 
 	// Draw the effects
 	#if defined(BRENTS_CHEESY_GSD_PERF) && BRENTS_CHEESY_GSD_PERF
@@ -5228,8 +5241,11 @@ ONiGameState_Display_Reflectable(
 
 		M3rGeom_State_Set(M3cGeomStateIntType_SubmitMode, M3cGeomState_SubmitMode_Normal);
 		M3rGeom_State_Commit();
+		if (refl_log) UUrStartupMessage("[REFL] pre P3rDisplayStaticDecals");
 		P3rDisplayStaticDecals( );
+		if (refl_log) UUrStartupMessage("[REFL] pre P3rDisplayDynamicDecals");
 		P3rDisplayDynamicDecals( );
+		if (refl_log) UUrStartupMessage("[REFL] post decals");
 		M3rGeom_State_Set(M3cGeomStateIntType_SubmitMode, M3cGeomState_SubmitMode_SortAlphaTris);
 		M3rGeom_State_Commit();
 	}
@@ -5240,8 +5256,10 @@ ONiGameState_Display_Reflectable(
 
 	if (!is_skipping_cutscene && ONgParticle_Display)
 	{
+		if (refl_log) UUrStartupMessage("[REFL] pre P3rDisplay");
 		P3rDisplay(UUcFalse);	// display all non-lensflare classes
 //		FXrEffect_Display();
+		if (refl_log) UUrStartupMessage("[REFL] post P3rDisplay");
 	}
 
 	UUrStallTimer_End(&reflectable_internal, "ONiGameState_Display_Reflectable - particles");
@@ -5253,9 +5271,11 @@ ONiGameState_Display_Reflectable(
 	UUrStallTimer_Begin(&reflectable_internal);
 
 	// Draw the ammo
+	if (refl_log) UUrStartupMessage("[REFL] pre WPrPowerup_Display");
 	WPrPowerup_Display();
 
 	UUrStallTimer_End(&reflectable_internal, "ONiGameState_Display_Reflectable - powerup display");
+	if (refl_log) UUrStartupMessage("[REFL] post WPrPowerup_Display");
 
 #if TOOL_VERSION
 	UUrStallTimer_Begin(&reflectable_internal);
@@ -5274,6 +5294,10 @@ void ONrGameState_Display(void)
 {
 	UUtStallTimer stall_timer_display;
 	UUtStallTimer stall_timer_display_internal;
+	static UUtUns32 gsd_call_count = 0;
+	UUtBool gsd_log = (gsd_call_count == 0);
+	gsd_call_count++;
+	if (gsd_log) UUrStartupMessage("[GSD] entry first call");
 
 #if defined(BRENTS_CHEESY_GSD_PERF) && BRENTS_CHEESY_GSD_PERF
 	Display_Performance_Variables perf_var;
@@ -5287,14 +5311,17 @@ void ONrGameState_Display(void)
 
 	UUrStallTimer_Begin(&stall_timer_display);
 
+	if (gsd_log) UUrStartupMessage("[GSD] pre AKrEnvironment_FastMode");
 	AKrEnvironment_FastMode(ONrGameState_IsSkippingCutscene());
 
+	if (gsd_log) UUrStartupMessage("[GSD] pre env assert level=%p env=%p", (void*)ONgGameState->level, (void*)(ONgGameState->level ? ONgGameState->level->environment : NULL));
 	UUmAssertReadPtr(ONgGameState->level->environment,sizeof(AKtEnvironment));
 
 	#if defined(BRENTS_CHEESY_GSD_PERF) && BRENTS_CHEESY_GSD_PERF
 	perf_var.time_total -= UUrMachineTime_High();
 	#endif
 
+	if (gsd_log) UUrStartupMessage("[GSD] pre camera verify camera=%p", (void*)ONgGameState->local.camera);
 	MUmVector_Verify(ONgGameState->local.camera->viewData.viewVector);
 
 	M3rGeom_State_Set(M3cGeomStateIntType_SubmitMode, M3cGeomState_SubmitMode_SortAlphaTris);
@@ -5314,18 +5341,31 @@ void ONrGameState_Display(void)
 	M3rGeom_State_Commit();
 
 	// main drawing
+	{
+		extern void TMrAKOT_TripwireCheck(const char* where);
+		TMrAKOT_TripwireCheck("GSD pre NonReflectable");
+	}
+	if (gsd_log) UUrStartupMessage("[GSD] pre NonReflectable");
 	UUrStallTimer_Begin(&stall_timer_display_internal);
 		ONiGameState_Display_NonReflectable(&perf_var);
 	UUrStallTimer_End(&stall_timer_display_internal, "Display - ONiGameState_Display_NonReflectable");
 
+	{
+		extern void TMrAKOT_TripwireCheck(const char* where);
+		TMrAKOT_TripwireCheck("GSD post NonReflectable");
+	}
+	if (gsd_log) UUrStartupMessage("[GSD] pre Reflectable");
 	UUrStallTimer_Begin(&stall_timer_display_internal);
 		ONiGameState_Display_Reflectable(&perf_var);
 	UUrStallTimer_End(&stall_timer_display_internal, "Display - ONiGameState_Display_Reflectable");
 
 	// call this last, these elements just overlay
+	if (gsd_log) UUrStartupMessage("[GSD] pre Overlay_Elements");
 	UUrStallTimer_Begin(&stall_timer_display_internal);
 		ONiGameState_Display_Overlay_Elements(&perf_var);
 	UUrStallTimer_End(&stall_timer_display_internal, "Display - ONiGameState_Display_Overlay_Elements");
+
+	if (gsd_log) UUrStartupMessage("[GSD] post Overlay_Elements");
 
 	#if defined(BRENTS_CHEESY_GSD_PERF) && BRENTS_CHEESY_GSD_PERF
 	perf_var.time_total += UUrMachineTime_High();

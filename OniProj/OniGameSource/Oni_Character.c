@@ -6679,29 +6679,43 @@ static UUtBool ONiCharacter_NeedsRendering(ONtCharacter *inCharacter, CAtCamera 
 	M3tVector3D toObj;
 	M3tPoint3D cameraLocation;
 	M3tPoint3D viewVector;
+	static UUtUns32 nr_call_count = 0;
+	UUtBool nr_log = (nr_call_count == 0);
+	nr_call_count++;
+	if (nr_log) UUrStartupMessage("[NR] entry char=%p", (void*)inCharacter);
 
 	#define fovFudge (0.25f * M3cHalfPi)
 
+	if (nr_log) UUrStartupMessage("[NR] pre Camera_GetStaticData");
 	M3rCamera_GetStaticData(ONgVisibilityCamera,&fov,NULL,NULL,&farP);
+	if (nr_log) UUrStartupMessage("[NR] pre Camera_GetViewData");
 	M3rCamera_GetViewData(ONgVisibilityCamera, &cameraLocation, &viewVector, NULL);
 
+	if (nr_log) UUrStartupMessage("[NR] pre Vector_Subtract");
 	MUmVector_Subtract(toObj,inCharacter->location,cameraLocation);
+	if (nr_log) UUrStartupMessage("[NR] pre Normalize");
 	MUrNormalize(&toObj);
 
 	if (gDrawAllCharacters) {
+		if (nr_log) UUrStartupMessage("[NR] path:gDrawAll");
 		is_visible = UUcTrue;
 	}
 	else if (MUrAngleBetweenVectors3D(&toObj,&viewVector) > (fov + fovFudge)) {
+		if (nr_log) UUrStartupMessage("[NR] path:angleOOF");
 		is_visible = UUcFalse;
 	}
 	else if (inCharacter->distance_from_camera_squared > UUmSQR(farP)) {
+		if (nr_log) UUrStartupMessage("[NR] path:tooFar");
 		is_visible = UUcFalse;
 	}
 	else if (!ONgShow_Environment) {
+		if (nr_log) UUrStartupMessage("[NR] path:noEnv");
 		is_visible = UUcTrue;
 	}
 	else {
+		if (nr_log) UUrStartupMessage("[NR] pre BoundingBoxMinMaxVisible");
 		is_visible = AKrEnvironment_IsBoundingBoxMinMaxVisible(&inCharacter->boundingBox);
+		if (nr_log) UUrStartupMessage("[NR] post BoundingBoxMinMaxVisible vis=%u", (unsigned)is_visible);
 	}
 
 	if (is_visible) {
@@ -6821,24 +6835,37 @@ static void ONrGameState_ComputeCharacterVisibility(UUtUns32 *outNumVisible, ONt
 	UUtUns16 itr, player_team;
 	UUtBool close_enough_to_taunt = UUcFalse;
 	M3tPoint3D camera_location;
+	static UUtUns32 ccv_call_count = 0;
+	UUtBool ccv_log = (ccv_call_count == 0);
+	ccv_call_count++;
+	if (ccv_log) UUrStartupMessage("[CCV] entry");
 
+	if (ccv_log) UUrStartupMessage("[CCV] pre Camera_GetViewData");
 	M3rCamera_GetViewData(ONgVisibilityCamera, &camera_location, NULL, NULL);
 
+	if (ccv_log) UUrStartupMessage("[CCV] pre GetPlayerCharacter");
 	player_character = ONrGameState_GetPlayerCharacter();
+	if (ccv_log) UUrStartupMessage("[CCV] player=%p", (void*)player_character);
 	player_team = player_character->teamNumber;
+	if (ccv_log) UUrStartupMessage("[CCV] player_team=%u", (unsigned)player_team);
 
 	potential_character_count = ONrGameState_PresentCharacterList_Count();
 	potential_character_list = ONrGameState_PresentCharacterList_Get();
+	if (ccv_log) UUrStartupMessage("[CCV] potential_count=%u list=%p", (unsigned)potential_character_count, (void*)potential_character_list);
 
 	num_visible = 0;
 	for(itr = 0; itr < potential_character_count; itr++) {
 		current_character = potential_character_list[itr];
+		if (ccv_log) UUrStartupMessage("[CCV] itr=%u char=%p", (unsigned)itr, (void*)current_character);
 
 		current_character->flags &= ~ONcCharacterFlag_Draw;
 
+		if (ccv_log) UUrStartupMessage("[CCV] itr=%u pre GetDistSq", (unsigned)itr);
 		current_character->distance_from_camera_squared = MUmVector_GetDistanceSquared(current_character->location, camera_location);
 
+		if (ccv_log) UUrStartupMessage("[CCV] itr=%u pre NeedsRendering", (unsigned)itr);
 		if (!ONiCharacter_NeedsRendering(current_character, ONgGameState->local.camera)) {
+			if (ccv_log) UUrStartupMessage("[CCV] itr=%u not rendering", (unsigned)itr);
 			active_character = ONrGetActiveCharacter(current_character);
 			if (active_character != NULL) {
 				// this character is not drawn, flag it as such
@@ -6848,12 +6875,14 @@ static void ONrGameState_ComputeCharacterVisibility(UUtUns32 *outNumVisible, ONt
 			}
 			continue;
 		}
+		if (ccv_log) UUrStartupMessage("[CCV] itr=%u pre FriendOrFoe", (unsigned)itr);
 
 		if ((current_character != player_character) &&
 			(AI2rTeam_FriendOrFoe(player_team, current_character->teamNumber) == AI2cTeam_Hostile) &&
 			(current_character->distance_from_camera_squared < UUmSQR(ONcCharacter_TauntEnable_CloseDist))) {
 			ONrGameState_TauntEnable(ONcCharacter_TauntEnable_Close);
 		}
+		if (ccv_log) UUrStartupMessage("[CCV] itr=%u pre ForceActiveChar", (unsigned)itr);
 
 		if (!ONgDisableVisActive) {
 			// since we want to draw this character, force it to be active, and
@@ -6861,17 +6890,20 @@ static void ONrGameState_ComputeCharacterVisibility(UUtUns32 *outNumVisible, ONt
 			ONrForceActiveCharacter(current_character);
 			current_character->inactive_timer = 0;
 		}
+		if (ccv_log) UUrStartupMessage("[CCV] itr=%u pre GetActiveChar", (unsigned)itr);
 
 		active_character = ONrGetActiveCharacter(current_character);
 		if (active_character == NULL) {
 			continue;
 		}
+		if (ccv_log) UUrStartupMessage("[CCV] itr=%u active=%p", (unsigned)itr, (void*)active_character);
 
 		current_character->flags |= ONcCharacterFlag_Draw;
 		outVisibleChars[num_visible] = current_character;
 		outVisibleActiveChars[num_visible] = active_character;
 		num_visible++;
 	}
+	if (ccv_log) UUrStartupMessage("[CCV] exit num_visible=%u", (unsigned)num_visible);
 
 	*outNumVisible = num_visible;
 }
@@ -7051,15 +7083,24 @@ void ONrGameState_DisplayCharacters(void)
 	ONtCharacter *character;
 	ONtCharacter *vis_list[ONcMaxCharacters];
 	ONtActiveCharacter *vis_active_list[ONcMaxCharacters];
+	static UUtUns32 dc_call_count = 0;
+	UUtBool dc_log = (dc_call_count == 0);
+	dc_call_count++;
+	if (dc_log) UUrStartupMessage("[DC] entry");
 
+	if (dc_log) UUrStartupMessage("[DC] pre Camera_GetViewData");
 	M3rCamera_GetViewData(ONgVisibilityCamera, &cameraLocation, NULL, NULL);
 
 	if (ONgShow_Corpses) {
+		if (dc_log) UUrStartupMessage("[DC] pre Corpse_Display");
 		ONrCorpse_Display(&cameraLocation);
 	}
 
+	if (dc_log) UUrStartupMessage("[DC] pre ComputeCharacterVisibility");
 	ONrGameState_ComputeCharacterVisibility(&vis_count, vis_list, vis_active_list);
+	if (dc_log) UUrStartupMessage("[DC] post CharVisibility vis_count=%u", (unsigned)vis_count);
 	ONrGameState_ComputeCharacterLOD(vis_count, vis_list, vis_active_list);
+	if (dc_log) UUrStartupMessage("[DC] post CharLOD");
 
 	ONgNumCharactersDrawn = 0;
 
@@ -7068,7 +7109,9 @@ void ONrGameState_DisplayCharacters(void)
 		UUtUns32 present_character_count;
 		ONtCharacter **present_character_list;
 
+		if (dc_log) UUrStartupMessage("[DC] pre AI2rDisplayGlobalDebuggingInfo");
 		AI2rDisplayGlobalDebuggingInfo();
+		if (dc_log) UUrStartupMessage("[DC] post AI2rDisplayGlobalDebuggingInfo");
 #if DEBUG_SHOWINTERSECTIONS
 		if (TRgDisplayIntersections && (gFramesSinceIntersection < 600)) {
 			TRrDisplayLastIntersection();
@@ -7085,8 +7128,10 @@ void ONrGameState_DisplayCharacters(void)
 		}
 #endif
 
+		if (dc_log) UUrStartupMessage("[DC] pre PresentCharacterList");
 		present_character_count = ONrGameState_PresentCharacterList_Count();
 		present_character_list = ONrGameState_PresentCharacterList_Get();
+		if (dc_log) UUrStartupMessage("[DC] present_count=%u list=%p", (unsigned)present_character_count, (void*)present_character_list);
 		for (itr = 0; itr < present_character_count; itr++) {
 			character = present_character_list[itr];
 
@@ -7095,6 +7140,7 @@ void ONrGameState_DisplayCharacters(void)
 
 			AI2rDisplayDebuggingInfo(character);
 		}
+		if (dc_log) UUrStartupMessage("[DC] post present_character loop");
 	}
 
 	// if we have an active character in follow mode then draw the laser sight
@@ -7111,7 +7157,9 @@ void ONrGameState_DisplayCharacters(void)
 	}
 
 	// get rid of all of our old shadows
+	if (dc_log) UUrStartupMessage("[DC] pre PurgeShadows");
 	ONrCharacter_PurgeShadows();
+	if (dc_log) UUrStartupMessage("[DC] post PurgeShadows vis_count=%u", (unsigned)vis_count);
 
 	for(itr = 0; itr < vis_count; itr++) {
 		character = vis_list[itr];
@@ -7121,8 +7169,11 @@ void ONrGameState_DisplayCharacters(void)
 
 		UUmAssert(!(character->flags & ONcCharacterFlag_Dead_4_Gone));
 
+		if (dc_log) UUrStartupMessage("[DC] pre Character_Display itr=%u char=%p active=%p", (unsigned)itr, (void*)character, (void*)vis_active_list[itr]);
 		ONiCharacter_Display(character, vis_active_list[itr], &cameraLocation);
+		if (dc_log) UUrStartupMessage("[DC] post Character_Display itr=%u", (unsigned)itr);
 	}
+	if (dc_log) UUrStartupMessage("[DC] exit normal");
 }
 
 void ONrCharacter_SetAnimationInternal(ONtCharacter *ioCharacter, ONtActiveCharacter *ioActiveCharacter,

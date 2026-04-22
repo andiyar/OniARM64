@@ -487,6 +487,8 @@ static UUtError ONrLevel_ParticleLoad()
 
 extern UUtUns16 TRgLevelNumber;
 
+extern void TMrAKOT_TripwireCheck(const char* where);
+
 UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 {
 	UUtError		error;
@@ -513,6 +515,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	error = TMrLevel_Load(inLevelNum, TMcPrivateData_Yes);
 	UUmError_ReturnOnError(error);
 	UUrStartupMessage("[lvl-load] TMrLevel_Load done");
+	TMrAKOT_TripwireCheck("after TMrLevel_Load");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(20);
@@ -522,6 +525,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	error = OBJrLevel_Load(inLevelNum);
 	UUmError_ReturnOnError(error);
 	UUrStartupMessage("[lvl-load] OBJrLevel_Load done");
+	TMrAKOT_TripwireCheck("after OBJrLevel_Load");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(24);
@@ -531,6 +535,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	error = OBDrLevel_Load(inLevelNum);
 	UUmError_ReturnOnErrorMsg(error, "Could not load binary data");
 	UUrStartupMessage("[lvl-load] OBDrLevel_Load done");
+	TMrAKOT_TripwireCheck("after OBDrLevel_Load");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(25);
@@ -548,6 +553,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	error = ONrGameState_LevelBegin(inLevelNum);
 	UUmError_ReturnOnErrorMsg(error, "Could not initialize game state");
 	UUrStartupMessage("[lvl-load] ONrGameState_LevelBegin done");
+	TMrAKOT_TripwireCheck("after ONrGameState_LevelBegin");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(30);
@@ -561,6 +567,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	error = AKrLevel_Begin(ONgGameState->level->environment);
 	UUmError_ReturnOnError(error);
 	UUrStartupMessage("[lvl-load] AKrLevel_Begin done");
+	TMrAKOT_TripwireCheck("after AKrLevel_Begin");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(35);
@@ -596,6 +603,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	error = ONrGameState_LevelBegin_Objects();
 	UUmError_ReturnOnError(error);
 	UUrStartupMessage("[lvl-load] ONrGameState_LevelBegin_Objects done");
+	TMrAKOT_TripwireCheck("after LevelBegin_Objects");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(55);
@@ -628,16 +636,19 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	error = OBJrObject_LevelBegin();
 	UUmError_ReturnOnError(error);
 	UUrStartupMessage("[lvl-load] OBJrObject_LevelBegin done");
+	TMrAKOT_TripwireCheck("after OBJrObject_LevelBegin");
 
 	// Pathfinding - must come after doors have been loaded and initialized
 	error = PHrBuildGraph(&ONgGameState->local.pathGraph, ONgGameState->level->environment);
 	UUmError_ReturnOnError(error);
 	UUrStartupMessage("[lvl-load] PHrBuildGraph done");
+	TMrAKOT_TripwireCheck("after PHrBuildGraph");
 
 	// set up furniture particles
 	error = OBJrFurniture_CreateParticles();
 	UUmError_ReturnOnError(error);
 	UUrStartupMessage("[lvl-load] OBJrFurniture_CreateParticles done");
+	TMrAKOT_TripwireCheck("after Furniture_CreateParticles");
 
 	// initialize the AI
 	error = AIrLevelBegin();
@@ -649,12 +660,14 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	error = ONrScript_LevelBegin(ONgGameState->level->name);
 	UUmError_ReturnOnError(error);
 	UUrStartupMessage("[lvl-load] ONrScript_LevelBegin done");
+	TMrAKOT_TripwireCheck("after ONrScript_LevelBegin");
 
 	// initialize the new AI system:
 	// creates characters from OBJcType_Character objects
 	error = AI2rLevelBegin();
 	UUmError_ReturnOnError(error);
 	UUrStartupMessage("[lvl-load] AI2rLevelBegin done");
+	TMrAKOT_TripwireCheck("after AI2rLevelBegin");
 
 	// make sure that we have a player character by now. if there has not been one made
 	// by the AI2 system, creates character 0 as player character.
@@ -679,6 +692,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	error = ONrSky_LevelBegin( &ONgGameState->sky, ONgLevel->sky_class );
 	UUmError_ReturnOnError(error);
 	UUrStartupMessage("[lvl-load] ONrSky_LevelBegin done");
+	TMrAKOT_TripwireCheck("after ONrSky_LevelBegin");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(70);
@@ -713,6 +727,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	error = ONrMechanics_LevelBegin( );
 	UUmError_ReturnOnError(error);
 	UUrStartupMessage("[lvl-load] ONrMechanics_LevelBegin done");
+	TMrAKOT_TripwireCheck("after ONrMechanics_LevelBegin");
 
 	if (inProgressBar) {
 		ONrLevel_LevelLoadDialog_Update(87);
@@ -746,6 +761,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 	UUrStartupMessage("[lvl-load] before SLrScript_ExecuteOnce(main)");
 	error = SLrScript_ExecuteOnce("main", 0, NULL, NULL, NULL);
 	UUrStartupMessage("[lvl-load] after SLrScript_ExecuteOnce(main) err=%d", (int)error);
+	TMrAKOT_TripwireCheck("after SLrScript_ExecuteOnce");
 
 	ONrGameState_SplashScreen("intro_splash_screen", NULL, UUcFalse);
 	UUrStartupMessage("[lvl-load] after SplashScreen");

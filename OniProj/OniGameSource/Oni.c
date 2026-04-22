@@ -378,8 +378,17 @@ ONiRunGame(
 
 //UUrProfile_State_Set(UUcProfile_State_On);
 
+	extern void TMrAKOT_TripwireCheck(const char* where);
+	TMrAKOT_TripwireCheck("ONiRunGame entry");
 	while(!ONgTerminateGame)
 	{
+		static UUtUns32 rg_loop_iter = 0;
+		UUtBool rg_log = (rg_loop_iter == 1);
+		char twmsg[64];
+		snprintf(twmsg, sizeof(twmsg), "RG iter=%u top", (unsigned)rg_loop_iter);
+		TMrAKOT_TripwireCheck(twmsg);
+		if (rg_log) UUrStartupMessage("[RG1] top of iter 1 numFrames=%u gameTime=%u", (unsigned)ONgNumFrames, (unsigned)(ONgGameState ? ONgGameState->gameTime : 0));
+
 		time_frame_start = UUrMachineTime_High();
 
 		#if defined(SScMSADPCMTimer) && (SScMSADPCMTimer == 1)
@@ -387,18 +396,23 @@ ONiRunGame(
 		#endif
 
 		// step 0	update the local input
+		if (rg_log) UUrStartupMessage("[RG1] pre LIrUpdate");
 		LIrUpdate();
 
 		// step 1	clear the matrix stack, frame start ?
+		if (rg_log) UUrStartupMessage("[RG1] pre MatrixStack_Clear");
 		M3rMatrixStack_Clear();
 
 		// step 2	update the windows
+		if (rg_log) UUrStartupMessage("[RG1] pre WMrUpdate");
 		WMrUpdate();
+		if (rg_log) UUrStartupMessage("[RG1] pre OWrUpdate");
 		OWrUpdate();
 
 		if (!ONrGameState_IsPaused())
 		{
 			// step 3	process local input
+			if (rg_log) UUrStartupMessage("[RG1] pre LIrActionBuffer_Get");
 			LIrActionBuffer_Get(&numActionsInBuffer, &actionBuffer);
 
 			{
@@ -413,9 +427,11 @@ ONiRunGame(
 			}
 
 			// step 4	update the console time
+			if (rg_log) UUrStartupMessage("[RG1] pre COrConsole_Update");
 			error =	COrConsole_Update(numActionsInBuffer);
 			UUmError_ReturnOnErrorMsg(error, "Could not update the console.");
 
+			if (rg_log) UUrStartupMessage("[RG1] pre UpdateServerTime");
 			ONrGameState_UpdateServerTime(ONgGameState);
 
 			#if defined(BRENTS_CHEESY_GAME_PERF) && BRENTS_CHEESY_GAME_PERF
@@ -425,7 +441,19 @@ ONiRunGame(
 			#endif
 
 			// step 6	update the game
+			if (rg_log) UUrStartupMessage("[RG1] pre ONrGameState_Update numActions=%u", (unsigned)numActionsInBuffer);
+			{
+				char twmsg2[64];
+				snprintf(twmsg2, sizeof(twmsg2), "RG iter=%u pre GameState_Update", (unsigned)rg_loop_iter);
+				TMrAKOT_TripwireCheck(twmsg2);
+			}
 			error = ONrGameState_Update(numActionsInBuffer, actionBuffer, &game_ticks);
+			{
+				char twmsg3[64];
+				snprintf(twmsg3, sizeof(twmsg3), "RG iter=%u post GameState_Update", (unsigned)rg_loop_iter);
+				TMrAKOT_TripwireCheck(twmsg3);
+			}
+			if (rg_log) UUrStartupMessage("[RG1] post ONrGameState_Update game_ticks=%u", (unsigned)game_ticks);
 			UUmError_ReturnOnErrorMsg(error, "Could not update game state.");
 
 			#if defined(BRENTS_CHEESY_GAME_PERF) && BRENTS_CHEESY_GAME_PERF
@@ -436,7 +464,9 @@ ONiRunGame(
 		}
 
 		// step 7	play the sounds
+		if (rg_log) UUrStartupMessage("[RG1] pre SS2rUpdate");
 		SS2rUpdate();
+		if (rg_log) UUrStartupMessage("[RG1] post SS2rUpdate");
 
 		// step 8 draw current game state
 
@@ -447,11 +477,13 @@ ONiRunGame(
 		#endif
 
 		if (ONgGameState->local.pending_splash_screen[0] != '\0') {
+			if (rg_log) UUrStartupMessage("[RG1] pre SplashScreen (pending)");
 			ONrGameState_SplashScreen(ONgGameState->local.pending_splash_screen, NULL, UUcFalse);
 
 			ONgGameState->local.pending_splash_screen[0] = '\0';
 		}
 		else {
+			if (rg_log) UUrStartupMessage("[RG1] pre Draw_State block");
 			M3rDraw_State_SetInt(M3cDrawStateIntType_ZCompare, ONgMotoko_ZCompareOn ? M3cDrawState_ZCompare_On : M3cDrawState_ZCompare_Off);
 			M3rDraw_State_SetInt(M3cDrawStateIntType_BufferClear, ONgMotoko_BufferClear ? M3cDrawState_BufferClear_On : M3cDrawState_BufferClear_Off);
 			M3rDraw_State_SetInt(M3cDrawStateIntType_DoubleBuffer, ONgMotoko_DoubleBuffer ? M3cDrawState_DoubleBuffer_On : M3cDrawState_DoubleBuffer_Off);
@@ -459,10 +491,17 @@ ONiRunGame(
 			M3rDraw_State_SetInt(M3cDrawStateIntType_ClearColor, ONgMotoko_ClearColor);
 			M3rDraw_State_Commit();
 
+			if (rg_log) UUrStartupMessage("[RG1] pre M3rGeom_Frame_Start");
+			TMrAKOT_TripwireCheck("pre M3rGeom_Frame_Start");
 			M3rGeom_Frame_Start(game_ticks);
+			TMrAKOT_TripwireCheck("post M3rGeom_Frame_Start / pre Display");
+			if (rg_log) UUrStartupMessage("[RG1] pre ONrGameState_Display");
 				ONrGameState_Display();
+			if (rg_log) UUrStartupMessage("[RG1] pre WMrDisplay");
 				WMrDisplay();
+			if (rg_log) UUrStartupMessage("[RG1] pre M3rGeom_Frame_End");
 			M3rGeom_Frame_End();
+			if (rg_log) UUrStartupMessage("[RG1] post Draw block");
 		}
 
 		time_frame_end = UUrMachineTime_High();
@@ -605,6 +644,16 @@ ONiRunGame(
 					ONrLevel_Load(ONgGameState->levelNumber, UUcTrue);
 				}
 				break;
+		}
+
+		{
+			if (rg_loop_iter < 5) {
+				UUrStartupMessage("[RG] iter %u done numFrames=%u gameTime=%u",
+					(unsigned)rg_loop_iter,
+					(unsigned)ONgNumFrames,
+					(unsigned)(ONgGameState ? ONgGameState->gameTime : 0));
+			}
+			rg_loop_iter++;
 		}
 	}
 	UUrMemory_Block_VerifyList();

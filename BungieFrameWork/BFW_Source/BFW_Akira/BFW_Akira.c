@@ -1248,8 +1248,15 @@ UUtBool AKrEnvironment_IsBoundingBoxMinMaxVisible(
 	// if you change this function make sure to also change
 	// AKrEnvironment_IsBoundingBoxMinMaxVisible_WithNodeIndex() below!!!
 	UUtBool visible;
-	AKtEnvironment_Private *environment_private= TMrTemplate_PrivateData_GetDataPtr(AKgTemplate_PrivateData, AKgEnvironment);
+	AKtEnvironment_Private *environment_private;
 	M3tBoundingBox_MinMax box;
+	static UUtUns32 bbv_call_count = 0;
+	UUtBool bbv_log = (bbv_call_count == 0);
+	bbv_call_count++;
+	if (bbv_log) UUrStartupMessage("[BBV] entry AKgEnvironment=%p", (void*)AKgEnvironment);
+	if (bbv_log) UUrStartupMessage("[BBV] pre GetDataPtr AKgTemplate_PrivateData=%p", (void*)AKgTemplate_PrivateData);
+	environment_private = TMrTemplate_PrivateData_GetDataPtr(AKgTemplate_PrivateData, AKgEnvironment);
+	if (bbv_log) UUrStartupMessage("[BBV] env_private=%p", (void*)environment_private);
 
 #if PERFORMANCE_TIMER
 	UUrPerformanceTimer_Enter(AKg_BBox_Visible_Timer);
@@ -1262,10 +1269,29 @@ UUtBool AKrEnvironment_IsBoundingBoxMinMaxVisible(
 	box.maxPoint.y= AKcMaxHalfOTDim;
 	box.maxPoint.z= AKcMaxHalfOTDim;
 
+	if (bbv_log) UUrStartupMessage("[BBV] pre octTree deref octTree=%p", (void*)(AKgEnvironment ? AKgEnvironment->octTree : NULL));
+	if (bbv_log && AKgEnvironment && AKgEnvironment->octTree) {
+		UUtUns8* p = (UUtUns8*)AKgEnvironment->octTree;
+		UUrStartupMessage("[BBV] octTree bytes 0-15: %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
+			p[0],p[1],p[2],p[3], p[4],p[5],p[6],p[7], p[8],p[9],p[10],p[11], p[12],p[13],p[14],p[15]);
+		UUrStartupMessage("[BBV] octTree bytes 16-31: %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
+			p[16],p[17],p[18],p[19], p[20],p[21],p[22],p[23], p[24],p[25],p[26],p[27], p[28],p[29],p[30],p[31]);
+		UUrStartupMessage("[BBV] octTree bytes 32-47: %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
+			p[32],p[33],p[34],p[35], p[36],p[37],p[38],p[39], p[40],p[41],p[42],p[43], p[44],p[45],p[46],p[47]);
+		UUrStartupMessage("[BBV] sizeof(AKtOctTree)=%zu", sizeof(AKtOctTree));
+		/* Also peek 8 bytes behind the dataPtr — that's the preamble. */
+		UUrStartupMessage("[BBV] preamble bytes -8..-1: %02x%02x%02x%02x %02x%02x%02x%02x",
+			p[-8],p[-7],p[-6],p[-5], p[-4],p[-3],p[-2],p[-1]);
+	}
+	if (bbv_log && AKgEnvironment && AKgEnvironment->octTree) UUrStartupMessage("[BBV] interiorNodeArray=%p", (void*)AKgEnvironment->octTree->interiorNodeArray);
+	if (bbv_log) UUrStartupMessage("[BBV] ot2LeafNodeVisibility=%p", (void*)(environment_private ? environment_private->ot2LeafNodeVisibility : NULL));
+
+	if (bbv_log) UUrStartupMessage("[BBV] pre Recursive");
 	visible= AKrEnvironment_IsBoundingBoxMinMaxVisible_Recursive(
 			AKgEnvironment->octTree->interiorNodeArray->nodes,
 			environment_private->ot2LeafNodeVisibility,
 			bounding_box, &box, 0, NULL);
+	if (bbv_log) UUrStartupMessage("[BBV] post Recursive vis=%u", (unsigned)visible);
 
 #if PERFORMANCE_TIMER
 	UUrPerformanceTimer_Exit(AKg_BBox_Visible_Timer);

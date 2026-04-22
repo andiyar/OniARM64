@@ -27,6 +27,37 @@
 
 UUtBool TMgTimeLevelLoad = UUcFalse;
 
+/* Tripwire: set in PrepareForMemory when AKOT is prepared; polled by
+ * TMrAKOT_TripwireCheck() from various call sites to find when the AKOT
+ * memory gets overwritten by stray writes. */
+UUtUns8* gAKOT_tripwire_ptr = NULL;
+UUtUns64 gAKOT_tripwire_expected = 0;
+
+void TMrAKOT_TripwireCheck(const char* where)
+{
+	static UUtUns32 tw_call_count = 0;
+	if (gAKOT_tripwire_ptr == NULL) return;
+	UUtUns64 now;
+	memcpy(&now, gAKOT_tripwire_ptr, 8);
+	/* Log every call for the first ~80 calls so we can see progression. */
+	if (tw_call_count < 80) {
+		UUrStartupMessage("[Tripwire] %s: val=0x%016llx %s",
+			where,
+			(unsigned long long)now,
+			(now == gAKOT_tripwire_expected) ? "OK" : "CORRUPT");
+		tw_call_count++;
+	}
+	if (now != gAKOT_tripwire_expected) {
+		UUrStartupMessage("[Tripwire] AKOT CORRUPTED at %s: expected=0x%016llx now=0x%016llx",
+			where,
+			(unsigned long long)gAKOT_tripwire_expected,
+			(unsigned long long)now);
+		/* Stop reporting further — we found it. Clear the pointer so
+		 * subsequent checks are quiet. */
+		gAKOT_tripwire_ptr = NULL;
+	}
+}
+
 
 /*
  * =========================================================================
@@ -2380,8 +2411,38 @@ TMiGame_InstanceFile_PrepareForMemory(
 
 			/* Descriptor offsets include the 8-byte preamble, so point the
 			   walker at (dataPtr - TMcPreDataSize) to line up. */
+			if (curDesc->templatePtr->tag == UUm4CharToUns32('A','K','O','T') ||
+				curDesc->templatePtr->tag == UUm4CharToUns32('A','K','E','V')) {
+				UUrStartupMessage("[PrepPtr] %c%c%c%c idx=%u dataPtr=%p lyt=%p lyt->num_fields=%u lyt->dst_size=%u",
+					(curDesc->templatePtr->tag >> 24) & 0xFF,
+					(curDesc->templatePtr->tag >> 16) & 0xFF,
+					(curDesc->templatePtr->tag >> 8) & 0xFF,
+					(curDesc->templatePtr->tag >> 0) & 0xFF,
+					(unsigned)curDescIndex,
+					(void*)curDesc->dataPtr,
+					(void*)lyt,
+					(unsigned)lyt->num_fields,
+					(unsigned)lyt->dst_size);
+			}
 			error = TMrBridge_PreparePointers(
 				lyt, curDesc->dataPtr - TMcPreDataSize, var_count, inInstanceFile);
+			if (curDesc->templatePtr->tag == UUm4CharToUns32('A','K','O','T')) {
+				UUtUns8* p = (UUtUns8*)curDesc->dataPtr;
+				UUrStartupMessage("[PrepPtr] AKOT post-resolve dataPtr=%p bytes0-15: %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
+					(void*)curDesc->dataPtr,
+					p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],
+					p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15]);
+				/* Capture the AKOT dataPtr and its first 8 bytes for tripwire checks. */
+				{
+					extern UUtUns8* gAKOT_tripwire_ptr;
+					extern UUtUns64 gAKOT_tripwire_expected;
+					UUtUns64 v;
+					memcpy(&v, p, 8);
+					gAKOT_tripwire_ptr = p;
+					gAKOT_tripwire_expected = v;
+					UUrStartupMessage("[Tripwire] captured AKOT at %p expected=0x%016llx", (void*)p, (unsigned long long)v);
+				}
+			}
 			if (error != UUcError_None) {
 				UUrStartupMessage("[bridge-prepare] FAILED on idx=%u template=%c%c%c%c var_count=%u dst_size=%u size=%u",
 					(unsigned)curDescIndex,
