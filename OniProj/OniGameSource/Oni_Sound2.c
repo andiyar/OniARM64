@@ -822,6 +822,9 @@ OSrAmbient_BuildHashTable(
 
 	// add the ambient sounds to the table
 	num_ambients = SSrAmbient_GetNumAmbientSounds();
+	UUrStartupMessage("[SS2] OSrAmbient_BuildHashTable num_ambients=%u", num_ambients);
+	UUtUns32 added = 0;
+	UUtUns32 first_few_logged = 0;
 	for (i = 0; i < num_ambients; i++)
 	{
 		SStAmbient				*ambient;
@@ -834,7 +837,16 @@ OSrAmbient_BuildHashTable(
 		hash_elem.u.ambient = ambient;
 
 		AUrHashTable_Add(OSgAmbientTable, &hash_elem);
+		added++;
+		if (first_few_logged < 5) {
+			UUrStartupMessage("[SS2]   ambient[%u] name='%s' ptr=%p", i, ambient->ambient_name, (void*)ambient);
+			first_few_logged++;
+		}
+		if (UUmString_IsEqual(ambient->ambient_name, "main_menu_win")) {
+			UUrStartupMessage("[SS2]   ** FOUND main_menu_win at idx=%u ptr=%p", i, (void*)ambient);
+		}
 	}
+	UUrStartupMessage("[SS2] OSrAmbient_BuildHashTable done added=%u", added);
 
 	return UUcError_None;
 }
@@ -1188,6 +1200,8 @@ OSrAmbient_Start(
 	float						min_volume_distance;
 
 	OStPlayingAmbient			*playing_ambient;
+
+	UUrStartupMessage("[SS2] OSrAmbient_Start name='%s' pos=%p scriptOnly=%d", inAmbient ? inAmbient->ambient_name : "(null)", (void*)inPosition, OSgScriptOnly);
 
 	// set the min and max volume distances
 	if (inMaxVolDistance == NULL)
@@ -3133,9 +3147,12 @@ OSrMusic_Start(
 	SStAmbient				*ambient;
 	float					volume;
 
+	UUrStartupMessage("[SS2] OSrMusic_Start name='%s' vol=%.2f", inMusicName ? inMusicName : "(null)", inVolume);
+
 	if ((inMusicName == NULL) /*|| (OSgMusic_PlayID != SScInvalidID)*/) { return; }
 
 	ambient = OSrAmbient_GetByName(inMusicName);
+	UUrStartupMessage("[SS2] OSrMusic_Start ambient_lookup '%s' -> %p", inMusicName, (void*)ambient);
 	if (ambient == NULL) { return; }
 
 	// music is always highest priority

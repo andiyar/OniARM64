@@ -53,14 +53,18 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Triggers / trigger volumes fire (→ `OT_Trigger`, `OT_TriggerVolume` callback truncation sweep)
 - [ ] AI state machines run (→ `Oni_AI2*.c`, `OT_Combat.c` callback truncation sweep — probably unblocks bone-horror too)
 - [ ] Character animation: bone transforms correct, no levitation / stretched joints
-- [ ] **Audio actually plays** — `SSiSoundChannels_Initialize` runs without crashing since the session-2 fix, but we have never heard a sound. Music, footsteps, ambience, UI clicks: all silent so far. Unknown whether it's a routing / output-device / format bug, or just never being triggered because the event system doesn't fire (see callback-truncation sweep).
+- [ ] **Audio actually plays** — OpenAL init is clean (device/context/32 channels). Session 11 traced the silence end-to-end: `SSrAmbient_GetNumAmbientSounds() == 0`, so `OSrAmbient_BuildHashTable` adds zero entries, so `OSrAmbient_GetByName` always returns NULL, so `OSrMusic_Start("main_menu_win")` short-circuits silently. Bug is in the ambient-template registration path (TM bridge), NOT the platform port. Same class as the `triNormalArray` character-geometry lookup.
 - [ ] HiDPI window mapping: 640×480 render in the bottom-left of 2K display is a Retina backing-scale mismatch
 - [ ] `.app` bundle + code signing
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
 ## Rolling timeline (newest first)
 
-### 2026-04-24 — Session 11: FNtW crash characterised, audio scoped
+### 2026-04-24 — Session 11: FNtW crash characterised, audio root-caused
+
+- Audio root cause identified and it is NOT an OpenAL / streaming / threading issue. Added breadcrumbs at every audio layer (platform → SS2 → OS layer → hash builder) and confirmed: the `SSrAmbient` template registry is completely empty (`SSrAmbient_GetNumAmbientSounds()` returns 0). `OSrAmbient_BuildHashTable` therefore adds zero entries. All subsequent lookups (`OSrAmbient_GetByName("main_menu_win")`) return NULL, so `OSrMusic_Start` and every other music/ambient/dialog call short-circuits silently. No sound can ever play by design. This is the same class of bug as character-geometry `triNormalArray` failing — a template-manager enumeration / registration path that isn't populating ambient templates on 64-bit. The OpenAL port itself is fine; the bug is at the template-registration layer. Scope revision: audio work is a TM-bridge investigation, not a platform port.
+- Clarified that the earlier "3D engine startup complete → running game..." trajectory some nohup launches took was NOT user input — nobody clicked New Game. Still an unexplained auto-transition; parking for later as a likely port-exposed `ONgGameState->victory` garbage-read issue (triggers the win-splash path, which calls `ONrLevel_Load(next_level)`). Separate bug from the audio finding.
+
 - FNtW crash root-cause narrowed. User drove gameplay; `startup.txt` captured 2,916 clean `MSrTransform_Geom_FaceNormalToWorld` calls (env geoms, `numVec` 54–353) then one bogus call on a later geom with `numVec=1063779958`. That decimal value is the IEEE-754 bit pattern for ≈0.886f — we're reading a float out of a `UUtUns32` slot. Not an overshoot; it's a struct-offset / TM-bridge miss on character geometry's `triNormalArray`. Environment geoms bridge correctly; the character-geometry path (probably `TRtBody`-nested `M3tVector3DArray*`) is missing its 32→64 widening step. Next step: widen the breadcrumb with a 16-byte hex dump around `triNormalArray` to identify which struct we're actually pointing at.
 - `SIGSEGV handler verified end-to-end`. Induced SIGSEGV on a running playable process; handler fired, SDL tore down cleanly, zero UE-state zombies remained. No more daily reboots confirmed.
 - `[obs commit pending]` per-call breadcrumb at `MSrTransform_Geom_FaceNormalToWorld` entry — logs `inGeom / triNormArr / vectors / numVec / block8 / outPtr` uncapped. This commit is the obs: landing; diagnostic stays in until the character-geometry bridge is fixed.

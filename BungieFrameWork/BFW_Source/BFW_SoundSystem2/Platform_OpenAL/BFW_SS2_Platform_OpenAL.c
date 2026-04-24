@@ -142,9 +142,32 @@ void
 SS2rPlatform_SoundChannel_Play(
 	SStSoundChannel				*inSoundChannel)
 {
+	ALint pre_state = -1, attached_buffer = -1, buffer_size = -1, buffer_freq = -1, buffer_bits = -1, buffer_chans = -1;
+	ALfloat src_gain = -1, src_pitch = -1;
+	alGetSourcei(inSoundChannel->pd.source, AL_SOURCE_STATE, &pre_state);
+	alGetSourcei(inSoundChannel->pd.source, AL_BUFFER, &attached_buffer);
+	alGetSourcef(inSoundChannel->pd.source, AL_GAIN, &src_gain);
+	alGetSourcef(inSoundChannel->pd.source, AL_PITCH, &src_pitch);
+	if (attached_buffer > 0) {
+		alGetBufferi(attached_buffer, AL_SIZE, &buffer_size);
+		alGetBufferi(attached_buffer, AL_FREQUENCY, &buffer_freq);
+		alGetBufferi(attached_buffer, AL_BITS, &buffer_bits);
+		alGetBufferi(attached_buffer, AL_CHANNELS, &buffer_chans);
+	}
+	UUrStartupMessage(
+		"[SS2/OAL] Play src=%u buf=%d preState=%d looping=%d gain=%.2f pitch=%.2f bufSize=%d freq=%d bits=%d chans=%d",
+		inSoundChannel->pd.source, attached_buffer, pre_state,
+		SSiSoundChannel_IsLooping(inSoundChannel) == UUcTrue ? 1 : 0,
+		src_gain, src_pitch,
+		buffer_size, buffer_freq, buffer_bits, buffer_chans);
+
 	alSourcei(inSoundChannel->pd.source, AL_LOOPING, SSiSoundChannel_IsLooping(inSoundChannel) == UUcTrue ? AL_TRUE : AL_FALSE);
 	alSourcePlay(inSoundChannel->pd.source);
 	CHECK_AL_ERROR();
+
+	ALint post_state = -1;
+	alGetSourcei(inSoundChannel->pd.source, AL_SOURCE_STATE, &post_state);
+	UUrStartupMessage("[SS2/OAL] Play post src=%u state=%d (AL_PLAYING=%d)", inSoundChannel->pd.source, post_state, AL_PLAYING);
 
 	SSiSoundChannel_SetPlaying(inSoundChannel, UUcTrue);
 }
@@ -333,6 +356,12 @@ SS2rPlatform_SoundChannel_SetSoundData(
 	size_t samples = 0;
 	UUtBool success = SS2r_DecompressMSADPCM(inSoundChannel, inSoundData, decoded, &samples);
 
+	UUrStartupMessage(
+		"[SS2/OAL] SetSoundData src=%u flags=0x%x format=0x%x rawBytes=%u decoded=%p samples=%zu decompress=%s",
+		inSoundChannel->pd.source, inSoundChannel->flags, format,
+		inSoundData->num_bytes, (void*)decoded, samples,
+		success ? "OK" : "FAIL");
+
 	if (success)
 	{
 		alSourcei(inSoundChannel->pd.source, AL_BUFFER, 0);
@@ -479,6 +508,11 @@ SS2rPlatform_Initialize(
 	alcMakeContextCurrent(SSgContext);
 	CHECK_AL_ERROR();
 
+	UUrStartupMessage(
+		"[SS2/OAL] Init OK: device=%p context=%p numChannels=%u (numMono=%d numStereo=%d)",
+		(void*)SSgDevice, (void*)SSgContext,
+		*outNumChannels, numMono, numStereo);
+
 	return UUcError_None;
 }
 
@@ -486,6 +520,8 @@ UUtError
 SS2rPlatform_InitializeThread(
 	void)
 {
+	UUrStartupMessage("[SS2/OAL] InitializeThread called (no-op returning UUcError_None)");
+	return UUcError_None;
 }
 
 // ----------------------------------------------------------------------

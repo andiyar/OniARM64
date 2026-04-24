@@ -5342,6 +5342,8 @@ SSrAmbient_Start(
 
 	UUmAssert(inAmbient);
 
+	UUrStartupMessage("[SS2] SSrAmbient_Start name='%s' usable=%d pos=%p", inAmbient->ambient_name, SSgUsable, (void*)inPosition);
+
 	if (SSgUsable == UUcFalse) { return SScInvalidID; }
 
 	SSrWaitGuard(SSgGuardAll);
