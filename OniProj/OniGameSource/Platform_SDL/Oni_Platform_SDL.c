@@ -11,6 +11,9 @@
 
 #include "Oni_Platform.h"
 
+#include <signal.h>
+#include <unistd.h>
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_keyboard.h>
 #include <SDL2/SDL_mouse.h>
@@ -61,10 +64,50 @@ ONiPlatform_CreateWindow(
 
 
 // ----------------------------------------------------------------------
+// Crash handler: on SIGSEGV/SIGBUS/SIGFPE/SIGILL/SIGABRT, call SDL_Quit
+// so GPU/IOKit/audio handles are released in the normal teardown order.
+// Without this, macOS pins the crashed process in kernel state `UE`
+// (uninterruptible sleep, exited) indefinitely — an unkillable zombie
+// that only a reboot clears, and which accumulates 1-per-crash during
+// debug iteration. After cleanup we re-raise with SIG_DFL so a crash
+// report still lands in ~/Library/Logs/DiagnosticReports for lldb.
+//
+// Signal handlers aren't strictly async-signal-safe for SDL_Quit, but
+// in practice the common "game-logic bad pointer" SIGSEGV lets us run
+// SDL_Quit just fine. Worst case the handler itself crashes — which is
+// no worse than the current "become permanent zombie" outcome.
+static void
+ONiCrashSignalHandler(int sig)
+{
+	static volatile sig_atomic_t s_entered = 0;
+	if (s_entered) {
+		_exit(128 + sig);
+	}
+	s_entered = 1;
+
+	SDL_Quit();
+
+	signal(sig, SIG_DFL);
+	raise(sig);
+}
+
+static void
+ONiInstallCrashHandlers(void)
+{
+	signal(SIGSEGV, ONiCrashSignalHandler);
+	signal(SIGBUS,  ONiCrashSignalHandler);
+	signal(SIGFPE,  ONiCrashSignalHandler);
+	signal(SIGILL,  ONiCrashSignalHandler);
+	signal(SIGABRT, ONiCrashSignalHandler);
+}
+
+// ----------------------------------------------------------------------
 UUtError ONrPlatform_Initialize(
 	ONtPlatformData			*outPlatformData)
 {
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER);
+
+	ONiInstallCrashHandlers();
 
 	ONiPlatform_CreateWindow(outPlatformData);
 
