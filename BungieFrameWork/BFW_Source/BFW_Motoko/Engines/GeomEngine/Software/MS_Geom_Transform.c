@@ -673,6 +673,19 @@ MSrTransform_Geom_FaceNormalToWorld(
 	   to 7 slots, straight off a heap-allocation page boundary on 64-bit. */
 	block8 = numVectors >> 3;
 
+	/* breadcrumb: per-call state for chasing the FaceNormalToWorld crash.
+	   Every call logged, uncapped. startup.txt fflushes each line so the
+	   last one written is the one that crashed. Remove when the remnant
+	   is located. */
+	UUrStartupMessage(
+		"[FNtW] inGeom=%p triNormArr=%p vectors=%p numVec=%u block8=%u outPtr=%p",
+		(void*)inGeometry,
+		(void*)inGeometry->triNormalArray,
+		(void*)inGeometry->triNormalArray->vectors,
+		numVectors,
+		block8,
+		(void*)outResultWorldTriNormals);
+
 	for(i = block8; i-- > 0;)
 	{
 		UUrProcessor_ZeroCacheLine((char*)curWorldVertexNormal, 0);
