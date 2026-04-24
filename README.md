@@ -2,18 +2,61 @@
 
 Native ARM64 / Apple Silicon port of Oni (Bungie, 2001).
 
-## Status
+## Status (2026-04-24)
 
-Work in progress. The binary compiles and runs as native ARM64 on macOS.
+Gameplay rendering is live. Player spawns into level 1 (warehouse),
+first-person camera renders, HUD draws, walking / mouselook / stairs /
+door-clipping all work. Character animation is visibly broken
+("bone horror" — joints stretched, character levitates). Crashes still
+hit the per-frame draw path on some geometries after several seconds of
+play — next target.
 
-As of the latest commit:
+Most fixes chase 32→64 bit arithmetic that was correct on Bungie's
+original 32-bit target but breaks now. Common patterns:
+- Unsigned-index underflow that used to wrap mod 2³² to benign heap
+  padding, now goes ~48 GB into unmapped space.
+- Encoded indices (top-bit flags) dereferenced without masking.
+- Ceiling-divide loops without a paired remainder-loop that worked
+  because the extra reads fell in 32-bit heap slack.
+- `UUtUns32` callback userdata that silently truncates passed-in
+  pointers — any heap address above 4 GB (i.e. all of them on Apple
+  Silicon) loses its upper bits.
 
-- Full init pipeline runs through every subsystem — Template Manager, Sound System 2, Motoko 3D, Physics, Animation, Environment, Text, AI 2, Window Manager, Scripting, Cinematics.
-- Main menu renders and accepts input (SDL2 / OpenAL / OpenGL path).
-- **New Game → Start** loads the first level (`warehouse`), runs its init script (`warehouse_main.bsl`) to completion, and clears the splash screen.
-- Crashes inside the main game loop (`ONiRunGame`) before any gameplay frame renders. Investigation in progress.
+## Milestones
 
-Most fixes so far chase a single class of bug: the original codebase assumes 32-bit pointers, and the modern 64-bit ABI surfaces every `UUtUns32`-holding-a-pointer site as a truncation crash.
+- [x] Build as ARM64 binary
+- [x] All subsystem init runs end-to-end
+- [x] `loading level 0…` reaches the template-manager bridge
+- [x] Main menu renders
+- [x] `New Game` → level 1 load completes, splash clears
+- [x] First gameplay frame on screen (warehouse, textures, HUD, player)
+- [x] Multi-frame rendering without AKOT corruption
+- [x] Movement (WASD / mouselook) doesn't instantly SIGSEGV
+- [x] Crash-handler prevents UE-zombie processes after SIGSEGV (no more daily reboots)
+- [ ] Character animation: bone transforms correct, no levitation / stretched joints
+- [ ] Remaining per-frame draw-path crashes (whatever surfaces after decal / BSP / block8 fixes)
+- [ ] HiDPI window mapping: 640×480 render in the bottom-left of 2K display is a Retina backing-scale mismatch
+- [ ] Sweep the known `UUtUns32 inUserData` callback-truncation backlog (OT_Trigger / OT_Door / OT_Combat / Oni_AI2 / Oni_Character)
+- [ ] `.app` bundle + code signing
+- [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
+
+## Rolling timeline (newest first)
+
+### 2026-04-24 — Session 10: gameplay-drivable
+- `e8c85d7` SIGSEGV/SIGBUS/SIGFPE/SIGILL/SIGABRT handler calls `SDL_Quit()` then re-raises. Stops new crashes from creating unkillable `UE`-state zombie processes (macOS kernel pins the process on driver teardown otherwise). Existing zombies still need one reboot to clear.
+- `64e0e68` `MS_Geom_Transform.c`: `block8 = (numX + 7) >> 3` (ceiling) made the main loop overshoot vertex / normal arrays by up to 7 slots while the remainder loop never ran. Switched to floor.
+- `de9fdcf` `BFW_Akira.c` `ARiPointInBSP`: `inPlaneEquArray[curNode->planeEquIndex]` dereferenced the raw encoded index without `AKmPlaneEqu_GetIndex()` masking. On 64-bit `base + 0x80000000 × 16` doesn't wrap, so it indexed 32 GB off into unmapped space.
+- `816314b` `BFW_Decal.c` `P3iDecal_ClipToPlane`: empty input buffer caused `num_points - 1` to underflow an unsigned 32-bit to `0xFFFFFFFF`. Multiplied by `sizeof(M3tPoint3D) = 12`, this yields a ~48 GB forward offset that no longer wraps. Added a zero-check at function entry.
+- User result: walked around, mouselooked, clipped through doors, went up stairs. Crash moved further into `MSrTransform_Geom_FaceNormalToWorld` on a later character geometry — floor-div fix didn't cover every overshoot path.
+
+### 2026-04-24 — Session 9: first gameplay frame
+- `103496b` env-clipper over-allocates `gqVertexData.textureCoords`. The software env clipper was writing clip-vertex UVs past the exact-sized env buffer; on ARM64 the overflow landed on `AKtOctTree->interiorNodeArray` and corrupted it. Scratch copy sized `numTextureCoords + M3cExtraCoords` fixes it.
+- `3e00c86` narrowing tripwires that located the stomp site.
+- `ONI_AUTOSTART=1` env-var path in `Oni_Windows2.c` to skip the main menu while the HiDPI mouse bug makes clicks non-deterministic.
+- First gameplay frame on screen — level loads, warehouse textures render, HUD and player visible.
+
+### 2026-04-22 → earlier (sessions 1–8)
+Template-manager 64-bit bridge, 32→64 struct layout bridging at level-load, `tm_raw` pointer resolution in `BFW_Totoro.c`, SIGBUS walks in instance-descriptor traversal, camera / AKOT corruption bisection, OpenAL channel-count init, memory allocator pointer-width fixes. See `docs/handoff-2026-04-*.md` for session-by-session narrative.
 
 ## Requirements
 
@@ -35,10 +78,13 @@ Binary lands at `build/bin/Oni`. Copy it into a directory that contains (or syml
 ```sh
 cp build/bin/Oni /path/to/oni-data/
 cd /path/to/oni-data
-./Oni
+SDL_VIDEO_ALLOW_SCREENSAVER=1 ONI_AUTOSTART=1 ./Oni
 ```
 
-Crash-report-less debugging: macOS doesn't emit `.ips` reports for the ad-hoc-signed binary under the sandbox, so `lldb ./Oni` is the usual way to get a backtrace. Sparse observability breadcrumbs are compiled in and write to `startup.txt` in the run directory.
+- `SDL_VIDEO_ALLOW_SCREENSAVER=1` — belt-and-braces against leaked display-sleep assertions.
+- `ONI_AUTOSTART=1` — skips the main menu and jumps straight to level 1. Deterministic repro while the HiDPI mouse-click bug is outstanding.
+
+Sparse observability breadcrumbs are compiled in and write to `startup.txt` in the run directory. Crash reports land in `~/Library/Logs/DiagnosticReports/Oni-*.ips`.
 
 ## Scope
 
