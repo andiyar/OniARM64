@@ -5,11 +5,26 @@ Native ARM64 / Apple Silicon port of Oni (Bungie, 2001).
 ## Status (2026-04-24)
 
 Gameplay rendering is live. Player spawns into level 1 (warehouse),
-first-person camera renders, HUD draws, walking / mouselook / stairs /
-door-clipping all work. Character animation is visibly broken
-("bone horror" — joints stretched, character levitates). Crashes still
-hit the per-frame draw path on some geometries after several seconds of
-play — next target.
+first-person camera renders, HUD draws, walking / mouselook / stairs
+all work.
+
+Interactive systems are **not** live though — the player walks through
+doors instead of opening them, which means the object / trigger system
+isn't firing. Strong suspicion: the `UUtUns32 inUserData` truncation
+backlog (`OT_Door.c`, `OT_Trigger.c`, `OT_TriggerVolume.c`, `OT_Combat.c`,
+`Oni_AI2*.c`, `Oni_Character.c`). Every heap address on Apple Silicon is
+above 4 GB, so those callbacks receive garbage the first time they fire,
+and the affected subsystems silently never register or never hit their
+branches — no door collide, no trigger volume, no AI state transitions.
+
+Character animation is also visibly broken ("bone horror" — joints
+stretched, character levitates). Likely connected to the same class —
+AI state-machine callbacks almost certainly drive animation-state
+selection.
+
+Crashes still hit the per-frame draw path on some geometries after
+several seconds of play (`MSrTransform_Geom_FaceNormalToWorld` remnant
+after today's floor-div fix) — also being chased.
 
 Most fixes chase 32→64 bit arithmetic that was correct on Bungie's
 original 32-bit target but breaks now. Common patterns:
@@ -33,10 +48,12 @@ original 32-bit target but breaks now. Common patterns:
 - [x] Multi-frame rendering without AKOT corruption
 - [x] Movement (WASD / mouselook) doesn't instantly SIGSEGV
 - [x] Crash-handler prevents UE-zombie processes after SIGSEGV (no more daily reboots)
-- [ ] Character animation: bone transforms correct, no levitation / stretched joints
 - [ ] Remaining per-frame draw-path crashes (whatever surfaces after decal / BSP / block8 fixes)
+- [ ] Doors open instead of clipped-through (→ `OT_Door` callback truncation sweep)
+- [ ] Triggers / trigger volumes fire (→ `OT_Trigger`, `OT_TriggerVolume` callback truncation sweep)
+- [ ] AI state machines run (→ `Oni_AI2*.c`, `OT_Combat.c` callback truncation sweep — probably unblocks bone-horror too)
+- [ ] Character animation: bone transforms correct, no levitation / stretched joints
 - [ ] HiDPI window mapping: 640×480 render in the bottom-left of 2K display is a Retina backing-scale mismatch
-- [ ] Sweep the known `UUtUns32 inUserData` callback-truncation backlog (OT_Trigger / OT_Door / OT_Combat / Oni_AI2 / Oni_Character)
 - [ ] `.app` bundle + code signing
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
@@ -47,7 +64,7 @@ original 32-bit target but breaks now. Common patterns:
 - `64e0e68` `MS_Geom_Transform.c`: `block8 = (numX + 7) >> 3` (ceiling) made the main loop overshoot vertex / normal arrays by up to 7 slots while the remainder loop never ran. Switched to floor.
 - `de9fdcf` `BFW_Akira.c` `ARiPointInBSP`: `inPlaneEquArray[curNode->planeEquIndex]` dereferenced the raw encoded index without `AKmPlaneEqu_GetIndex()` masking. On 64-bit `base + 0x80000000 × 16` doesn't wrap, so it indexed 32 GB off into unmapped space.
 - `816314b` `BFW_Decal.c` `P3iDecal_ClipToPlane`: empty input buffer caused `num_points - 1` to underflow an unsigned 32-bit to `0xFFFFFFFF`. Multiplied by `sizeof(M3tPoint3D) = 12`, this yields a ~48 GB forward offset that no longer wraps. Added a zero-check at function entry.
-- User result: walked around, mouselooked, clipped through doors, went up stairs. Crash moved further into `MSrTransform_Geom_FaceNormalToWorld` on a later character geometry — floor-div fix didn't cover every overshoot path.
+- User result: walked around, mouselooked, went up stairs. Walks *through* doors rather than opening them — interactive object / trigger system isn't firing. Strong candidate: the `UUtUns32 inUserData` callback-truncation class (`OT_Door`, `OT_Trigger`, `OT_TriggerVolume`, `Oni_AI2*`, `OT_Combat`). Crash moved further into `MSrTransform_Geom_FaceNormalToWorld` on a later character geometry — floor-div fix didn't cover every overshoot path.
 
 ### 2026-04-24 — Session 9: first gameplay frame
 - `103496b` env-clipper over-allocates `gqVertexData.textureCoords`. The software env clipper was writing clip-vertex UVs past the exact-sized env buffer; on ARM64 the overflow landed on `AKtOctTree->interiorNodeArray` and corrupted it. Scratch copy sized `numTextureCoords + M3cExtraCoords` fixes it.
