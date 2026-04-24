@@ -532,7 +532,14 @@ MSrTransform_Geom_PointListAndVertexNormalToWorld(
 	m31 = matrix3->m[3][1];
 	m32 = matrix3->m[3][2];
 
-	block8 = (numPoints + 7) >> 3;
+	/* 64-bit port: main loop processes 8 vectors per iteration (always
+	   8-aligned); any leftover count goes through the remainder loop below.
+	   Original code used ceiling here — combined with `numPoints - block8*8`
+	   in the remainder loop going <= 0, it overshot the source array by up
+	   to 7 vectors. On 32-bit Win32 the extra reads/writes landed in heap
+	   slack; on 64-bit macOS the allocation abuts an unmapped page and
+	   SIGSEGVs. Floor matches the remainder-loop contract. */
+	block8 = numPoints >> 3;
 
 	for(i = block8; i-- > 0;)
 	{
@@ -659,7 +666,12 @@ MSrTransform_Geom_FaceNormalToWorld(
 	UUmAssert(((unsigned long)curWorldVertexNormal & UUcProcessor_CacheLineSize_Mask) == 0);
 
 	numVectors = inGeometry->triNormalArray->numVectors;
-	block8 = (numVectors + 7) >> 3;
+	/* 64-bit port: floor, not ceiling — see matching fix in
+	   MSrTransform_Geom_PointListAndVertexNormalToWorld above. Ceiling here
+	   combined with the remainder loop's `numVectors - block8*8 <= 0` check
+	   caused the block8 loop to overshoot `triNormalArray->vectors[]` by up
+	   to 7 slots, straight off a heap-allocation page boundary on 64-bit. */
+	block8 = numVectors >> 3;
 
 	for(i = block8; i-- > 0;)
 	{
