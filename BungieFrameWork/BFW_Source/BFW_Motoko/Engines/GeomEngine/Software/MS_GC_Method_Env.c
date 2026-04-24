@@ -84,6 +84,9 @@ MSrGeomContext_Method_Env_DrawGQList(
 	UUtUns32*	inGQIndices,
 	UUtBool		inTransparentList)
 {
+	{ extern void TMrAKOT_TripwireCheck(const char* where);
+	  char twm[80]; snprintf(twm, sizeof(twm), "MS_DrawGQList entry n=%u t=%d", (unsigned)inNumGQs, (int)inTransparentList);
+	  TMrAKOT_TripwireCheck(twm); }
 	AKtEnvironment_Private*	environmentPrivate = TMrTemplate_PrivateData_GetDataPtr(AKgTemplate_PrivateData, MSgGeomContextPrivate->environment);
 
 	M3tPointScreen*			screenPoints;
@@ -207,6 +210,9 @@ MSrGeomContext_Method_Env_DrawGQList(
 		gqVertexNeededBV,
 		numPoints);
 
+	{ extern void TMrAKOT_TripwireCheck(const char* where);
+	  TMrAKOT_TripwireCheck("MS_DrawGQList pre vertex-mark loop"); }
+
 	// Traverse the bit vector
 	for(gqIndexItr = 0; gqIndexItr < inNumGQs; gqIndexItr++)
 	{
@@ -225,6 +231,9 @@ MSrGeomContext_Method_Env_DrawGQList(
 		//UUmAssert(!(curGQGeneral->flags & AKcGQ_Flag_Transparent));
 	}
 
+	{ extern void TMrAKOT_TripwireCheck(const char* where);
+	  TMrAKOT_TripwireCheck("MS_DrawGQList post vertex-mark loop"); }
+
 	// Transform all the vertices into frustum and screen
 
 	MSgGeomContextPrivate->activeFunctions->transformEnvPointListToFrustumScreenActive(
@@ -233,14 +242,27 @@ MSrGeomContext_Method_Env_DrawGQList(
 		screenPoints,
 		clipCodes);
 
+	{ extern void TMrAKOT_TripwireCheck(const char* where);
+	  TMrAKOT_TripwireCheck("MS_DrawGQList post transformEnv"); }
+
 	M3rDraw_State_SetPtr(
 		M3cDrawStatePtrType_VertexBitVector,
 		gqVertexNeededBV);
 
 	M3rDraw_State_Commit();
 
+	{ extern void TMrAKOT_TripwireCheck(const char* where);
+	  TMrAKOT_TripwireCheck("MS_DrawGQList pre draw-iter loop"); }
+
 	for(gqIndexItr = 0; gqIndexItr < inNumGQs; gqIndexItr++)
 	{
+		/* bisect the draw loop itself — tag iteration count so we can
+		 * see which iter first shows corruption. Self-gated by tripwire
+		 * clearing itself on first detection. */
+		{ extern void TMrAKOT_TripwireCheck(const char* where);
+		  char twi[80]; snprintf(twi, sizeof(twi), "MS_DrawGQList draw-iter %u", (unsigned)gqIndexItr);
+		  TMrAKOT_TripwireCheck(twi); }
+
 		curGQIndex = inGQIndices[gqIndexItr];
 
 		curGQRender = gqRenderArray + curGQIndex;
@@ -321,7 +343,15 @@ MSrGeomContext_Method_Env_DrawGQList(
 			M3cDrawStateIntType_ConstantColor,
 			0xFFFFFFFF);
 
+		{ extern void TMrAKOT_TripwireCheck(const char* where);
+		  char twi[80]; snprintf(twi, sizeof(twi), "MS iter %u pre Commit", (unsigned)gqIndexItr);
+		  TMrAKOT_TripwireCheck(twi); }
+
 		M3rDraw_State_Commit();
+
+		{ extern void TMrAKOT_TripwireCheck(const char* where);
+		  char twi[80]; snprintf(twi, sizeof(twi), "MS iter %u post Commit clipOR=%u", (unsigned)gqIndexItr, (unsigned)clipCodeOR);
+		  TMrAKOT_TripwireCheck(twi); }
 
 		if(clipCodeOR != 0)
 		{
@@ -353,6 +383,10 @@ MSrGeomContext_Method_Env_DrawGQList(
 			tri.vertexIndices.indices[2] = curGQGeneral->m3Quad.vertexIndices.indices[2/*3*/];
 
 
+			{ extern void TMrAKOT_TripwireCheck(const char* where);
+			  char twi[96]; snprintf(twi, sizeof(twi), "MS iter %u pre tri1 cc=%02x%02x%02x%02x", (unsigned)gqIndexItr, clip_code[0], clip_code[1], clip_code[2], clip_code[3]);
+			  TMrAKOT_TripwireCheck(twi); }
+
 			if (clip_code[0/*1*/] & clip_code[1/*2*/] & clip_code[2/*3*/]) {
 			}
 			else if (clip_code[0/*1*/] | clip_code[1/*2*/] | clip_code[2/*3*/]) {
@@ -366,6 +400,10 @@ MSrGeomContext_Method_Env_DrawGQList(
 			else {
 				M3rDraw_Triangle(&tri);
 			}
+
+			{ extern void TMrAKOT_TripwireCheck(const char* where);
+			  char twi[80]; snprintf(twi, sizeof(twi), "MS iter %u post tri1", (unsigned)gqIndexItr);
+			  TMrAKOT_TripwireCheck(twi); }
 
 			MSgGeomContextPrivate->gqVertexData.newClipTextureIndex = numTextureCoords;
 			MSgGeomContextPrivate->gqVertexData.newClipVertexIndex = numPoints;
@@ -382,6 +420,10 @@ MSrGeomContext_Method_Env_DrawGQList(
 			tri.vertexIndices.indices[1] = curGQGeneral->m3Quad.vertexIndices.indices[2/*0*/];
 			tri.vertexIndices.indices[2] = curGQGeneral->m3Quad.vertexIndices.indices[3/*1*/];
 
+			{ extern void TMrAKOT_TripwireCheck(const char* where);
+			  char twi[80]; snprintf(twi, sizeof(twi), "MS iter %u pre tri2", (unsigned)gqIndexItr);
+			  TMrAKOT_TripwireCheck(twi); }
+
 			if (clip_code[0/*3*/] & clip_code[2/*0*/] & clip_code[3/*1*/]) {
 			}
 			else if (clip_code[0/*3*/] | clip_code[2/*0*/] | clip_code[3/*1*/]) {
@@ -395,14 +437,30 @@ MSrGeomContext_Method_Env_DrawGQList(
 			else {
 				M3rDraw_Triangle(&tri);
 			}
+
+			{ extern void TMrAKOT_TripwireCheck(const char* where);
+			  char twi[80]; snprintf(twi, sizeof(twi), "MS iter %u post tri2", (unsigned)gqIndexItr);
+			  TMrAKOT_TripwireCheck(twi); }
 		}
 		else
 		{
+			{ extern void TMrAKOT_TripwireCheck(const char* where);
+			  char twi[80]; snprintf(twi, sizeof(twi), "MS iter %u pre Draw_Quad", (unsigned)gqIndexItr);
+			  TMrAKOT_TripwireCheck(twi); }
 			M3rDraw_Quad(&curGQGeneral->m3Quad);
+			{ extern void TMrAKOT_TripwireCheck(const char* where);
+			  char twi[80]; snprintf(twi, sizeof(twi), "MS iter %u post Draw_Quad", (unsigned)gqIndexItr);
+			  TMrAKOT_TripwireCheck(twi); }
 		}
 	}
 
+	{ extern void TMrAKOT_TripwireCheck(const char* where);
+	  TMrAKOT_TripwireCheck("MS_DrawGQList post draw loop"); }
+
 	M3rDraw_State_Pop();
+
+	{ extern void TMrAKOT_TripwireCheck(const char* where);
+	  TMrAKOT_TripwireCheck("MS_DrawGQList post State_Pop (exit)"); }
 
 	return UUcError_None;
 }
