@@ -53,6 +53,7 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Triggers / trigger volumes fire (→ `OT_Trigger`, `OT_TriggerVolume` callback truncation sweep)
 - [ ] AI state machines run (→ `Oni_AI2*.c`, `OT_Combat.c` callback truncation sweep — probably unblocks bone-horror too)
 - [ ] Character animation: bone transforms correct, no levitation / stretched joints
+- [ ] **Audio actually plays** — `SSiSoundChannels_Initialize` runs without crashing since the session-2 fix, but we have never heard a sound. Music, footsteps, ambience, UI clicks: all silent so far. Unknown whether it's a routing / output-device / format bug, or just never being triggered because the event system doesn't fire (see callback-truncation sweep).
 - [ ] HiDPI window mapping: 640×480 render in the bottom-left of 2K display is a Retina backing-scale mismatch
 - [ ] `.app` bundle + code signing
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
@@ -60,6 +61,7 @@ original 32-bit target but breaks now. Common patterns:
 ## Rolling timeline (newest first)
 
 ### 2026-04-24 — Session 10: gameplay-drivable
+- Flagged audio as untested — OpenAL `SSiSoundChannels_Initialize` has run cleanly since the session-2 channel-count-init fix, but we have never actually heard sound play through many sessions of debugging. No commit for this; added to the milestones so it doesn't keep slipping off the list.
 - Removed inherited `.github/workflows/cmake.yml` — built Windows/MSVC + MinGW-cross-to-Windows targets, both of which are out of scope for this fork. CI was red on every push because our macOS/ARM64 port work is orthogonal to those jobs, generating email spam for no signal. A macOS-ARM64 CI workflow can be written fresh later.
 - `e8c85d7` SIGSEGV/SIGBUS/SIGFPE/SIGILL/SIGABRT handler calls `SDL_Quit()` then re-raises. Stops new crashes from creating unkillable `UE`-state zombie processes (macOS kernel pins the process on driver teardown otherwise). Existing zombies still need one reboot to clear.
 - `64e0e68` `MS_Geom_Transform.c`: `block8 = (numX + 7) >> 3` (ceiling) made the main loop overshoot vertex / normal arrays by up to 7 slots while the remainder loop never ran. Switched to floor.
