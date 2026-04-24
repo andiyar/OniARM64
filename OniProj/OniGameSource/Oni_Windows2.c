@@ -196,6 +196,24 @@ OWrOniWindow_Toggle(
 		WMrActivate();
 		LIrMode_Set(LIcMode_Normal);
 
+		/* Debug autostart: set ONI_AUTOSTART=<levelnum> to skip the main
+		 * menu and jump straight into a level. Used to drive the AKOT
+		 * corruption reproducer deterministically (no phantom-click
+		 * dependency). Strip when the HiDPI mouse coord bug is fixed. */
+		{
+			const char* autostart = getenv("ONI_AUTOSTART");
+			if (autostart && autostart[0] != '\0') {
+				int lvl = atoi(autostart);
+				if (lvl > 0) {
+					UUrStartupMessage("[autostart] ONI_AUTOSTART=%d — skipping main menu", lvl);
+					OWrLevelLoad_StartLevel((UUtUns16)lvl);
+					LIrMode_Set(LIcMode_Game);
+					WMrDeactivate();
+					return;
+				}
+			}
+		}
+
 		ONrOutGameUI_MainMenu_Display();
 
 		LIrMode_Set(LIcMode_Game);

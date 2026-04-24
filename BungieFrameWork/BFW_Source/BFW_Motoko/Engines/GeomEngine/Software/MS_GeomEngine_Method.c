@@ -393,7 +393,37 @@ MSrGeomEngine_Method_ContextSetEnvironment(
 				inEnvironment->pointArray->numPoints + M3cExtraCoords);
 		UUmError_ReturnOnError(error);
 
-		MSgGeomContextPrivate->gqVertexData.textureCoords = inEnvironment->textureCoordArray->textureCoords;
+		/* The software env clipper (MS_GC_Env_Clip.c MSrEnv_Clip_Tri /
+		 * MSrEnv_Clip_Quad) writes new clip-vertex UVs into
+		 * gqVertexData.textureCoords at indices
+		 *   [numTextureCoords .. numTextureCoords + M3cExtraCoords).
+		 * Before this fix gqVertexData.textureCoords aliased
+		 * inEnvironment->textureCoordArray->textureCoords, whose buffer
+		 * on 64-bit is sized exactly numTextureCoords. Those clipper
+		 * writes overran the alias and stomped whatever allocation sat
+		 * next in the heap — on ARM64 that was reliably the first
+		 * 24 bytes of AKtOctTree, taking out gameplay at frame 2. Fix:
+		 * allocate an over-allocated scratch buffer of
+		 * numTextureCoords + M3cExtraCoords slots, copy the env's
+		 * shared coords into it, and point BOTH the clipper (via
+		 * gqVertexData.textureCoords) and the draw engine (see
+		 * MS_GC_Method_Env.c — M3rDraw_State_SetPtr on TextureCoordArray
+		 * now uses gqVertexData.textureCoords) at the local buffer so
+		 * writes and reads stay consistent. Freed in the inEnvironment
+		 * == NULL branch below. */
+		{
+			UUtUns32		numTC = inEnvironment->textureCoordArray->numTextureCoords;
+			M3tTextureCoord	*scratch;
+			if (MSgGeomContextPrivate->gqVertexData.textureCoords != NULL)
+			{
+				UUrMemory_Block_Delete(MSgGeomContextPrivate->gqVertexData.textureCoords);
+				MSgGeomContextPrivate->gqVertexData.textureCoords = NULL;
+			}
+			scratch = UUrMemory_Block_New(sizeof(M3tTextureCoord) * (numTC + M3cExtraCoords));
+			UUmError_ReturnOnNull(scratch);
+			memcpy(scratch, inEnvironment->textureCoordArray->textureCoords, sizeof(M3tTextureCoord) * numTC);
+			MSgGeomContextPrivate->gqVertexData.textureCoords = scratch;
+		}
 		MSgGeomContextPrivate->gqVertexData.worldPoints = inEnvironment->pointArray->points;
 
 		#if UUmSIMD != UUmSIMD_None
@@ -426,6 +456,11 @@ MSrGeomEngine_Method_ContextSetEnvironment(
 
 		MSrTransformedVertexData_Delete(&MSgGeomContextPrivate->gqVertexData);
 
+		/* Free the over-allocated clip-scratch buffer we installed above. */
+		if (MSgGeomContextPrivate->gqVertexData.textureCoords != NULL)
+		{
+			UUrMemory_Block_Delete(MSgGeomContextPrivate->gqVertexData.textureCoords);
+		}
 		MSgGeomContextPrivate->gqVertexData.textureCoords = NULL;
 		MSgGeomContextPrivate->gqVertexData.worldPoints = NULL;
 
