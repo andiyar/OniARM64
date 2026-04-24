@@ -774,7 +774,11 @@ ARiPointInBSP(
 		else
 		{
 			if(0xFFFFFFFF == curNode->negNodeIndex) {
-				if (outRejectingPlane) *outRejectingPlane = inPlaneEquArray[curNode->planeEquIndex];
+				/* 64-bit port: planeEquIndex's top bit encodes plane-negate
+				   (see AKmPlaneEqu_IsNegative); low 31 bits are the real index.
+				   Using the raw value here indexes past the array by 32GB on
+				   64-bit. 32-bit pointer arithmetic wrapped to offset 0. */
+				if (outRejectingPlane) *outRejectingPlane = inPlaneEquArray[AKmPlaneEqu_GetIndex(curNode->planeEquIndex)];
 				if (outRejectionValue) *outRejectionValue = plane_val;
 				return UUcFalse;
 			}
