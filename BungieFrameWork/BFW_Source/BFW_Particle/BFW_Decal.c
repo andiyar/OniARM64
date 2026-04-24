@@ -415,6 +415,15 @@ static UUtUns32 P3iDecal_ClipToPlane(UUtUns8 inClipCode, M3tPoint3D *inPoint0, M
 		return 0;
 	}
 
+	// 64-bit port: if the input buffer is empty, `inBuffer->num_points - 1`
+	// underflows an unsigned 32-bit to 0xFFFFFFFF, which the compiler folds
+	// into umaddl with sizeof(M3tPoint3D)=12 → a ~48GB forward offset off
+	// `inBuffer->points`. On 32-bit the arithmetic wrapped to `points-12`
+	// (benign heap padding); on 64-bit it SIGSEGVs. Early-out on empty input.
+	if (inBuffer->num_points == 0) {
+		return 0;
+	}
+
 	// build the plane equation to clip against
 	MUmVector_Subtract(linevec, *inPoint1, *inPoint0);
 	MUmVector_Subtract(sidevec, *inSidePoint, *inPoint1);
