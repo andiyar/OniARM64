@@ -1678,21 +1678,7 @@ TMiGame_InstanceFile_New_FromFileRef(
 
 			error = BFrFile_Open(separateFileRef, "r", &newInstanceFile->separateFile);
 			if (error != UUcError_None) {
-				/* Shipping Oni data has no .sep companion — the importer's
-				   "separate" blob was concatenated into the .raw file in the
-				   release build, and tm_separate data_index values are valid
-				   offsets into .raw. Open .raw as the separate handle so
-				   BDiBinaryData_ProcHandler / OSiBinaryData_ProcHandler can
-				   BFrFile_ReadPos at data_index. */
-				BFtFileRef *rawFallbackRef;
-				if (TMrUtility_DataRef_To_BinaryRef(inInstanceFileRef, &rawFallbackRef, "raw") == UUcError_None) {
-					if (BFrFile_Open(rawFallbackRef, "r", &newInstanceFile->separateFile) != UUcError_None) {
-						newInstanceFile->separateFile = NULL;
-					}
-					BFrFileRef_Dispose(rawFallbackRef);
-				} else {
-					newInstanceFile->separateFile = NULL;
-				}
+				newInstanceFile->separateFile = NULL;
 			}
 
 			BFrFileRef_Dispose(separateFileRef);

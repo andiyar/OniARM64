@@ -53,23 +53,16 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Triggers / trigger volumes fire (→ `OT_Trigger`, `OT_TriggerVolume` callback truncation sweep)
 - [ ] AI state machines run (→ `Oni_AI2*.c`, `OT_Combat.c` callback truncation sweep — probably unblocks bone-horror too)
 - [ ] Character animation: bone transforms correct, no levitation / stretched joints
-- [x] **Audio data loads** — `OSiAmbient_Load` fires 1005× per level0 load, `OSrAmbient_BuildHashTable num_ambients=1005`. Audible playtest still pending; the load path is unblocked.
+- [ ] **Audio actually plays** — OpenAL init is clean (device/context/32 channels). Session 11 traced the silence end-to-end: `SSrAmbient_GetNumAmbientSounds() == 0`, so `OSrAmbient_BuildHashTable` adds zero entries, so `OSrAmbient_GetByName` always returns NULL, so `OSrMusic_Start("main_menu_win")` short-circuits silently. Bug is in the ambient-template registration path (TM bridge), NOT the platform port. Same class as the `triNormalArray` character-geometry lookup.
 - [ ] HiDPI window mapping: 640×480 render in the bottom-left of 2K display is a Retina backing-scale mismatch
 - [ ] `.app` bundle + code signing
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
 ## Rolling timeline (newest first)
 
-### 2026-04-25 — Session 12: audio data loads — `.sep`/`.raw` shipping-data fix
+### 2026-04-25 — Session 12: BINA dispatch traced
 
-- Audio Bug A root-caused and fixed. The shipped Oni install never had `.sep` companion files (verified across 2,035 files in the CXOni install — `.dat`/`.raw`/`.bik` only). But both proc handlers gating audio data loads (`BDiBinaryData_ProcHandler` for `BINA` → texture materials / impact effects / particles, and `OSiBinaryData_ProcHandler` at `Oni_Sound2.c:4342` for `OSBD` → ambient/group/impulse audio) require `TMrInstance_GetSeparateFile() != NULL`. With no `.sep`, both short-circuited and silently never loaded any data. Verified by reading bytes at the on-disk `data_index` offsets — they land inside `.raw` and have valid `BDtHeader` (class_type `ONIE`, `OBJC`, `PAR3`, `OSAm`, …) followed by `data_size−8` bytes of payload, which means the importer's "separate" blob was concatenated into `.raw` in the release build.
-- Surgical fix in `BFW_TM_Game.c` `TMiGame_InstanceFile_OpenAndLoadHeader`: when `BFrFile_Open(*.sep)` fails, fall back to opening `.raw` as the separate-file handle. `data_index` offsets are valid into `.raw` so `BFrFile_ReadPos(separateFile, data_index, …)` reads the right bytes. Both proc handlers light up.
-- Verified end-to-end: `BDrBinaryLoader` now fires 979× on level0 load (was 0×); `OSiAmbient_Load` fires 1,005× (was 0×); `OSrAmbient_BuildHashTable num_ambients=1005` (was 0). Audible playtest with menu music still pending.
-- Session 11/12 obs commits (`4b22767`, `3dd1ba7`, `2f1e080`) stay in the tree until Ben confirms a clean playtest with audio, then strip in an `obs-out:` commit.
-
-### 2026-04-25 — Session 12 (earlier): BINA dispatch traced
-
-- `2f1e080` Audio investigation step 1. Re-read the dispatch chain end-to-end (`BDrInitialize` → `BDrRegisterClass` → `TMrTemplate_PrivateData_New` → file-load `TMiGame_LoadedInstanceFiles_Add` → `TMiGame_InstanceFile_PrivateData_New` → `PrepareForMemory` → `LoadPostProcess` callback → `BDiBinaryData_ProcHandler` → `BDrBinaryLoader` → `OSiAmbient_Load`). Init ordering is fine — by the time `level0_Final.dat` is loaded, `BDgClassArray`, `OScAmbientDataClass`, and the `BINA` proc handler are all in place. Added narrow breadcrumbs at every hop. Playtest captured `sep=0x0` for every `BDiBinaryData_ProcHandler` call — the breadcrumb that nailed the root cause and unlocked the `.sep`/`.raw` fix above.
+- `2f1e080` Audio investigation continues. Re-read the dispatch chain end-to-end (`BDrInitialize` → `BDrRegisterClass` → `TMrTemplate_PrivateData_New` → file-load `TMiGame_LoadedInstanceFiles_Add` → `TMiGame_InstanceFile_PrivateData_New` → `PrepareForMemory` → `LoadPostProcess` callback → `BDiBinaryData_ProcHandler` → `BDrBinaryLoader` → `OSiAmbient_Load`). Init ordering is fine — by the time `level0_Final.dat` is loaded, `BDgClassArray`, `OScAmbientDataClass`, and the `BINA` proc handler are all in place. `level0_Final.dat` contains 12 `BINA` descriptors (idx 9335..9346, dataPtr non-NULL, lyt non-NULL after bridge translate), but `OSiAmbient_Load` never fires for any of them. Some hop in that chain is silently no-oping on 64-bit. Added narrow breadcrumbs at every hop (`BDrRegisterClass`, `BDiBinaryData_ProcHandler` entry + class_type sniff, `TMiGame_LoadedInstanceFiles_Add` per-tag `ContainsTemplate` result, `TMiGame_LoadedInstanceFiles_PrivateData_Add`, `TMiGame_InstanceFile_Callback` entry with `numPrivateInfos`, `OSiAmbient_Load` entry). Next playtest pinpoints which hop drops, then the fix replaces the obs.
 
 ### 2026-04-24 — Session 11: FNtW crash characterised, audio root-caused
 
