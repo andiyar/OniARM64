@@ -1189,6 +1189,10 @@ TMiGame_InstanceFile_Callback(
 
 	UUmAssertReadPtr(inInstanceFile, sizeof(*inInstanceFile));
 
+	UUrStartupMessage("[TM] InstanceFile_Callback file=%s msg=%d numPrivInfos=%u",
+		(inInstanceFile->fileName[0]) ? inInstanceFile->fileName : "(dynamic)",
+		(int)inMessage, (unsigned)inInstanceFile->numPrivateInfos);
+
 	for(itrPrivateInfo = 0, curPrivateInfo = inInstanceFile->privateInfos;
 		itrPrivateInfo < inInstanceFile->numPrivateInfos;
 		itrPrivateInfo++, curPrivateInfo++)
@@ -2687,11 +2691,19 @@ TMiGame_LoadedInstanceFiles_Add(
 	TMgGame_LoadedInstanceFiles_Num++;
 
 	// loop through all the private datas and see if any applied to this instance file
+	UUrStartupMessage("[TM] LoadedFiles_Add file=%s numPrivData=%u",
+		(newInstanceFile->fileName[0]) ? newInstanceFile->fileName : "(dynamic)",
+		(unsigned)TMgGame_PrivateData_Num);
 	for(itr = 0; itr < TMgGame_PrivateData_Num; itr++)
 	{
-		if(TMiGame_InstanceFile_ContainsTemplate(
+		UUtUns32 t = TMgGame_PrivateData_List[itr].templateTag;
+		UUtBool contains = TMiGame_InstanceFile_ContainsTemplate(
 			newInstanceFile,
-			TMgGame_PrivateData_List[itr].templateTag) == UUcTrue)
+			TMgGame_PrivateData_List[itr].templateTag);
+		UUrStartupMessage("[TM]   tag=%c%c%c%c contains=%d",
+			(t >> 24) & 0xFF, (t >> 16) & 0xFF, (t >> 8) & 0xFF, t & 0xFF,
+			(int)contains);
+		if(contains == UUcTrue)
 		{
 			error =
 				TMiGame_InstanceFile_PrivateData_New(
@@ -2757,16 +2769,28 @@ TMiGame_LoadedInstanceFiles_PrivateData_Add(
 {
 	UUtError	error;
 	UUtUns16	itr;
+	UUtUns32    tag = inPrivateData->templateTag;
 
 	UUmAssertReadPtr(inPrivateData, sizeof(*inPrivateData));
+
+	UUrStartupMessage("[TM] LoadedFiles_PrivateData_Add tag=%c%c%c%c numLoaded=%u",
+		(tag >> 24) & 0xFF, (tag >> 16) & 0xFF, (tag >> 8) & 0xFF, tag & 0xFF,
+		(unsigned)TMgGame_LoadedInstanceFiles_Num);
 
 	// loop through all the loaded files. If a file has some instances of the same template as inPrivateData
 	// then add a private data instance file entry
 	for(itr = 0; itr < TMgGame_LoadedInstanceFiles_Num; itr++)
 	{
-		if(TMiGame_InstanceFile_ContainsTemplate(
+		UUtBool contains = TMiGame_InstanceFile_ContainsTemplate(
 				TMgGame_LoadedInstanceFiles_List[itr],
-				inPrivateData->templateTag) == UUcTrue)
+				inPrivateData->templateTag);
+		UUrStartupMessage("[TM]   file %u/%u name=%s contains_%c%c%c%c=%d",
+			(unsigned)itr, (unsigned)TMgGame_LoadedInstanceFiles_Num,
+			(TMgGame_LoadedInstanceFiles_List[itr]->fileName[0])
+				? TMgGame_LoadedInstanceFiles_List[itr]->fileName : "(dynamic)",
+			(tag >> 24) & 0xFF, (tag >> 16) & 0xFF, (tag >> 8) & 0xFF, tag & 0xFF,
+			(int)contains);
+		if(contains == UUcTrue)
 		{
 			// create and add a TMtPrivateData_InstanceFile
 			error =

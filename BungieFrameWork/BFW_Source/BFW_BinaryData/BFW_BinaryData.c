@@ -56,6 +56,9 @@ BDiBinaryData_ProcHandler(
 			instance_name += 4;
 
 			separate_data_file = TMrInstance_GetSeparateFile(inInstancePtr);
+			UUrStartupMessage("[BD] ProcHandler LoadPost name=%s sep=%p data_size=%u data_index=%u",
+				instance_name, (void*)separate_data_file,
+				(unsigned)binary_data->data_size, (unsigned)binary_data->data_index);
 			if ((separate_data_file != NULL) && (binary_data->data_size > 0)) {
 				// allocate new memory for the binary data
 				binary_storage = UUrMemory_Block_New(binary_data->data_size);
@@ -65,6 +68,13 @@ BDiBinaryData_ProcHandler(
 				error = BFrFile_ReadPos(separate_data_file, binary_data->data_index, binary_data->data_size, binary_storage);
 				UUmError_ReturnOnError(error);
 
+				{
+					BDtData* d = (BDtData*)binary_storage;
+					UUtUns32 ct = d->header.class_type;
+					UUrStartupMessage("[BD] ProcHandler -> BDrBinaryLoader name=%s class_type=%c%c%c%c",
+						instance_name,
+						(ct >> 24) & 0xFF, (ct >> 16) & 0xFF, (ct >> 8) & 0xFF, ct & 0xFF);
+				}
 				// call the binary loader
 				error =
 					BDrBinaryLoader(
@@ -198,6 +208,10 @@ BDrRegisterClass(
 	BDtClass				*class_list;
 	UUtUns32				index;
 	UUtBool					mem_moved;
+
+	UUrStartupMessage("[BD] RegisterClass %c%c%c%c",
+		(inClassType >> 24) & 0xFF, (inClassType >> 16) & 0xFF,
+		(inClassType >> 8) & 0xFF, inClassType & 0xFF);
 
 	UUmAssert(BDgClassArray);
 	UUmAssert(inMethods);

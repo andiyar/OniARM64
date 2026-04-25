@@ -959,6 +959,8 @@ OSiAmbient_Load(
 	UUmAssert(inIdentifier);
 	UUmAssert(ioBinaryData);
 
+	UUrStartupMessage("[OS] OSiAmbient_Load id=%s", inIdentifier);
+
 	// ------------------------------
 	// create a new ambient sound
 	// ------------------------------
