@@ -2,7 +2,16 @@
 
 Native ARM64 / Apple Silicon port of Oni (Bungie, 2001).
 
-## Status (2026-04-24)
+## Status (2026-04-26)
+
+Phase 0 of the path-to-playable spec landed (Steps 0.1 and 0.2): Options
+dialog opens cleanly on macOS, and a 64-bit particle-loader bridge sits
+inert in tree ready to pair with the Bug A audio fix. Step 0.3 (env-var
+resolution override) is deferred to Phase 4 — the architecture map shows
+five coordinate-space layers need aligning, not the one-liner the spec
+assumed. Phase 1 starts next session: re-apply Bug A paired with the
+particle bridge, chase whichever crash cascades out, fix audio init
+ordering, ship menu music as the first user-visible audio.
 
 Gameplay rendering is live. Player spawns into level 1 (warehouse),
 first-person camera renders, HUD draws, walking / mouselook / stairs
@@ -66,7 +75,8 @@ original 32-bit target but breaks now. Common patterns:
 Brainstormed and committed a stepwise spec replacing the cascade-grind: [docs/superpowers/specs/2026-04-25-path-to-playable-spec.md](../docs/superpowers/specs/2026-04-25-path-to-playable-spec.md). Six phases, each step pre-conditioned + verified + rollback-safe, skill mapping per step, re-entry protocol so a future session can pick up at "do step N." Phase 0 is landing the in-tree session-13 wins one commit at a time before chasing the audio cascade again.
 
 - `4931969` Options dialog used Mac variant ID (157) but the shipping data only includes the PC variant (152) — the Mac dialog request silently no-op'd. Stripped the `#if (UUmPlatform == UUmPlatform_Mac)` branch in `Oni_OutGameUI.c` so the PC dialog (152) is requested unconditionally. Verified end-to-end this session: Options dialog opens, sliders/dropdowns visible, Cancel returns cleanly. Tiny user-visible win.
-- `[this commit]` `P3iBridge32To64` for `P3tParticleDefinition` landed in `BFW_Particle3.c` behind `#if UUmPlatform_PointerSize == 8`. Bridges three layout gaps in the on-disk PAR3 blob: (a) `P3tAttractor::attractor_ptr` 4→8 bytes (struct grows 216→224), (b) `P3tParticleDefinition` trailing variable/action/emitter pointers 12→24 bytes, (c) `P3tEmitter::emittedclass` 4→8 bytes per emitter (struct grows 444→448). Pinned with `_Static_assert`s on every relied-on size and offset. **Inert without Bug A:** the BINA dispatch chain currently short-circuits at `OSiBinaryData_ProcHandler`, so `P3iProcessParticleClass` is never reached and the bridge function never runs. Verified: `num_ambients=0` in `startup.txt`, no PAR3 loader entries, binary reaches menu cleanly. Lands in tree now to preserve the work and prime the next session for the paired Bug A re-apply.
+- `769798e` `P3iBridge32To64` for `P3tParticleDefinition` landed in `BFW_Particle3.c` behind `#if UUmPlatform_PointerSize == 8`. Bridges three layout gaps in the on-disk PAR3 blob: (a) `P3tAttractor::attractor_ptr` 4→8 bytes (struct grows 216→224), (b) `P3tParticleDefinition` trailing variable/action/emitter pointers 12→24 bytes, (c) `P3tEmitter::emittedclass` 4→8 bytes per emitter (struct grows 444→448). Pinned with `_Static_assert`s on every relied-on size and offset. **Inert without Bug A:** the BINA dispatch chain currently short-circuits at `OSiBinaryData_ProcHandler`, so `P3iProcessParticleClass` is never reached and the bridge function never runs. Verified: `num_ambients=0` in `startup.txt`, no PAR3 loader entries, binary reaches menu cleanly. Lands in tree now to preserve the work and prime the next session for the paired Bug A re-apply.
+- Step 0.3 (`ONI_RESOLUTION` env var override) deferred. The env var path correctly drives the active mode index, GL viewport, and WM desktop size to 1920×1080 — but the main menu dialog (resource ID 150) carries hardcoded 640×480 dims in the shipping game-data fork, plus `SDL_SetWindowFullscreen(FULLSCREEN_DESKTOP)` likely expands the framebuffer past 1920×1080 on retina. Result: env var resizes the SDL window, but the menu renders ~640×480 in a corner of a giant black void. Fix requires aligning five separate coordinate-space layers (SDL window, SDL fullscreen, GL viewport, GL ortho, WM desktop, dialog resource, in-game HUD) — real Phase 4 HiDPI work, not a one-liner. Architecture map and three ranked fix candidates documented in [`docs/handoff-2026-04-25-session13-step0_3-deferred.md`](../docs/handoff-2026-04-25-session13-step0_3-deferred.md). Phase 0 closes with 0.1 + 0.2 banked.
 
 ### 2026-04-25 — Session 12: Bug A diagnosed, fix landed and reverted, cascade discovered
 
