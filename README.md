@@ -61,6 +61,12 @@ original 32-bit target but breaks now. Common patterns:
 
 ## Rolling timeline (newest first)
 
+### 2026-04-25 — Session 13: replan + land Phase 0 in-tree wins
+
+Brainstormed and committed a stepwise spec replacing the cascade-grind: [docs/superpowers/specs/2026-04-25-path-to-playable-spec.md](../docs/superpowers/specs/2026-04-25-path-to-playable-spec.md). Six phases, each step pre-conditioned + verified + rollback-safe, skill mapping per step, re-entry protocol so a future session can pick up at "do step N." Phase 0 is landing the in-tree session-13 wins one commit at a time before chasing the audio cascade again.
+
+- `[this commit]` Options dialog used Mac variant ID (157) but the shipping data only includes the PC variant (152) — the Mac dialog request silently no-op'd. Stripped the `#if (UUmPlatform == UUmPlatform_Mac)` branch in `Oni_OutGameUI.c` so the PC dialog (152) is requested unconditionally. Verified end-to-end this session: Options dialog opens, sliders/dropdowns visible, Cancel returns cleanly. Tiny user-visible win.
+
 ### 2026-04-25 — Session 12: Bug A diagnosed, fix landed and reverted, cascade discovered
 
 Net forward progress: Bug A's root cause is now known with certainty. Net regression: a 64-bit bug in the particle loader (Bug C) was unblocked by Bug A's fix and crashes init. Fix reverted at session close. Binary back to silent-but-runnable. Full handoff with re-entry instructions: [`docs/handoff-2026-04-25-session12-revert.md`](../docs/handoff-2026-04-25-session12-revert.md).

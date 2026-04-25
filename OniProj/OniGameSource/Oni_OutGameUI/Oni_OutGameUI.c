@@ -664,12 +664,10 @@ ONrOutGameUI_Options_Display(
 	temp_ui = PSrPartSpecUI_GetByName(ONcOutGameUIName);
 	if (temp_ui != NULL) { PSrPartSpecUI_SetActive(temp_ui); }
 
-#if (UUmPlatform == UUmPlatform_Mac)
-	// CB: macintosh options screen is different (no gamma slider)
-	dialog_id = ONcOGU_OptionsID_Mac;
-#else
+	// Shipping data is Windows-only; the Mac dialog (157) doesn't exist
+	// in the .dat files, so requesting it silently no-ops. Use the PC
+	// dialog (152) on all platforms when running against shipping data.
 	dialog_id = ONcOGU_OptionsID_PC;
-#endif
 
 	// display the dialog
 	WMrDialog_ModalBegin(
