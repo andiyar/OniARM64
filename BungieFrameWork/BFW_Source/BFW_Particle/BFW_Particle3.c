@@ -1174,6 +1174,169 @@ static void P3iCalculateArrayPointers(P3tParticleDefinition *inClassPtr)
 		                              + sizeof(P3tActionInstance) * inClassPtr->num_actions);
 }
 
+#if UUmPlatform_PointerSize == 8
+/* P3iBridge32To64 — port-exposed: the on-disk PAR3 binary blob was authored by
+   Bungie's 32-bit tools, so its embedded pointers occupy 4 bytes apiece and the
+   surrounding alignment matches the 32-bit struct layout. The rest of the engine
+   (P3iCalculateArrayPointers et al) walks particle definitions using sizeof() of
+   the 64-bit struct, so without bridging the variable/action/emitter array
+   offsets land in garbage and P3rTraverseVarRef faults on the first var read.
+
+   Three layout gaps are fixed in place by allocating a fresh, larger buffer and
+   re-laying the data:
+     (a) P3tParticleDefinition::attractor — embedded P3tAttractor::attractor_ptr
+         widens 4 → 8 bytes; struct grows 216 → 224 (extra 4 bytes trailing pad).
+     (b) P3tParticleDefinition trailing variable/action/emitter pointers — three
+         pointer slots widen 12 → 24 bytes total.
+     (c) P3tEmitter::emittedclass — widens 4 → 8 bytes per emitter; struct grows
+         444 → 448.
+
+   P3tValue / P3tVariableInfo / P3tActionInstance contain no pointers and are
+   identical on both archs, so their array bodies copy verbatim. */
+
+#include <stddef.h>  /* offsetof */
+
+/* Pin the 64-bit struct layout the bridge relies on; if any of these change,
+   the bridge math breaks. */
+_Static_assert(sizeof(P3tValue)              == 28,  "P3tValue size changed");
+_Static_assert(sizeof(P3tVariableInfo)       == 52,  "P3tVariableInfo size changed");
+_Static_assert(sizeof(P3tActionInstance)     == 424, "P3tActionInstance size changed");
+_Static_assert(sizeof(P3tAttractor)          == 224, "P3tAttractor size changed");
+_Static_assert(offsetof(P3tAttractor, attractor_ptr)  == 8,   "attractor_ptr offset changed");
+_Static_assert(offsetof(P3tAttractor, attractor_name) == 16,  "attractor_name offset changed");
+_Static_assert(sizeof(P3tEmitter)            == 448, "P3tEmitter size changed");
+_Static_assert(offsetof(P3tEmitter, emittedclass)     == 64,  "emittedclass offset changed");
+_Static_assert(offsetof(P3tEmitter, flags)            == 72,  "post-emittedclass offset changed");
+_Static_assert(sizeof(P3tParticleDefinition) == 792, "P3tParticleDefinition size changed");
+_Static_assert(offsetof(P3tParticleDefinition, attractor) == 544, "attractor offset changed");
+_Static_assert(offsetof(P3tParticleDefinition, variable)  == 768, "trailing pointers offset changed");
+
+/* 32-bit on-disk layout constants (analytically derived from the same struct
+   definitions compiled with 4-byte pointers). */
+#define P3i32cDef_PreAttractor      544    /* end of appearance / start of attractor */
+#define P3i32cDef_AttractorEnd      760    /* 544 + 216 */
+#define P3i32cDef_TotalSize         772    /* 760 + 3*4 trailing ptrs */
+#define P3i32cAttractor_PtrOff      552    /* 544 + iter(4) + sel(4) */
+#define P3i32cAttractor_PostPtrOff  556    /* 552 + 4-byte ptr */
+#define P3i32cAttractor_PostPtrLen  204    /* name(64) + 5 * P3tValue(28) */
+#define P3i32cEmitter_Size          444
+#define P3i32cEmitter_PostEmitOff   68     /* classname(64) + 4-byte emittedclass */
+#define P3i32cEmitter_PostEmitLen   376    /* 444 - 68 */
+
+static UUtError P3iBridge32To64(P3tParticleClass *ioClass)
+{
+	P3tParticleDefinition *	old_def = ioClass->definition;
+	UUtUns8 *				old_bytes = (UUtUns8 *) old_def;
+	void *					old_block = ioClass->memory.block;
+	UUtUns16				num_variables = old_def->num_variables;
+	UUtUns16				num_actions   = old_def->num_actions;
+	UUtUns16				num_emitters  = old_def->num_emitters;
+	UUtUns32				new_total_size;
+	void *					new_block;
+	BDtHeader *				new_header;
+	P3tParticleDefinition *	new_def;
+	UUtUns8 *				new_bytes;
+	UUtUns8 *				src;
+	UUtUns8 *				dst;
+	UUtUns16				itr;
+
+	/* No-op if the on-disk size already matches the 64-bit layout (e.g. data
+	   produced by a 64-bit toolchain, or the class is empty). */
+	new_total_size = (UUtUns32) ioClass->memory.size + 20 + (UUtUns32) num_emitters * 4;
+	if (new_total_size == ioClass->memory.size) {
+		return UUcError_None;
+	}
+	if (new_total_size > UUcMaxUns16) {
+		UUrPrintWarning("Particle class '%s' bridged size %u exceeds UUtUns16",
+						ioClass->classname, (unsigned) new_total_size);
+		return UUcError_Generic;
+	}
+
+	new_block = UUrMemory_Block_New(new_total_size + sizeof(BDtHeader));
+	if (new_block == NULL) {
+		return UUcError_OutOfMemory;
+	}
+
+	/* Carry forward BDtHeader so P3mBackHeader still produces a valid header
+	   pointer; bump data_size to the new in-memory layout. */
+	UUrMemory_MoveFast(P3mBackHeader(old_def), new_block, sizeof(BDtHeader));
+	new_header = (BDtHeader *) new_block;
+	new_header->data_size = new_total_size;
+
+	new_def = P3mSkipHeader(new_block);
+	new_bytes = (UUtUns8 *) new_def;
+
+	/* (1) Pre-attractor header (definition_size through end of appearance) is
+	   identical on both archs — copy verbatim. */
+	UUrMemory_MoveFast(old_bytes, new_bytes, P3i32cDef_PreAttractor);
+
+	/* (2) Attractor — bridge the embedded pointer.
+	     iterator_type + selector_type (8 bytes) copy unchanged. */
+	UUrMemory_MoveFast(old_bytes + P3i32cDef_PreAttractor,
+					   (UUtUns8 *) &new_def->attractor,
+					   8);
+	new_def->attractor.attractor_ptr = NULL;
+	UUrMemory_MoveFast(old_bytes + P3i32cAttractor_PostPtrOff,
+					   (UUtUns8 *) &new_def->attractor.attractor_name[0],
+					   P3i32cAttractor_PostPtrLen);
+
+	/* (3) Trailing variable/action/emitter pointers — P3iCalculateArrayPointers
+	   will fill these in on the next pass. */
+	new_def->variable = NULL;
+	new_def->action   = NULL;
+	new_def->emitter  = NULL;
+
+	/* (4) Update definition_size to reflect the new 64-bit total layout. */
+	new_def->definition_size = (UUtUns16) new_total_size;
+
+	/* (5) Variables — pointer-free, identical layout. */
+	UUrMemory_MoveFast(old_bytes + P3i32cDef_TotalSize,
+					   new_bytes + sizeof(P3tParticleDefinition),
+					   (UUtUns32) num_variables * sizeof(P3tVariableInfo));
+
+	/* (6) Actions — action_data is UUtUns32 (not pointer), identical layout. */
+	UUrMemory_MoveFast(old_bytes + P3i32cDef_TotalSize
+						+ (UUtUns32) num_variables * sizeof(P3tVariableInfo),
+					   new_bytes + sizeof(P3tParticleDefinition)
+						+ (UUtUns32) num_variables * sizeof(P3tVariableInfo),
+					   (UUtUns32) num_actions * sizeof(P3tActionInstance));
+
+	/* (7) Emitters — bridge each emitter's embedded emittedclass pointer. */
+	src = old_bytes + P3i32cDef_TotalSize
+		+ (UUtUns32) num_variables * sizeof(P3tVariableInfo)
+		+ (UUtUns32) num_actions   * sizeof(P3tActionInstance);
+	dst = new_bytes + sizeof(P3tParticleDefinition)
+		+ (UUtUns32) num_variables * sizeof(P3tVariableInfo)
+		+ (UUtUns32) num_actions   * sizeof(P3tActionInstance);
+	for (itr = 0; itr < num_emitters; itr++) {
+		/* classname[64] is identical layout — copy verbatim. */
+		UUrMemory_MoveFast(src, dst, P3cParticleClassNameLength + 1);
+		/* emittedclass slot — runtime-resolved by P3rResolveEmittedClass. */
+		*((P3tParticleClass **) (dst + offsetof(P3tEmitter, emittedclass))) = NULL;
+		/* Everything from flags through emitter_value array. */
+		UUrMemory_MoveFast(src + P3i32cEmitter_PostEmitOff,
+						   dst + offsetof(P3tEmitter, flags),
+						   P3i32cEmitter_PostEmitLen);
+
+		src += P3i32cEmitter_Size;
+		dst += sizeof(P3tEmitter);
+	}
+
+	/* (8) Replace memory tracking and free the old (now-orphaned) block, if we
+	   owned it. mmap-loaded data has block == NULL — leave that alone. */
+	ioClass->memory.block = new_block;
+	ioClass->memory.size  = (UUtUns16) new_total_size;
+	ioClass->definition   = new_def;
+	ioClass->data_size    = new_total_size;
+
+	if (old_block != NULL) {
+		UUrMemory_Block_Delete(old_block);
+	}
+
+	return UUcError_None;
+}
+#endif  /* UUmPlatform_PointerSize == 8 */
+
 static void P3iLRAR_NewProc(void *inUserData, short inBlockIndex);
 static void P3iLRAR_PurgeProc(void *inUserData);
 
@@ -2601,6 +2764,15 @@ static UUtBool P3iProcessParticleClass(P3tParticleClass *inClass)
 	if (byte_swap) {
 		P3iSwap_ParticleDefinition((void *) inClass->definition, UUcFalse);
 	}
+
+#if UUmPlatform_PointerSize == 8
+	// bridge from 32-bit on-disk struct layout (4-byte embedded pointers) to the
+	// 64-bit in-memory layout the rest of the engine walks via sizeof().
+	if (P3iBridge32To64(inClass) != UUcError_None) {
+		UUrPrintWarning("Particle class '%s' 32->64 bridge failed", inClass->classname);
+		return UUcFalse;
+	}
+#endif
 
 	// verify that the definition was read and updated successfully
 	if (!P3mVerifyDefinitionSize(inClass->definition)) {
