@@ -164,6 +164,11 @@ SS2rPlatform_SoundChannel_Play(
 	alSourcei(inSoundChannel->pd.source, AL_LOOPING, SSiSoundChannel_IsLooping(inSoundChannel) == UUcTrue ? AL_TRUE : AL_FALSE);
 	alSourcePlay(inSoundChannel->pd.source);
 	CHECK_AL_ERROR();
+	{
+		ALenum al_err = alGetError();
+		if (al_err != AL_NO_ERROR)
+			UUrStartupMessage("[SS2/OAL] Play alGetError after alSourcePlay: 0x%x", al_err);
+	}
 
 	ALint post_state = -1;
 	alGetSourcei(inSoundChannel->pd.source, AL_SOURCE_STATE, &post_state);
@@ -177,8 +182,14 @@ void
 SS2rPlatform_SoundChannel_Resume(
 	SStSoundChannel				*inSoundChannel)
 {
+	UUrStartupMessage("[SS2/OAL] Resume src=%u", inSoundChannel->pd.source);
 	alSourcePlay(inSoundChannel->pd.source);
 	CHECK_AL_ERROR();
+	{
+		ALenum al_err = alGetError();
+		if (al_err != AL_NO_ERROR)
+			UUrStartupMessage("[SS2/OAL] Resume alGetError after alSourcePlay: 0x%x", al_err);
+	}
 	SSiSoundChannel_SetPaused(inSoundChannel, UUcFalse);
 }
 

@@ -70,6 +70,10 @@ original 32-bit target but breaks now. Common patterns:
 
 ## Rolling timeline (newest first)
 
+### 2026-04-26 — Session 15: Phase 1 audio investigation
+
+- Step 1.1 (audible-path instrumentation): added `alGetError()` (AL-level, not just ALC-level) after both `alSourcePlay` call sites + logging in `Resume`. Launched binary, confirmed **category γ**: `alSourcePlay` never called. `OSrMusic_Start('main_menu_win')` fires but ambient lookup returns `0x0` because `num_ambients=0` (Bug A `.sep` fallback still reverted). Audio never reaches OpenAL. User confirmed no audible sound (T1). Also noted: `vol=0.00` on the music start call — potential second gate. Prior Bug A diagnosis validated by empirical evidence.
+
 ### 2026-04-25 — Session 13: replan + land Phase 0 in-tree wins
 
 Brainstormed and committed a stepwise spec replacing the cascade-grind: [docs/superpowers/specs/2026-04-25-path-to-playable-spec.md](../docs/superpowers/specs/2026-04-25-path-to-playable-spec.md). Six phases, each step pre-conditioned + verified + rollback-safe, skill mapping per step, re-entry protocol so a future session can pick up at "do step N." Phase 0 is landing the in-tree session-13 wins one commit at a time before chasing the audio cascade again.
