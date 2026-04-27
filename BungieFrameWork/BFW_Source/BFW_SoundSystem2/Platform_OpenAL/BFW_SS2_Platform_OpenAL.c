@@ -217,6 +217,10 @@ SS2r_DecompressMSADPCM(
 
 	*samples = 0;
 
+	if (!inSoundData->data || (uintptr_t)inSoundData->data < 0x10000) {
+		return UUcFalse;
+	}
+
 	if (SScSamplesPerSecond != 8 && SScBitsPerSample != 16)
 	{
 		UUrPrintWarning("Unexpected SScBitsPerSample: %d", SScBitsPerSample);
@@ -241,6 +245,8 @@ SS2r_DecompressMSADPCM(
 	c->ch_layout.nb_channels = channels;
 	c->sample_rate = SScSamplesPerSecond;
 	c->sample_fmt = SScBitsPerSample == 8 ? AV_SAMPLE_FMT_U8 : AV_SAMPLE_FMT_S16;
+	c->block_align = 512 * channels;
+	c->bits_per_coded_sample = 4;
 	int ret = avcodec_open2(c, codec, NULL);
 	if (ret < 0) {
 		UUrPrintWarning("Failed to open ADPCM_MS codec (error %d)", ret);
@@ -267,7 +273,7 @@ SS2r_DecompressMSADPCM(
 
 	while(1) {
 		ret = avcodec_receive_frame(c, decoded_frame);
-		if (ret == -11) //EAGAIN
+		if (ret == AVERROR(EAGAIN))
 		{
 			if (frame == frames_end) {
 				ret = avcodec_send_packet(c, NULL);
@@ -308,6 +314,10 @@ SS2r_DecompressMSADPCM(
 			UUrPrintWarning("Failed to receive libav frame (error %d)", ret);
 			break;
 		}
+		if (!decoded_frame->extended_data[0] || (uintptr_t)decoded_frame->extended_data[0] < 0x10000) {
+			UUrPrintWarning("ADPCM frame has bad data ptr %p, aborting decode", decoded_frame->extended_data[0]);
+			break;
+		}
 		int data_size = av_samples_get_buffer_size(
 			NULL,
 			decoded_frame->ch_layout.nb_channels,
@@ -336,55 +346,96 @@ SS2rPlatform_SoundChannel_SetSoundData(
 	SStSoundChannel				*inSoundChannel,
 	SStSoundData				*inSoundData)
 {
+	{
+		UUtUns8 *raw = (UUtUns8 *)inSoundData;
+		UUrStartupMessage("[SS2/OAL] SoundData raw hex @ %p: %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
+			(void*)inSoundData,
+			raw[0],raw[1],raw[2],raw[3], raw[4],raw[5],raw[6],raw[7],
+			raw[8],raw[9],raw[10],raw[11], raw[12],raw[13],raw[14],raw[15],
+			raw[16],raw[17],raw[18],raw[19], raw[20],raw[21],raw[22],raw[23]);
+		UUrStartupMessage("[SS2/OAL] SoundData fields: flags=0x%x dur=%u num_bytes=%u data=%p",
+			inSoundData->flags, inSoundData->duration_ticks,
+			inSoundData->num_bytes, inSoundData->data);
+		if (inSoundData->data && (uintptr_t)inSoundData->data > 0x10000) {
+			UUtUns8 *d = (UUtUns8 *)inSoundData->data;
+			UUrStartupMessage("[SS2/OAL] SoundData first 16 bytes: %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
+				d[0],d[1],d[2],d[3], d[4],d[5],d[6],d[7],
+				d[8],d[9],d[10],d[11], d[12],d[13],d[14],d[15]);
+		}
+	}
+
+	UUtUns32 num_channels = SSrSound_GetNumChannels(inSoundData);
 	ALenum format;
-	if (inSoundChannel->flags & SScSoundChannelFlag_Mono && SScBitsPerSample == 8)
-	{
-		format = AL_FORMAT_MONO8;
-	}
-	else if (inSoundChannel->flags & SScSoundChannelFlag_Mono && SScBitsPerSample == 16)
-	{
+	if (num_channels == 1 && SScBitsPerSample == 16)
 		format = AL_FORMAT_MONO16;
-	}
-	else if (inSoundChannel->flags & SScSoundChannelFlag_Stereo && SScBitsPerSample == 8)
-	{
-		format = AL_FORMAT_STEREO8;
-	}
-	else if (inSoundChannel->flags & SScSoundChannelFlag_Stereo && SScBitsPerSample == 16)
-	{
+	else if (num_channels == 2 && SScBitsPerSample == 16)
 		format = AL_FORMAT_STEREO16;
-	}
+	else if (num_channels == 1 && SScBitsPerSample == 8)
+		format = AL_FORMAT_MONO8;
+	else if (num_channels == 2 && SScBitsPerSample == 8)
+		format = AL_FORMAT_STEREO8;
 	else
 	{
-		UUrPrintWarning("Invalid format. bps=%d, SStSoundChannel flags = %x", SScBitsPerSample, inSoundChannel->flags);
+		UUrPrintWarning("Invalid format. bps=%d, channels=%u", SScBitsPerSample, num_channels);
 		return UUcFalse;
 	}
 
-	// MSADPCM offers near 4:1 compression
-	UUtUns16 *decoded = UUrMemory_Block_New(inSoundData->num_bytes * 4);
-	if (!decoded) {
-		return UUcFalse;
-	}
-	size_t samples = 0;
-	UUtBool success = SS2r_DecompressMSADPCM(inSoundChannel, inSoundData, decoded, &samples);
-
-	UUrStartupMessage(
-		"[SS2/OAL] SetSoundData src=%u flags=0x%x format=0x%x rawBytes=%u decoded=%p samples=%zu decompress=%s",
-		inSoundChannel->pd.source, inSoundChannel->flags, format,
-		inSoundData->num_bytes, (void*)decoded, samples,
-		success ? "OK" : "FAIL");
-
-	if (success)
+	if (inSoundData->flags & SScSoundDataFlag_Compressed)
 	{
+		UUtUns16 *decoded = UUrMemory_Block_New(inSoundData->num_bytes * 4);
+		if (!decoded) {
+			return UUcFalse;
+		}
+		size_t samples = 0;
+		UUtBool success = SS2r_DecompressMSADPCM(inSoundChannel, inSoundData, decoded, &samples);
+		UUrStartupMessage("[SS2/OAL] SetSoundData ADPCM src=%u samples=%zu %s",
+			inSoundChannel->pd.source, samples, success ? "OK" : "FAIL");
+		if (success)
+		{
+			alSourcei(inSoundChannel->pd.source, AL_BUFFER, 0);
+			alBufferData(inSoundChannel->pd.buffer, format, decoded, samples * sizeof(*decoded), SScSamplesPerSecond);
+			CHECK_AL_ERROR();
+			alSourcei(inSoundChannel->pd.source, AL_BUFFER, inSoundChannel->pd.buffer);
+			CHECK_AL_ERROR();
+		}
+		UUrMemory_Block_Delete(decoded);
+		return success;
+	}
+
+	if (!inSoundData->data || (uintptr_t)inSoundData->data < 0x10000)
+		return UUcFalse;
+
+	{
+		UUtUns32 num_packets = inSoundData->num_bytes / (num_channels * sizeof(SStIMA_SampleData));
+		UUtUns32 num_samples = num_packets * SScIMA_SamplesPerPacket * num_channels;
+		UUtUns32 pcm_bytes = num_samples * sizeof(UUtUns16);
+		UUtUns8 *pcm = UUrMemory_Block_New(pcm_bytes);
+		if (!pcm)
+			return UUcFalse;
+
+		SSrIMA_DecompressSoundData(inSoundData, pcm, num_packets, 0);
+
+		{
+			UUtInt16 *s = (UUtInt16*)pcm;
+			UUrStartupMessage("[SS2/OAL] IMA first 8 samples: %d %d %d %d %d %d %d %d",
+				s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7]);
+			UUtUns8 *raw = (UUtUns8*)inSoundData->data;
+			UUrStartupMessage("[SS2/OAL] IMA src first 8 bytes: %02x %02x %02x %02x %02x %02x %02x %02x",
+				raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7]);
+		}
+
+		UUrStartupMessage("[SS2/OAL] SetSoundData IMA src=%u fmt=0x%x packets=%u samples=%u pcmBytes=%u",
+			inSoundChannel->pd.source, format, num_packets, num_samples, pcm_bytes);
+
 		alSourcei(inSoundChannel->pd.source, AL_BUFFER, 0);
-		alBufferData(inSoundChannel->pd.buffer, format, decoded, samples * sizeof(*decoded), SScSamplesPerSecond);
+		alBufferData(inSoundChannel->pd.buffer, format, pcm, pcm_bytes, SScSamplesPerSecond);
 		CHECK_AL_ERROR();
 		alSourcei(inSoundChannel->pd.source, AL_BUFFER, inSoundChannel->pd.buffer);
 		CHECK_AL_ERROR();
+
+		UUrMemory_Block_Delete(pcm);
+		return UUcTrue;
 	}
-
-	UUrMemory_Block_Delete(decoded);
-
-	return success;
 }
 
 // ----------------------------------------------------------------------

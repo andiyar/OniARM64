@@ -136,7 +136,7 @@ typedef tm_struct SStFormat
     UUtUns16	            wNumCoef;
     SStADPCMCOEFSET		    aCoef[7];
 
-} SStFormat;
+} __attribute__((packed)) SStFormat;
 
 #if UUmPlatform == UUmPlatform_Win32
 
@@ -170,9 +170,8 @@ SStSoundData
 {
 	UUtUns32				flags;
 
-	//SStFormat				f;
+	SStFormat				f;
 	UUtUns16				duration_ticks;
-	UUtUns16				pad;
 
 	UUtUns32				num_bytes;
 	tm_raw(void*)			data;

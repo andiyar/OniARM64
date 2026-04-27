@@ -904,12 +904,19 @@ SSiSoundData_ProcHandler(
 	switch (inMessage)
 	{
 		case TMcTemplateProcMessage_LoadPostProcess:
-			/* 64-bit: sound_data->data (tm_raw) is already a resolved ptr.
-			   Adding rawPtr again would double-offset into unmapped memory.
-			   See docs/handoff-2026-04-20-newgame-crash-part3.md */
-#if UUmPlatform_PointerSize != 8
+			UUrStartupMessage("[SNDD] pre-resolve data=%p rawBase=%p",
+				sound_data->data, TMrInstance_GetRawOffset(sound_data));
+			UUrStartupMessage("[SNDD] sizeof=%zu off_flags=%zu off_f=%zu off_dur=%zu off_nbytes=%zu off_data=%zu",
+				sizeof(SStSoundData),
+				(size_t)((UUtUns8*)&sound_data->flags - (UUtUns8*)sound_data),
+				(size_t)((UUtUns8*)&sound_data->f - (UUtUns8*)sound_data),
+				(size_t)((UUtUns8*)&sound_data->duration_ticks - (UUtUns8*)sound_data),
+				(size_t)((UUtUns8*)&sound_data->num_bytes - (UUtUns8*)sound_data),
+				(size_t)((UUtUns8*)&sound_data->data - (UUtUns8*)sound_data));
+			UUrStartupMessage("[SNDD] LoadPost flags=0x%x dur=%u num_bytes=%u rawData=%p",
+				sound_data->flags, sound_data->duration_ticks, sound_data->num_bytes, sound_data->data);
 			sound_data->data = (void*)(((uintptr_t)sound_data->data) + ((uintptr_t)TMrInstance_GetRawOffset(sound_data)));
-#endif
+
 		break;
 
 		case TMcTemplateProcMessage_DisposePreProcess:

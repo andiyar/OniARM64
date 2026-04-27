@@ -612,9 +612,18 @@ static UUtUns8 gSwapCodes_PSUI[223] =
 	0x63, 0x70, 0x53, 0x50, 0x09, 0x63, 0x70, 0x53,
 	0x50, 0x09, 0x63, 0x70, 0x53, 0x50, 0x06
 };
-static UUtUns8 gSwapCodes_SNDD[8] =
+static UUtUns8 gSwapCodes_SNDD[21] =
 {
-	0x02, 0x02, 0x02, 0x03, 0x03, 0x02, 0x0a, 0x06
+	0x02, 0x02,                         /* preamble: 2 × 4-byte */
+	0x02,                               /* flags */
+	0x03, 0x03,                         /* SStFormat: wFormatTag, nChannels */
+	0x02, 0x02,                         /* nSamplesPerSec, nAvgBytesPerSec */
+	0x03, 0x03, 0x03, 0x03, 0x03,       /* nBlockAlign, wBitsPerSample, cbSize, wSamplesPerBlock, wNumCoef */
+	0x05, 0x07, 0x03, 0x03, 0x06,       /* aCoef[7]: BeginArray(0x05), count=7, iCoef1, iCoef2, EndArray(0x06) */
+	0x03,                               /* duration_ticks */
+	0x02,                               /* num_bytes */
+	0x0a,                               /* data (raw ptr) */
+	0x06                                /* end */
 };
 static UUtUns8 gSwapCodes_SUBT[12] =
 {

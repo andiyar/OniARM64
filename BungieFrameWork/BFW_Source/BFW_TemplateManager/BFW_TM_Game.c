@@ -1678,7 +1678,15 @@ TMiGame_InstanceFile_New_FromFileRef(
 
 			error = BFrFile_Open(separateFileRef, "r", &newInstanceFile->separateFile);
 			if (error != UUcError_None) {
-				newInstanceFile->separateFile = NULL;
+				BFtFileRef *rawFallbackRef;
+				if (TMrUtility_DataRef_To_BinaryRef(inInstanceFileRef, &rawFallbackRef, "raw") == UUcError_None) {
+					if (BFrFile_Open(rawFallbackRef, "r", &newInstanceFile->separateFile) != UUcError_None) {
+						newInstanceFile->separateFile = NULL;
+					}
+					BFrFileRef_Dispose(rawFallbackRef);
+				} else {
+					newInstanceFile->separateFile = NULL;
+				}
 			}
 
 			BFrFileRef_Dispose(separateFileRef);
@@ -1896,6 +1904,15 @@ TMiGame_InstanceFile_New_FromFileRef(
 				   var-array tail). Walker fills field-level content
 				   afterwards. */
 				memset(dst_preamble, 0, per_inst_dst);
+
+				if (tag == UUm4CharToUns32('S','N','D','D') && idx < 4860) {
+					const UUtUns8 *s = src_data - TMcPreDataSize;
+					UUrStartupMessage("[TM-SNDD] idx=%u disk_off=%u src_bytes: %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
+						idx, disk_off,
+						s[0],s[1],s[2],s[3], s[4],s[5],s[6],s[7],
+						s[8],s[9],s[10],s[11], s[12],s[13],s[14],s[15],
+						s[16],s[17],s[18],s[19], s[20],s[21],s[22],s[23]);
+				}
 
 				TMrBridge_TranslateInstance(lyt,
 					src_data - TMcPreDataSize,
