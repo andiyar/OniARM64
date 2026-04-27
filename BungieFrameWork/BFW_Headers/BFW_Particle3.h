@@ -2383,7 +2383,7 @@ enum
 
 typedef void (*P3tParticleCallback)(P3tParticleClass *inClass, P3tParticle *inParticle);
 typedef void (*P3tQualityCallback)(P3tQualitySettings *outSettings);
-typedef void (*P3tClassCallback)(P3tParticleClass *inClass, UUtUns32 inUserData);
+typedef void (*P3tClassCallback)(P3tParticleClass *inClass, uintptr_t inUserData);
 
 /*
  * globals and constants
@@ -2645,7 +2645,7 @@ void P3rListCollision(void);
 
 // traverse particle classes recursively
 void P3rSetupTraverse(void);
-UUtBool P3rTraverseParticleClass(P3tParticleClass *inClass, P3tClassCallback inCallback, UUtUns32 inUserData);
+UUtBool P3rTraverseParticleClass(P3tParticleClass *inClass, P3tClassCallback inCallback, uintptr_t inUserData);
 
 // precache all the components that a particle class will need to be created and drawn
 void P3rPrecacheParticleClass(P3tParticleClass *inClass);

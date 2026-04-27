@@ -120,7 +120,7 @@ static UUtError
 OBJiParticle_Enumerate(
 	OBJtObject						*inObject,
 	OBJtEnumCallback_ObjectName		inEnumCallback,
-	UUtUns32						inUserData)
+	uintptr_t						inUserData)
 {
 	P3tParticleClassIterateState	itr;
 

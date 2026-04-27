@@ -109,7 +109,7 @@ static UUtError
 OBJiPowerUp_Enumerate(
 	OBJtObject						*inObject,
 	OBJtEnumCallback_ObjectName		inEnumCallback,
-	UUtUns32						inUserData)
+	uintptr_t						inUserData)
 {
 	OBJtPowerUpTypeNames			*type_name;
 

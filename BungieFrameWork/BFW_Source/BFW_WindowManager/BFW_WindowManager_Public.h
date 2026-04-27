@@ -345,7 +345,7 @@ typedef uintptr_t
 typedef UUtBool
 (*WMtWindowEnumCallback)(
 	WMtWindow				*inWindow,
-	UUtUns32				inUserData);
+	uintptr_t				inUserData);
 
 // ----------------------------------------------------------------------
 typedef struct WMtWindowClass
@@ -695,7 +695,7 @@ WMrDeactivate(
 void
 WMrEnumWindows(
 	WMtWindowEnumCallback	inEnumCallback,
-	UUtUns32				inUserData);
+	uintptr_t				inUserData);
 
 WMtWindow*
 WMrGetDesktop(

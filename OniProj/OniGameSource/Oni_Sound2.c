@@ -3479,7 +3479,7 @@ OSrCheckBrokenImpulseSound(
 static UUtBool
 OSiNeutral_ListBrokenSounds(
 	OBJtObject					*inObject,
-	UUtUns32					inUserData)
+	uintptr_t					inUserData)
 {
 	UUtUns32					itr;
 	BFtFile						*file;
@@ -3626,7 +3626,7 @@ OSrAmbient_AddToStringList(
 static UUtBool
 OSiSoundObject_BuildStringList(
 	OBJtObject					*inObject,
-	UUtUns32					inUserData)
+	uintptr_t					inUserData)
 {
 	SStAmbient					*ambient;
 
@@ -3640,7 +3640,7 @@ OSiSoundObject_BuildStringList(
 static UUtBool
 OSiNeutralInteraction_BuildStringList(
 	OBJtObject					*inObject,
-	UUtUns32					inUserData)
+	uintptr_t					inUserData)
 {
 	UUtUns32					itr;
 	AUtSharedStringArray		*string_array;
@@ -3768,7 +3768,7 @@ OSrNeutralInteractions_WriteAiffList(
 static UUtBool
 OSiSoundObject_BuildPlayList(
 	OBJtObject					*inObject,
-	UUtUns32					inUserData)
+	uintptr_t					inUserData)
 {
 	UUtError					error;
 	OBJtOSD_All					osd_all;

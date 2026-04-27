@@ -100,7 +100,7 @@ OBJrObjectUtil_EnumerateTemplate(
 	char							*inPrefix,
 	TMtTemplateTag					inTemplateTag,
 	OBJtEnumCallback_ObjectName		inEnumCallback,
-	UUtUns32						inUserData);
+	uintptr_t						inUserData);
 
 // ----------------------------------------------------------------------
 UUtError

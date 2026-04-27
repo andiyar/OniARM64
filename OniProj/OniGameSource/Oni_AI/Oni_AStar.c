@@ -59,8 +59,8 @@ typedef struct AStGridPoint
 } AStGridPoint;
 
 // heap callback functions
-typedef UUtInt32 (*AStHeap_CompareFunc)(UUtUns32 inUserData, UUtUns16 inA, UUtUns16 inB);
-typedef void (*AStHeap_NotifyLocation)(UUtUns32 inUserData, UUtUns16 inElement, UUtUns16 inHeapLocation);
+typedef UUtInt32 (*AStHeap_CompareFunc)(uintptr_t inUserData, UUtUns16 inA, UUtUns16 inB);
+typedef void (*AStHeap_NotifyLocation)(uintptr_t inUserData, UUtUns16 inElement, UUtUns16 inHeapLocation);
 
 struct AStPathNode
 {
@@ -83,7 +83,7 @@ struct AStPathNode
 typedef struct AStHeap
 {
 	UUtUns32				heap_size;
-	UUtUns32				heap_userdata;
+	uintptr_t				heap_userdata;
 	AStHeap_CompareFunc		func_compare;
 	AStHeap_NotifyLocation	func_notify;
 
@@ -244,13 +244,13 @@ ASiTryEndPoint(
 // ----------------------------------------------------------------------
 static UUtInt32
 ASiAstarHeap_CompareFunc(
-	UUtUns32				inUserData,
+	uintptr_t				inUserData,
 	UUtUns16				inElementA,
 	UUtUns16				inElementB);
 
 static void
 ASiAstarHeap_NotifyLocation(
-	UUtUns32				inUserData,
+	uintptr_t				inUserData,
 	UUtUns16				inElement,
 	UUtUns16				inHeapLocation);
 
@@ -400,7 +400,7 @@ ASrPath_New(
 #if ASTAR_USE_HEAP
 	astar->open_heap.heap_size		= AScMaxNodes;
 	astar->open_heap.heap_count		= 1;			// note: element 0 is always unused
-	astar->open_heap.heap_userdata	= (UUtUns32) astar;
+	astar->open_heap.heap_userdata	= (uintptr_t) astar;
 	astar->open_heap.func_compare	= ASiAstarHeap_CompareFunc;
 	astar->open_heap.func_notify	= ASiAstarHeap_NotifyLocation;
 	astar->open_heap.heap			= UUrMemory_Block_New(sizeof(UUtUns16) * astar->open_heap.heap_size);
@@ -1970,7 +1970,7 @@ ASiHeap_ReorderElement(
 // ----------------------------------------------------------------------
 static UUtInt32
 ASiAstarHeap_CompareFunc(
-	UUtUns32				inUserData,
+	uintptr_t				inUserData,
 	UUtUns16				inElementA,
 	UUtUns16				inElementB)
 {
@@ -1993,7 +1993,7 @@ ASiAstarHeap_CompareFunc(
 
 static void
 ASiAstarHeap_NotifyLocation(
-	UUtUns32				inUserData,
+	uintptr_t				inUserData,
 	UUtUns16				inElement,
 	UUtUns16				inHeapLocation)
 {

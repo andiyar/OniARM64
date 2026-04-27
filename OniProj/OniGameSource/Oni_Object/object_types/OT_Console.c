@@ -229,7 +229,7 @@ static void OBJiConsole_Draw( OBJtObject *inObject, UUtUns32 inDrawFlags)
 }
 
 // ----------------------------------------------------------------------
-static UUtError OBJiConsole_Enumerate( OBJtObject *inObject, OBJtEnumCallback_ObjectName		inEnumCallback, UUtUns32 inUserData)
+static UUtError OBJiConsole_Enumerate( OBJtObject *inObject, OBJtEnumCallback_ObjectName		inEnumCallback, uintptr_t inUserData)
 {
 	return OBJrObjectUtil_EnumerateTemplate( "", OBJcTemplate_ConsoleClass, inEnumCallback, inUserData);
 }
@@ -888,7 +888,7 @@ typedef struct OBJtConsoleFindID
 	OBJtObject *object;
 } OBJtConsoleFindID;
 
-static UUtBool OBJrConsole_Find_ID_Enum(OBJtObject *inObject, UUtUns32 inUserData)
+static UUtBool OBJrConsole_Find_ID_Enum(OBJtObject *inObject, uintptr_t inUserData)
 {
 	OBJtOSD_Console *console_osd;
 	OBJtConsoleFindID *find_struct = (OBJtConsoleFindID *) inUserData;
@@ -913,12 +913,12 @@ OBJtObject *OBJrConsole_GetByID(UUtUns16 inID)
 
 	find_struct.id = inID;
 	find_struct.object = NULL;
-	OBJrObjectType_EnumerateObjects(OBJcType_Console, OBJrConsole_Find_ID_Enum, (UUtUns32) &find_struct);
+	OBJrObjectType_EnumerateObjects(OBJcType_Console, OBJrConsole_Find_ID_Enum, (uintptr_t) &find_struct);
 
 	return find_struct.object;
 }
 
-static UUtBool OBJrConsole_Activate_ID_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrConsole_Activate_ID_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Console *console_osd;
 
@@ -945,7 +945,7 @@ void OBJrConsole_Activate_ID( UUtUns16 inID )
 	return;
 }
 
-static UUtBool OBJrConsole_Deactivate_ID_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrConsole_Deactivate_ID_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Console *Console_osd;
 
@@ -972,7 +972,7 @@ void OBJrConsole_Deactivate_ID( UUtUns16 inID )
 	return;
 }
 
-static UUtBool OBJrConsole_Reset_ID_Enum(OBJtObject *inObject, UUtUns32 inUserData)
+static UUtBool OBJrConsole_Reset_ID_Enum(OBJtObject *inObject, uintptr_t inUserData)
 {
 	OBJtOSD_Console *console_osd;
 

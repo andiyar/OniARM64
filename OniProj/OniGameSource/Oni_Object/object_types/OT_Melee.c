@@ -69,7 +69,7 @@ static UUtError
 OBJiMelee_Enumerate(
 	OBJtObject						*inObject,
 	OBJtEnumCallback_ObjectName		inEnumCallback,
-	UUtUns32						inUserData)
+	uintptr_t						inUserData)
 {
 	char							name[OBJcMaxNameLength + 1];
 
@@ -758,7 +758,7 @@ OBJiMelee_Search(
 static UUtBool
 OBJiMelee_LevelBeginEnumCallback(
 	OBJtObject		*inObject,
-	UUtUns32				inUserData)
+	uintptr_t				inUserData)
 {
 	OBJtOSD_Melee *melee_osd = (OBJtOSD_Melee *) inObject->object_data;
 

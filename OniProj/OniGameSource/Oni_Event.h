@@ -87,9 +87,9 @@ typedef struct ONtEventList
 // enumerator
 // ======================================================================
 
-typedef UUtBool (*ONtEvent_EnumCallback_TypeName)(	const char *inName, UUtUns32 inUserData );
+typedef UUtBool (*ONtEvent_EnumCallback_TypeName)(	const char *inName, uintptr_t inUserData );
 
-UUtUns32 ONrEvent_EnumerateTypes( ONtEvent_EnumCallback_TypeName inEnumCallback, UUtUns32 inUserData );
+UUtUns32 ONrEvent_EnumerateTypes( ONtEvent_EnumCallback_TypeName inEnumCallback, uintptr_t inUserData );
 
 // ======================================================================
 // event handler

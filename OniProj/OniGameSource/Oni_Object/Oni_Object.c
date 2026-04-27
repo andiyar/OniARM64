@@ -4207,12 +4207,12 @@ typedef struct OBJtObjectSearchRequest
 	OBJtObject				*object;
 } OBJtObjectSearchRequest;
 
-static UUtBool OBJiObject_Enum_ObjectType( OBJtObjectType inObjectType, const char *inName, UUtUns32 inUserData )
+static UUtBool OBJiObject_Enum_ObjectType( OBJtObjectType inObjectType, const char *inName, uintptr_t inUserData )
 {
 	return UUcTrue;
 }
 
-static UUtBool OBJiObject_Enum_SearchRequest( OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJiObject_Enum_SearchRequest( OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtObjectSearchRequest			*request;
 
@@ -4550,7 +4550,7 @@ OBJtObject *OWrSelectObject(OBJtObjectType inObjectType, OBJtObject *inObject, U
 	select_object_internals.allow_none = inAllowNone;
 	select_object_internals.allow_goto = inAllowGoto;
 
-	WMrDialog_ModalBegin(OWcDialog_AI_ChooseCombat, NULL, OWiChooseObject_Callback, (UUtUns32) &select_object_internals, (UUtUns32 *) &out_selected_object);
+	WMrDialog_ModalBegin(OWcDialog_AI_ChooseCombat, NULL, OWiChooseObject_Callback, (uintptr_t) &select_object_internals, (UUtUns32 *) &out_selected_object);
 
 	return out_selected_object;
 }

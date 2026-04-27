@@ -499,7 +499,7 @@ void EPrEnumerateAllParticles(EPtEnumCallback_EnvParticle inCallback, uintptr_t 
 typedef struct EPtEnumerateRecursivelyUserData
 {
 	P3tClassCallback callback;
-	UUtUns32 callback_data;
+	uintptr_t callback_data;
 } EPtEnumerateRecursivelyUserData;
 
 // File-scope because EPrEnumerateAllParticles's callback userdata slot is
@@ -518,7 +518,7 @@ static void EPiTraverseParticleClassesRecursively(EPtEnvParticle *inParticle, ui
 }
 
 // enumerate all environmental particle classes and possible child particle classes also
-void EPrEnumerateParticleClassesRecursively(P3tClassCallback inCallback, UUtUns32 inUserData)
+void EPrEnumerateParticleClassesRecursively(P3tClassCallback inCallback, uintptr_t inUserData)
 {
 	EPgTraverseUserData.callback = inCallback;
 	EPgTraverseUserData.callback_data = inUserData;
@@ -802,7 +802,7 @@ void EPrLevelStart(UUtUns32 inTime)
 	EPgCreatedParticles = UUcTrue;
 }
 
-static void EPiPrecacheParticles_ClassCallback(P3tParticleClass *inClass, UUtUns32 inUserData)
+static void EPiPrecacheParticles_ClassCallback(P3tParticleClass *inClass, uintptr_t inUserData)
 {
 	P3rPrecacheParticleClass(inClass);
 }

@@ -78,9 +78,9 @@ typedef struct AI2tSpawnCharacterData {
 // -- internal function prototypes
 
 // character creation and deletion
-static UUtBool AI2iEnumCallback_StartCharacters(OBJtObject *inObject, UUtUns32 inUserData);
-static UUtBool AI2iEnumCallback_Spawn(OBJtObject *inObject, UUtUns32 inUserData);
-static UUtBool AI2iEnumCallback_SpawnPlayer(OBJtObject *inObject, UUtUns32 inUserData);
+static UUtBool AI2iEnumCallback_StartCharacters(OBJtObject *inObject, uintptr_t inUserData);
+static UUtBool AI2iEnumCallback_Spawn(OBJtObject *inObject, uintptr_t inUserData);
+static UUtBool AI2iEnumCallback_SpawnPlayer(OBJtObject *inObject, uintptr_t inUserData);
 
 // debugging / temporary code
 static void AI2rReportState(ONtCharacter *ioCharacter, char *inName, AI2tGoal inGoal, AI2tGoalState *inState,
@@ -471,7 +471,7 @@ void AI2rLevelEnd(void)
 // -- character creation and deletion
 
 // create all characters
-static UUtBool AI2iEnumCallback_StartCharacters(OBJtObject *inObject, UUtUns32 inUserData)
+static UUtBool AI2iEnumCallback_StartCharacters(OBJtObject *inObject, uintptr_t inUserData)
 {
 	OBJtOSD_Character *char_osd;
 	AI2tSpawnData *spawn_data = (AI2tSpawnData *) inUserData;
@@ -495,7 +495,7 @@ static UUtBool AI2iEnumCallback_StartCharacters(OBJtObject *inObject, UUtUns32 i
 }
 
 // create a new character
-static UUtBool AI2iEnumCallback_Spawn(OBJtObject *inObject, UUtUns32 inUserData)
+static UUtBool AI2iEnumCallback_Spawn(OBJtObject *inObject, uintptr_t inUserData)
 {
 	OBJtOSD_Character *char_osd;
 	AI2tSpawnCharacterData *user_data = (AI2tSpawnCharacterData *) inUserData;
@@ -520,7 +520,7 @@ static UUtBool AI2iEnumCallback_Spawn(OBJtObject *inObject, UUtUns32 inUserData)
 }
 
 // recreate the player character
-static UUtBool AI2iEnumCallback_SpawnPlayer(OBJtObject *inObject, UUtUns32 inUserData)
+static UUtBool AI2iEnumCallback_SpawnPlayer(OBJtObject *inObject, uintptr_t inUserData)
 {
 	OBJtOSD_Character *char_osd;
 	ONtCharacter **charptr;
@@ -556,13 +556,13 @@ UUtError AI2rStartAllCharacters(UUtBool inStartPlayer, UUtBool inOverride)
 	// we spawn the player first so that they are always character 0 (makes
 	// debugging easier)
 	if (inStartPlayer) {
-		OBJrObjectType_EnumerateObjects(OBJcType_Character, AI2iEnumCallback_SpawnPlayer, (UUtUns32) &player);
+		OBJrObjectType_EnumerateObjects(OBJcType_Character, AI2iEnumCallback_SpawnPlayer, (uintptr_t) &player);
 	}
 
 	// enumerate all characters
 	user_data.spawn_player = UUcFalse;
 	user_data.spawn_all = inOverride;
-	OBJrObjectType_EnumerateObjects(OBJcType_Character, AI2iEnumCallback_StartCharacters, (UUtUns32) &user_data);
+	OBJrObjectType_EnumerateObjects(OBJcType_Character, AI2iEnumCallback_StartCharacters, (uintptr_t) &user_data);
 
 	return UUcError_None;
 }
@@ -577,7 +577,7 @@ UUtError AI2rSpawnCharacter(char *inName, UUtBool inForce)
 	// enumerate until we find this character
 	user_data.name = inName;
 	user_data.force = inForce;
-	OBJrObjectType_EnumerateObjects(OBJcType_Character, AI2iEnumCallback_Spawn, (UUtUns32) &user_data);
+	OBJrObjectType_EnumerateObjects(OBJcType_Character, AI2iEnumCallback_Spawn, (uintptr_t) &user_data);
 
 	return UUcError_None;
 }
@@ -588,7 +588,7 @@ ONtCharacter *AI2rRecreatePlayer(void)
 	ONtCharacter *player = NULL;
 
 	// enumerate until we find the player
-	OBJrObjectType_EnumerateObjects(OBJcType_Character, AI2iEnumCallback_SpawnPlayer, (UUtUns32) &player);
+	OBJrObjectType_EnumerateObjects(OBJcType_Character, AI2iEnumCallback_SpawnPlayer, (uintptr_t) &player);
 	return player;
 }
 

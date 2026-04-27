@@ -306,7 +306,7 @@ static UUtError
 OBJiTriggerVolume_Enumerate(
 	OBJtObject						*inObject,
 	OBJtEnumCallback_ObjectName		inEnumCallback,
-	UUtUns32						inUserData)
+	uintptr_t						inUserData)
 {
 	char							name[OBJcMaxNameLength + 1];
 
@@ -813,7 +813,7 @@ OBJrTriggerVolume_Initialize(
 
 UUtInt32 OBJgTriggerVolume_InsideCount;
 
-static UUtBool AI2iScript_TriggerVolume_CountInside_Callback(OBJtObject *inObject, UUtUns32 inUserData)
+static UUtBool AI2iScript_TriggerVolume_CountInside_Callback(OBJtObject *inObject, uintptr_t inUserData)
 {
 	OBJtOSD_TriggerVolume *trig_osd;
 	UUtInt32 match_id = (UUtInt32) inUserData;
@@ -840,7 +840,7 @@ UUtInt32 OBJrTriggerVolumeID_CountInside(UUtInt32 id)
 	return OBJgTriggerVolume_InsideCount;
 }
 
-static UUtBool AI2iScript_TriggerVolume_DeleteCorpsesInside_Callback(OBJtObject *inObject, UUtUns32 inUserData)
+static UUtBool AI2iScript_TriggerVolume_DeleteCorpsesInside_Callback(OBJtObject *inObject, uintptr_t inUserData)
 {
 	OBJtOSD_TriggerVolume *trig_osd;
 	UUtInt32 match_id = (UUtInt32) inUserData;
@@ -865,7 +865,7 @@ void OBJrTriggerVolumeID_DeleteCorpsesInside(UUtInt32 id)
 	return;
 }
 
-static UUtBool AI2iScript_TriggerVolume_DeleteCharactersInside_Callback(OBJtObject *inObject, UUtUns32 inUserData)
+static UUtBool AI2iScript_TriggerVolume_DeleteCharactersInside_Callback(OBJtObject *inObject, uintptr_t inUserData)
 {
 	OBJtOSD_TriggerVolume *trig_osd;
 	UUtInt32 match_id = (UUtInt32) inUserData;

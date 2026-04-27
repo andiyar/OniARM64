@@ -3076,7 +3076,7 @@ void P3rSetupTraverse(void)
 }
 
 // traverse particle classes recursively
-UUtBool P3rTraverseParticleClass(P3tParticleClass *inClass, P3tClassCallback inCallback, UUtUns32 inUserData)
+UUtBool P3rTraverseParticleClass(P3tParticleClass *inClass, P3tClassCallback inCallback, uintptr_t inUserData)
 {
 	UUtUns32 itr;
 	P3tEmitter *emitter;

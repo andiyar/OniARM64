@@ -402,7 +402,7 @@ static UUtError
 OBJiSound_Enumerate(
 	OBJtObject						*inObject,
 	OBJtEnumCallback_ObjectName		inEnumCallback,
-	UUtUns32						inUserData)
+	uintptr_t						inUserData)
 {
 	return UUcError_None;
 }

@@ -580,7 +580,7 @@ void AI2rCombat_Update(ONtCharacter *ioCharacter)
 
 			} else {
 				// we are too close to fire our gun. perhaps do something else.
-				AI2rCombat_Behavior(ioCharacter, combat_state, AI2cCombatMessage_TooClose, &handled, (UUtUns32) &too_close_weight, 0, 0);
+				AI2rCombat_Behavior(ioCharacter, combat_state, AI2cCombatMessage_TooClose, &handled, (uintptr_t) &too_close_weight, 0, 0);
 			}
 		}
 

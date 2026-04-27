@@ -424,7 +424,7 @@ static void OBJiTurret_Draw( OBJtObject *inObject, UUtUns32 inDrawFlags)
 }
 
 // ----------------------------------------------------------------------
-static UUtError OBJiTurret_Enumerate( OBJtObject *inObject, OBJtEnumCallback_ObjectName inEnumCallback, UUtUns32 inUserData )
+static UUtError OBJiTurret_Enumerate( OBJtObject *inObject, OBJtEnumCallback_ObjectName inEnumCallback, uintptr_t inUserData )
 {
 	return OBJrObjectUtil_EnumerateTemplate( "", OBJcTemplate_TurretClass, inEnumCallback, inUserData);
 }
@@ -1258,7 +1258,7 @@ void OBJrTurret_Deactivate( OBJtObject *inObject )
 	turret_osd->state = OBJcTurretState_Inactive;
 }
 
-static UUtBool OBJrTurret_Activate_ID_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrTurret_Activate_ID_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Turret *turret_osd;
 
@@ -1282,7 +1282,7 @@ UUtError OBJrTurret_Activate_ID( UUtUns16 inID )
 	return UUcError_None;
 }
 
-static UUtBool OBJrTurret_Deactivate_ID_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrTurret_Deactivate_ID_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Turret *Turret_osd;
 
@@ -1306,7 +1306,7 @@ UUtError OBJrTurret_Deactivate_ID( UUtUns16 inID )
 	return UUcError_None;
 }
 
-static UUtBool OBJrTurret_Reset_ID_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrTurret_Reset_ID_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Turret *turret_osd;
 

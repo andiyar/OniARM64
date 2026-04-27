@@ -421,7 +421,7 @@ UUtBool AI2rAlarm_IsValidAlarmConsole(ONtCharacter *ioCharacter, OBJtOSD_Console
 	return AI2rAlarm_IsValidConsole(ioCharacter, inConsole);
 }
 
-static UUtBool AI2iAlarm_FindConsoleEnum(OBJtObject *inObject, UUtUns32 inUserData)
+static UUtBool AI2iAlarm_FindConsoleEnum(OBJtObject *inObject, uintptr_t inUserData)
 {
 	AI2tFindConsoleUserData *user_data = (AI2tFindConsoleUserData *) inUserData;
 	OBJtOSD_Console *console_osd;
@@ -463,7 +463,7 @@ ONtActionMarker *AI2rAlarm_FindAlarmConsole(ONtCharacter *ioCharacter)
 	user_data.character = ioCharacter;
 	user_data.max_distance = ioCharacter->ai2State.alarmSettings.find_distance;
 	user_data.current_console = NULL;
-	OBJrObjectType_EnumerateObjects(OBJcType_Console, AI2iAlarm_FindConsoleEnum, (UUtUns32) &user_data);
+	OBJrObjectType_EnumerateObjects(OBJcType_Console, AI2iAlarm_FindConsoleEnum, (uintptr_t) &user_data);
 
 	if (user_data.current_console == NULL) {
 		return NULL;

@@ -280,7 +280,7 @@ static UUtUns16 OBJrDoor_GetID( OBJtObject *inObject )
 // locking / unlocking
 // ----------------------------------------------------------------------
 
-static UUtBool OBJiDoor_LockDoors_Enum( OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJiDoor_LockDoors_Enum( OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Door *osd;
 
@@ -303,7 +303,7 @@ static UUtBool OBJiDoor_LockDoors_Enum( OBJtObject *inObject, UUtUns32 inUserDat
 }
 
 
-static UUtBool OBJiDoor_UnlockDoors_Enum( OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJiDoor_UnlockDoors_Enum( OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Door *osd;
 
@@ -383,7 +383,7 @@ typedef struct OBJtDoor_MakeConnectionUserData {
 	M3tPoint3D		*side_test_point;
 } OBJtDoor_MakeConnectionUserData;
 
-static UUtBool OBJiDoor_MakeConnectionLink_Enum( OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJiDoor_MakeConnectionLink_Enum( OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Door *osd = (OBJtOSD_Door *) inObject->object_data;
 	OBJtDoor_MakeConnectionUserData *user_data = (OBJtDoor_MakeConnectionUserData *) inUserData;
@@ -507,7 +507,7 @@ void OBJrDoor_MakeConnectionLink(struct PHtConnection *ioConnection, M3tPoint3D 
 	user_data.connection = ioConnection;
 	user_data.side_test_point = inSidePoint;
 
-	OBJrObjectType_EnumerateObjects(OBJcType_Door, OBJiDoor_MakeConnectionLink_Enum, (UUtUns32) &user_data);
+	OBJrObjectType_EnumerateObjects(OBJcType_Door, OBJiDoor_MakeConnectionLink_Enum, (uintptr_t) &user_data);
 }
 
 // ----------------------------------------------------------------------
@@ -817,7 +817,7 @@ static void OBJiDoor_Draw( OBJtObject *inObject, UUtUns32 inDrawFlags)
 	return;
 }
 // ----------------------------------------------------------------------
-static UUtError OBJiDoor_Enumerate( OBJtObject *inObject, OBJtEnumCallback_ObjectName		inEnumCallback, UUtUns32 inUserData)
+static UUtError OBJiDoor_Enumerate( OBJtObject *inObject, OBJtEnumCallback_ObjectName		inEnumCallback, uintptr_t inUserData)
 {
 	return OBJrObjectUtil_EnumerateTemplate( "", OBJcTemplate_DoorClass, inEnumCallback, inUserData);
 }
@@ -1420,12 +1420,12 @@ static void OBJiDoor_SetVisible( UUtBool inIsVisible)
 //
 // ======================================================================
 
-static UUtBool OBJrDoor_LevelEnd_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrDoor_LevelEnd_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	return UUcTrue;
 }
 
-static UUtBool OBJrDoor_LevelBegin_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrDoor_LevelBegin_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	return UUcTrue;
 }
@@ -3036,7 +3036,7 @@ typedef struct OBJtDoor_DebugDumpStructure {
 	float radius;
 } OBJtDoor_DebugDumpStructure;
 
-static UUtBool OBJiDoor_DebugDump_Enum(OBJtObject *inObject, UUtUns32 inUserData)
+static UUtBool OBJiDoor_DebugDump_Enum(OBJtObject *inObject, uintptr_t inUserData)
 {
 	OBJtDoor_DebugDumpStructure *dump_structure = (OBJtDoor_DebugDumpStructure *) inUserData;
 
@@ -3072,7 +3072,7 @@ UUtError OBJrDoor_DumpAll(void)
 		}
 	}
 
-	OBJrObjectType_EnumerateObjects(OBJcType_Door, OBJiDoor_DebugDump_Enum, (UUtUns32) &dump_structure);
+	OBJrObjectType_EnumerateObjects(OBJcType_Door, OBJiDoor_DebugDump_Enum, (uintptr_t) &dump_structure);
 
 	if (dump_structure.dump_file != NULL) {
 		BFrFile_Close(dump_structure.dump_file);
@@ -3090,7 +3090,7 @@ UUtError OBJrDoor_DumpNearby(M3tPoint3D *inPoint, float inRadius)
 	dump_structure.radius = inRadius;
 	dump_structure.dump_file = NULL;
 
-	OBJrObjectType_EnumerateObjects(OBJcType_Door, OBJiDoor_DebugDump_Enum, (UUtUns32) &dump_structure);
+	OBJrObjectType_EnumerateObjects(OBJcType_Door, OBJiDoor_DebugDump_Enum, (uintptr_t) &dump_structure);
 
 	return UUcError_None;
 }

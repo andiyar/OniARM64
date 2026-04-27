@@ -123,7 +123,7 @@ WMrDialog_Create(
 	WMtDialogID				inDialogID,
 	WMtWindow				*inParent,
 	WMtDialogCallback		inDialogCallback,
-	UUtUns32				inUserData,
+	uintptr_t				inUserData,
 	WMtDialog				**outDialog);
 
 WMtWindow*
@@ -131,7 +131,7 @@ WMrDialog_GetItemByID(
 	WMtDialog				*inDialog,
 	UUtUns16				inID);
 
-UUtUns32
+uintptr_t
 WMrDialog_GetUserData(
 	WMtDialog				*inDialog);
 
@@ -158,7 +158,7 @@ WMrDialog_ModalBegin(
 	WMtDialogID				inDialogID,
 	WMtWindow				*inParent,
 	WMtDialogCallback		inDialogCallback,
-	UUtUns32				inUserData,
+	uintptr_t				inUserData,
 	UUtUns32				*outMessage);
 
 void
@@ -183,7 +183,7 @@ WMrDialog_ToggleButtonCheck(
 void
 WMrDialog_SetUserData(
 	WMtDialog				*inDialog,
-	UUtUns32				inUserData);
+	uintptr_t				inUserData);
 
 // ----------------------------------------------------------------------
 

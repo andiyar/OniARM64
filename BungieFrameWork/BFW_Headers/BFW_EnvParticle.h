@@ -134,7 +134,7 @@ void EPrEnumerateAllParticles(EPtEnumCallback_EnvParticle inCallback, uintptr_t 
 void EPrEnumerateByTag(char *inTag, EPtEnumCallback_EnvParticle inCallback, uintptr_t inUserData);
 
 // enumerate all environmental particle classes and possible child particle classes also
-void EPrEnumerateParticleClassesRecursively(void (*inCallback)(struct P3tParticleClass *particle_class, UUtUns32 user_data), UUtUns32 inUserData);
+void EPrEnumerateParticleClassesRecursively(void (*inCallback)(struct P3tParticleClass *particle_class, uintptr_t user_data), uintptr_t inUserData);
 
 // get the list of environmental particles with a given tag from the hash structure
 EPtEnvParticle *EPrTagHash_Retrieve(char *inTag);

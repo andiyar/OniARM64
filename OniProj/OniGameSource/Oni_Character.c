@@ -5129,7 +5129,7 @@ void ONrGameState_DeleteCharactersInsideTrigger(OBJtObject *inObject)
 	return;
 }
 
-static UUtBool ONrGameState_UpdateTrigger(OBJtObject *inObject, UUtUns32 inUserData)
+static UUtBool ONrGameState_UpdateTrigger(OBJtObject *inObject, uintptr_t inUserData)
 {
 	ONtCharacter **active_character_list = ONrGameState_ActiveCharacterList_Get();
 	UUtUns32 active_character_count = ONrGameState_ActiveCharacterList_Count();

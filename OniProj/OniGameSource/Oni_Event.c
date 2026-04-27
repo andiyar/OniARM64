@@ -377,7 +377,7 @@ void ONrEvent_Handle_DoorUnlock( ONtEvent *inEvent )
 // enumerator
 // ======================================================================
 
-UUtUns32 ONrEvent_EnumerateTypes( ONtEvent_EnumCallback_TypeName inEnumCallback, UUtUns32 inUserData )
+UUtUns32 ONrEvent_EnumerateTypes( ONtEvent_EnumCallback_TypeName inEnumCallback, uintptr_t inUserData )
 {
 	ONtEventDescription			*desc;
 	UUtUns32					num_types;

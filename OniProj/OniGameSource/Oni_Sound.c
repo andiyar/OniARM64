@@ -2011,7 +2011,7 @@ OSiScriptCommands_Update(
 static UUtBool
 OSiSoundObject_BuildPlayList(
 	OBJtObject					*inObject,
-	UUtUns32					inUserData)
+	uintptr_t					inUserData)
 {
 	UUtError					error;
 	OBJtOSD_All					osd_all;

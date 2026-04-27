@@ -2759,7 +2759,7 @@ typedef struct AI2tTriggerVolumeCallbackData {
 	ONtCharacter *character;
 } AI2tTriggerVolumeCallbackData;
 
-static UUtBool AI2iScript_TriggerVolume_Callback(OBJtObject *inObject, UUtUns32 inUserData)
+static UUtBool AI2iScript_TriggerVolume_Callback(OBJtObject *inObject, uintptr_t inUserData)
 {
 	OBJtOSD_TriggerVolume *trig_osd;
 	AI2tTriggerVolumeCallbackData *data = (AI2tTriggerVolumeCallbackData *) inUserData;
@@ -2894,7 +2894,7 @@ static UUtError AI2iScript_TriggerVolume_Enable(SLtErrorContext *inErrorContext,
 	AI2gScript_TriggerVolume_Callback_Count = 0;
 #endif
 
-	OBJrObjectType_EnumerateObjects(OBJcType_TriggerVolume, AI2iScript_TriggerVolume_Callback, (UUtUns32) &data);
+	OBJrObjectType_EnumerateObjects(OBJcType_TriggerVolume, AI2iScript_TriggerVolume_Callback, (uintptr_t) &data);
 
 #if TOOL_VERSION
 	if (0 == AI2gScript_TriggerVolume_Callback_Count) {
@@ -2938,7 +2938,7 @@ static UUtError AI2iScript_TriggerVolume_SetScript(SLtErrorContext *inErrorConte
 		return UUcError_None;
 	}
 
-	OBJrObjectType_EnumerateObjects(OBJcType_TriggerVolume, AI2iScript_TriggerVolume_Callback, (UUtUns32) &data);
+	OBJrObjectType_EnumerateObjects(OBJcType_TriggerVolume, AI2iScript_TriggerVolume_Callback, (uintptr_t) &data);
 
 	if (data.found) {
 		return UUcError_None;
@@ -2993,7 +2993,7 @@ static UUtError	AI2iScript_TriggerVolume_Trigger(SLtErrorContext *inErrorContext
 	UUmAssertReadPtr(character, sizeof(ONtCharacter));
 	data.character = character;
 
-	OBJrObjectType_EnumerateObjects(OBJcType_TriggerVolume, AI2iScript_TriggerVolume_Callback, (UUtUns32) &data);
+	OBJrObjectType_EnumerateObjects(OBJcType_TriggerVolume, AI2iScript_TriggerVolume_Callback, (uintptr_t) &data);
 
 	if (data.found) {
 		return UUcError_None;
@@ -3017,7 +3017,7 @@ static UUtError	AI2iScript_TriggerVolume_Reset(SLtErrorContext *inErrorContext, 
 	data.found = 0;
 	data.script = NULL;
 
-	OBJrObjectType_EnumerateObjects(OBJcType_TriggerVolume, AI2iScript_TriggerVolume_Callback, (UUtUns32) &data);
+	OBJrObjectType_EnumerateObjects(OBJcType_TriggerVolume, AI2iScript_TriggerVolume_Callback, (uintptr_t) &data);
 
 	if (data.found) {
 		return UUcError_None;

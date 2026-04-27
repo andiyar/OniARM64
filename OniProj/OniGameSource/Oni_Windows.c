@@ -1455,7 +1455,7 @@ cleanup:
 static UUtBool
 OWiEnumCallback(
 	WMtWindow			*inWindow,
-	UUtUns32			inUserData)
+	uintptr_t			inUserData)
 {
 	if ((inWindow != OWgOniWindow) &&
 		(WMrWindow_GetVisible(inWindow) == UUcTrue))
@@ -1475,7 +1475,7 @@ OWiEnumCallback(
 static UUtBool
 OWiEnumCallback_FindFirstWindow(
 	WMtWindow			*inWindow,
-	UUtUns32			inUserData)
+	uintptr_t			inUserData)
 {
 	if ((inWindow != OWgOniWindow) &&
 		(WMrWindow_GetVisible(inWindow) == UUcTrue))
@@ -1522,7 +1522,7 @@ OWiHandleKeyCommands(
 
 			if (window == NULL) {
 				// find a window to close
-				WMrEnumWindows(OWiEnumCallback_FindFirstWindow, (UUtUns32) &window);
+				WMrEnumWindows(OWiEnumCallback_FindFirstWindow, (uintptr_t) &window);
 			}
 
 			// really don't close the desktop
@@ -2462,7 +2462,7 @@ UUtUns32 OWrGetMask(UUtUns32 inMask, const char **inFlagList)
 	internals.inFlagList = inFlagList;
 	internals.outMask = inMask;
 
-	WMrDialog_ModalBegin(OWcDialog_GetMask, NULL, OWrGetMask_Callback, (UUtUns32) &internals, NULL);
+	WMrDialog_ModalBegin(OWcDialog_GetMask, NULL, OWrGetMask_Callback, (uintptr_t) &internals, NULL);
 
 	return internals.outMask;
 }

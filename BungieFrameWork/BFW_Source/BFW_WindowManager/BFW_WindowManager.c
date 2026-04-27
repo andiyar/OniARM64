@@ -512,7 +512,7 @@ WMiWindow_InsertAfterChild(
 static UUtBool
 WMiWindow_DeleteOwned(
 	WMtWindow				*inWindow,
-	UUtUns32				inUserData)
+	uintptr_t				inUserData)
 {
 	WMtWindow				*owner;
 
@@ -2885,7 +2885,7 @@ WMrDeactivate(
 void
 WMrEnumWindows(
 	WMtWindowEnumCallback	inEnumCallback,
-	UUtUns32				inUserData)
+	uintptr_t				inUserData)
 {
 	WMtWindow				*child;
 

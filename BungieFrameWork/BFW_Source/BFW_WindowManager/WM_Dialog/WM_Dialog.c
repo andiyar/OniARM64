@@ -35,7 +35,7 @@ typedef struct WMtDialog_CreationData
 {
 	WMtDialogData		*dialog_data;
 	WMtDialogCallback	dialog_callback;
-	UUtUns32			user_data;
+	uintptr_t			user_data;
 
 } WMtDialog_CreationData;
 
@@ -49,7 +49,7 @@ typedef struct WMtDialog_PrivateData
 
 	UUtUns32			default_item_id;
 
-	UUtUns32			user_data;
+	uintptr_t			user_data;
 
 } WMtDialog_PrivateData;
 
@@ -777,7 +777,7 @@ WMrDialog_Create(
 	WMtDialogID				inDialogID,
 	WMtWindow				*inParent,
 	WMtDialogCallback		inDialogCallback,
-	UUtUns32				inUserData,
+	uintptr_t				inUserData,
 	WMtDialog				**outDialog)
 {
 	UUtError				error;
@@ -873,7 +873,7 @@ WMrDialog_GetItemByID(
 }
 
 // ----------------------------------------------------------------------
-UUtUns32
+uintptr_t
 WMrDialog_GetUserData(
 	WMtDialog				*inDialog)
 {
@@ -938,7 +938,7 @@ char *WMrDialog_GetString(
 	init.inHook = inHook;
 	init.inBufferSize = inBufferSize;
 
-	error = WMrDialog_ModalBegin(WMcGetString, inParent, WMiGetString_Callback, (UUtUns32) &init, &message);
+	error = WMrDialog_ModalBegin(WMcGetString, inParent, WMiGetString_Callback, (uintptr_t) &init, &message);
 
 	if (error != UUcError_None) {
 		result = NULL;
@@ -957,7 +957,7 @@ WMrDialog_ModalBegin(
 	WMtDialogID				inDialogID,
 	WMtWindow				*inParent,
 	WMtDialogCallback		inDialogCallback,
-	UUtUns32				inUserData,
+	uintptr_t				inUserData,
 	UUtUns32				*outMessage)
 {
 	UUtError				error;
@@ -1116,7 +1116,7 @@ WMrDialog_ToggleButtonCheck(
 void
 WMrDialog_SetUserData(
 	WMtDialog				*inDialog,
-	UUtUns32				inUserData)
+	uintptr_t				inUserData)
 {
 	WMtDialog_PrivateData	*private_data;
 

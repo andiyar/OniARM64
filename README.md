@@ -58,9 +58,9 @@ original 32-bit target but breaks now. Common patterns:
 - [x] Movement (WASD / mouselook) doesn't instantly SIGSEGV
 - [x] Crash-handler prevents UE-zombie processes after SIGSEGV (no more daily reboots)
 - [ ] Remaining per-frame draw-path crashes (whatever surfaces after decal / BSP / block8 fixes)
-- [ ] Doors open instead of clipped-through (→ `OT_Door` callback truncation sweep)
-- [ ] Triggers / trigger volumes fire (→ `OT_Trigger`, `OT_TriggerVolume` callback truncation sweep)
-- [ ] AI state machines run (→ `Oni_AI2*.c`, `OT_Combat.c` callback truncation sweep — probably unblocks bone-horror too)
+- [x] Doors open instead of clipped-through (→ `OT_Door` callback truncation sweep) — **sweep landed session 17**
+- [x] Triggers / trigger volumes fire (→ `OT_Trigger`, `OT_TriggerVolume` callback truncation sweep) — **sweep landed session 17**
+- [x] AI state machines run (→ `Oni_AI2*.c`, `OT_Combat.c` callback truncation sweep) — **sweep landed session 17**
 - [ ] Character animation: bone transforms correct, no levitation / stretched joints
 - [x] **Audio actually plays** — Bug A diagnosed in session 12: shipping data has no `.sep` files, so both `BDiBinaryData_ProcHandler` (BINA) and `OSiBinaryData_ProcHandler` (OSBD, audio) silently no-op. Fix verified working in isolation (`c039fa5`, reverted in `7e51a55`) — but unblocks Bug C below. Land paired.
 - [ ] **Bug C — particle loader 64-bit bridge gap** — `P3rLoad_PostProcess` SIGBUSes during 64-bit bridge of `P3tParticleDefinition`. KERN_PROTECTION_FAILURE at `0x19c8d9cb04` inside `P3rTraverseVarRef+2252` ← `P3rPackVariables+1624` ← `P3iProcessParticleClass+368`. Latent the whole port; only became reachable when Bug A unblocked the dispatch chain. Files: `BFW_Particle/BFW_Particle3.c`, `BFW_Headers/BFW_Particle3.h`. Must land paired with Bug A.
@@ -69,6 +69,12 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
 ## Rolling timeline (newest first)
+
+### 2026-04-27 — Session 17: Phase 2 — callback truncation sweep (Bug CB)
+
+- **Full `UUtUns32 inUserData` → `uintptr_t` sweep across ~80 sites in 43 files.** Six typedef chains widened end-to-end: `OBJtEnumCallback_Object` impls, `OBJtEnumCallback_ObjectName` + `OBJtMethod_Enumerate`, `P3tClassCallback`, `AStHeap_CompareFunc`/`NotifyLocation`, `ONtEvent_EnumCallback_TypeName`, `WMtWindowEnumCallback` + `WMrDialog` userdata chain. Every callback impl that receives a pointer through `inUserData` now reads the full 64-bit value.
+- **Level 1 load now completes.** All tripwires pass through `OBJrObject_LevelBegin`, `AI2rLevelBegin`, `ONrScript_LevelBegin`, `InitializeActionMarkerArray`, `ONrMechanics_LevelBegin`, character preload. The old `ONiFlagsExist` crash (truncated pointer `0x6aee1bab`) is gone.
+- **Cascade found:** `P3rTraverseParticleClass` crashes during particle precache in level 1 begin — a `P3tParticleClass*` pointer (`0x2efb48`) is a 32-bit value that wasn't resolved to a 64-bit address. This is a template data pointer issue in the particle sub-emitter class linkage, not a callback truncation. Next investigation target.
 
 ### 2026-04-27 — Session 16: Phase 1 complete — menu music plays
 

@@ -296,7 +296,7 @@ static UUtError
 OBJiFurniture_Enumerate(
 	OBJtObject						*inObject,
 	OBJtEnumCallback_ObjectName		inEnumCallback,
-	UUtUns32						inUserData)
+	uintptr_t						inUserData)
 {
 	UUtError						error;
 
@@ -560,7 +560,7 @@ OBJiFurniture_Read(
 static UUtBool
 OBJiFurniture_CreateParticles(
 	OBJtObject				*inObject,
-	UUtUns32				inUserData)
+	uintptr_t				inUserData)
 {
 	OBJtOSD_Furniture		*furniture_osd;
 	char					particle_tag[2 * EPcParticleTagNameLength + 2];

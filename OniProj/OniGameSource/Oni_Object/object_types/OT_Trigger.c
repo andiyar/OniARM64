@@ -60,7 +60,7 @@ static void OBJiTrigger_StopActiveSound(OBJtObject *inObject, OBJtOSD_Trigger *i
 // functions
 // ======================================================================
 
-static UUtBool OBJrTrigger_ActivateTurrets_Enum( const OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrTrigger_ActivateTurrets_Enum( const OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Turret *turret_osd;
 
@@ -559,7 +559,7 @@ static void OBJiTrigger_Draw( OBJtObject *inObject, UUtUns32 inDrawFlags)
 
 // ----------------------------------------------------------------------
 static UUtError
-OBJiTrigger_Enumerate( OBJtObject *inObject, OBJtEnumCallback_ObjectName inEnumCallback, UUtUns32 inUserData )
+OBJiTrigger_Enumerate( OBJtObject *inObject, OBJtEnumCallback_ObjectName inEnumCallback, uintptr_t inUserData )
 {
 	return OBJrObjectUtil_EnumerateTemplate( "", OBJcTemplate_TriggerClass, inEnumCallback, inUserData);
 }
@@ -1014,7 +1014,7 @@ static UUtError OBJrTrigger_Deactivate( OBJtObject *inObject )
 	return UUcError_None;
 }
 
-static UUtBool OBJrTrigger_Activate_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrTrigger_Activate_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Trigger *trigger_osd;
 
@@ -1029,7 +1029,7 @@ static UUtBool OBJrTrigger_Activate_Enum(OBJtObject *inObject, UUtUns32 inUserDa
 	return UUcTrue;
 }
 
-static UUtBool OBJrTrigger_Deactivate_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrTrigger_Deactivate_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Trigger *trigger_osd;
 
@@ -1155,7 +1155,7 @@ static void OBJrTrigger_SetSpeed(OBJtObject *inObject, float inSpeed)
 }
 
 
-static UUtBool OBJrTrigger_Reset_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrTrigger_Reset_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Trigger *trigger_osd;
 
@@ -1171,7 +1171,7 @@ static UUtBool OBJrTrigger_Reset_Enum(OBJtObject *inObject, UUtUns32 inUserData 
 	return UUcTrue;
 }
 
-static UUtBool OBJrTrigger_Show_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrTrigger_Show_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Trigger *trigger_osd;
 
@@ -1187,7 +1187,7 @@ static UUtBool OBJrTrigger_Show_Enum(OBJtObject *inObject, UUtUns32 inUserData )
 	return UUcTrue;
 }
 
-static UUtBool OBJrTrigger_Hide_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrTrigger_Hide_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Trigger *trigger_osd;
 
@@ -1203,7 +1203,7 @@ static UUtBool OBJrTrigger_Hide_Enum(OBJtObject *inObject, UUtUns32 inUserData )
 	return UUcTrue;
 }
 
-static UUtBool OBJrTrigger_SetSpeed_Enum(OBJtObject *inObject, UUtUns32 inUserData )
+static UUtBool OBJrTrigger_SetSpeed_Enum(OBJtObject *inObject, uintptr_t inUserData )
 {
 	OBJtOSD_Trigger *trigger_osd;
 

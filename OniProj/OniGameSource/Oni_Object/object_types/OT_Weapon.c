@@ -88,7 +88,7 @@ static UUtError
 OBJiWeapon_Enumerate(
 	OBJtObject						*inObject,
 	OBJtEnumCallback_ObjectName		inEnumCallback,
-	UUtUns32						inUserData)
+	uintptr_t						inUserData)
 {
 	UUtError						error;
 	UUtUns32						num_weapon_classes;

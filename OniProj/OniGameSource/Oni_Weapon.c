@@ -2343,7 +2343,7 @@ void WPiPowerupPhysics_PreDispose_Callback(PHtPhysicsContext *ioContext)
 static UUtBool
 WPiCreateWeapon_Callback(
 	OBJtObject				*inObject,
-	UUtUns32				inUserData)
+	uintptr_t				inUserData)
 {
 	UUtError				error;
 	OBJtOSD_Weapon			*weapon_osd;
@@ -2412,7 +2412,7 @@ WPiWeapons_Reset(
 static UUtBool
 WPiCreatePowerup_Callback(
 	OBJtObject				*inObject,
-	UUtUns32				inUserData)
+	uintptr_t				inUserData)
 {
 	OBJtOSD_PowerUp			*powerup_osd;
 

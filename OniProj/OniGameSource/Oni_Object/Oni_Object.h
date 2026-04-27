@@ -294,7 +294,7 @@ typedef UUtBool
 typedef UUtBool
 (*OBJtEnumCallback_ObjectName)(
 	const char				*inName,
-	UUtUns32				inUserData);
+	uintptr_t				inUserData);
 
 typedef void
 (*OBJtMethod_Delete)(
@@ -309,7 +309,7 @@ typedef UUtError
 (*OBJtMethod_Enumerate)(
 	OBJtObject						*inObject,
 	OBJtEnumCallback_ObjectName		inEnumCallback,
-	UUtUns32						inUserData);
+	uintptr_t						inUserData);
 
 typedef void
 (*OBJtMethod_GetBoundingSphere)(
@@ -1263,7 +1263,7 @@ static UUcInline OBJtObjectType OBJrObject_GetType(const OBJtObject *inObject)
 static UUcInline UUtError OBJrObject_Enumerate(
 	OBJtObject *inObject,
 	OBJtEnumCallback_ObjectName inEnumCallback,
-	UUtUns32 inUserData)
+	uintptr_t inUserData)
 {
 	return inObject->methods->rEnumerate(inObject, inEnumCallback, inUserData);
 }

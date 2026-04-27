@@ -57,7 +57,7 @@ static UUtError
 OBJiNeutral_Enumerate(
 	OBJtObject						*inObject,
 	OBJtEnumCallback_ObjectName		inEnumCallback,
-	UUtUns32						inUserData)
+	uintptr_t						inUserData)
 {
 	char							name[OBJcMaxNameLength + 1];
 

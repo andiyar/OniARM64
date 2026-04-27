@@ -842,7 +842,7 @@ WMrEditField_GetInt32(WMtEditField *inEditField)
 	UUtInt32 edit_field_number;
 	UUtError error;
 
-	error = (UUtError) WMrMessage_Send(inEditField, EFcMessage_GetInt, (UUtUns32) &edit_field_number, 0);
+	error = (UUtError) WMrMessage_Send(inEditField, EFcMessage_GetInt, (uintptr_t) &edit_field_number, 0);
 
 	if (UUcError_None != error) {
 		edit_field_number = 0;
@@ -857,7 +857,7 @@ WMrEditField_GetFloat(WMtEditField *inEditField)
 	float edit_field_number;
 	UUtError error;
 
-	error = (UUtError) WMrMessage_Send(inEditField, EFcMessage_GetFloat, (UUtUns32) &edit_field_number, 0);
+	error = (UUtError) WMrMessage_Send(inEditField, EFcMessage_GetFloat, (uintptr_t) &edit_field_number, 0);
 
 	if (UUcError_None != error) {
 		edit_field_number = 0.f;

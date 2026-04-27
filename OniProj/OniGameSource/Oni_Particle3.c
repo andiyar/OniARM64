@@ -1792,7 +1792,7 @@ typedef struct ONtParticle3_WriteUsedParticles_UserData {
 	BFtFile *file;
 } ONtParticle3_WriteUsedParticles_UserData;
 
-static void ONiParticle3_WriteUsedParticles_EnumCallback(P3tParticleClass *inClass, UUtUns32 inUserData)
+static void ONiParticle3_WriteUsedParticles_EnumCallback(P3tParticleClass *inClass, uintptr_t inUserData)
 {
 	ONtParticle3_WriteUsedParticles_UserData *user_data = (ONtParticle3_WriteUsedParticles_UserData *) inUserData;
 	char linebuf[512], tempbuf[256];
@@ -1868,7 +1868,7 @@ ONiParticle3_WriteUsedParticles(
 
 	// write out particles used
 	user_data.num_classes = 0;
-	EPrEnumerateParticleClassesRecursively(ONiParticle3_WriteUsedParticles_EnumCallback, (UUtUns32) &user_data);
+	EPrEnumerateParticleClassesRecursively(ONiParticle3_WriteUsedParticles_EnumCallback, (uintptr_t) &user_data);
 	COrConsole_Printf("Wrote %d particle classes to file %s...", user_data.num_classes, filename);
 
 	// cleanup

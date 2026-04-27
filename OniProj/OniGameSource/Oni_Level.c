@@ -775,7 +775,7 @@ UUtError ONrLevel_Load(UUtUns16 inLevelNum, UUtBool inProgressBar)
 static UUtBool
 ONiFlagsExist(
 	OBJtObject				*inObject,
-	UUtUns32				inUserData)
+	uintptr_t				inUserData)
 {
 	UUtBool					*found;
 
@@ -862,7 +862,7 @@ ONiFlagArray_TemplateHandler(
 static UUtBool
 ONiLevel_Flag_GetByLocation(
 	OBJtObject					*inObject,
-	UUtUns32					inUserData)
+	uintptr_t					inUserData)
 {
 	ONtLevel_FindLocation		*find_loc;
 	float						distance_squared;
