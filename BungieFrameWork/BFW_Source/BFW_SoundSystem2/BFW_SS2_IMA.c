@@ -212,7 +212,6 @@ SSiIMA_CompressMono(
 			sample_data->state =
 				(short)(ima_predicted & 0xFF80) |
 				(ima_index & 0x007F);
-			UUmSwapBig_2Byte(&sample_data->state);
 
 			SSiIMA_CompressPacket(
 				source,
@@ -337,7 +336,6 @@ SSiIMA_CompressStereo(
 			sample_data->state =
 				(short)(left_ima_predicted & 0xFF80) |
 				(left_ima_index & 0x007F);
-			UUmSwapBig_2Byte(&sample_data->state);
 
 			SSiIMA_CompressPacket(
 				left,
@@ -352,7 +350,6 @@ SSiIMA_CompressStereo(
 			sample_data->state =
 				(short)(right_ima_predicted & 0xFF80) |
 				(right_ima_index & 0x007F);
-			UUmSwapBig_2Byte(&sample_data->state);
 
 			SSiIMA_CompressPacket(
 				right,
@@ -545,7 +542,6 @@ SSiIMA_DecompressSoundData_Mono(
 		UUtUns16			state;
 
 		state = sample_data->state;
-		UUmSwapBig_2Byte(&state);
 
 		SSiIMA_DecompressPacket(state, sample_data->samples, destination);
 
@@ -582,11 +578,11 @@ SSiIMA_DecompressSoundData_Stereo(
 		UUtUns16				left_samples[SScIMA_SamplesPerPacket];
 		UUtUns16				right_samples[SScIMA_SamplesPerPacket];
 
-		state = sample_data->state; UUmSwapBig_2Byte(&state);
+		state = sample_data->state;
 		SSiIMA_DecompressPacket(state, sample_data->samples, left_samples);
 		sample_data++;
 
-		state = sample_data->state; UUmSwapBig_2Byte(&state);
+		state = sample_data->state;
 		SSiIMA_DecompressPacket(state, sample_data->samples, right_samples);
 		sample_data++;
 

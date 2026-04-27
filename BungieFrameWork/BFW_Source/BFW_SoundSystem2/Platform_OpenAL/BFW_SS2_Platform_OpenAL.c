@@ -142,38 +142,9 @@ void
 SS2rPlatform_SoundChannel_Play(
 	SStSoundChannel				*inSoundChannel)
 {
-	ALint pre_state = -1, attached_buffer = -1, buffer_size = -1, buffer_freq = -1, buffer_bits = -1, buffer_chans = -1;
-	ALfloat src_gain = -1, src_pitch = -1;
-	alGetSourcei(inSoundChannel->pd.source, AL_SOURCE_STATE, &pre_state);
-	alGetSourcei(inSoundChannel->pd.source, AL_BUFFER, &attached_buffer);
-	alGetSourcef(inSoundChannel->pd.source, AL_GAIN, &src_gain);
-	alGetSourcef(inSoundChannel->pd.source, AL_PITCH, &src_pitch);
-	if (attached_buffer > 0) {
-		alGetBufferi(attached_buffer, AL_SIZE, &buffer_size);
-		alGetBufferi(attached_buffer, AL_FREQUENCY, &buffer_freq);
-		alGetBufferi(attached_buffer, AL_BITS, &buffer_bits);
-		alGetBufferi(attached_buffer, AL_CHANNELS, &buffer_chans);
-	}
-	UUrStartupMessage(
-		"[SS2/OAL] Play src=%u buf=%d preState=%d looping=%d gain=%.2f pitch=%.2f bufSize=%d freq=%d bits=%d chans=%d",
-		inSoundChannel->pd.source, attached_buffer, pre_state,
-		SSiSoundChannel_IsLooping(inSoundChannel) == UUcTrue ? 1 : 0,
-		src_gain, src_pitch,
-		buffer_size, buffer_freq, buffer_bits, buffer_chans);
-
 	alSourcei(inSoundChannel->pd.source, AL_LOOPING, SSiSoundChannel_IsLooping(inSoundChannel) == UUcTrue ? AL_TRUE : AL_FALSE);
 	alSourcePlay(inSoundChannel->pd.source);
 	CHECK_AL_ERROR();
-	{
-		ALenum al_err = alGetError();
-		if (al_err != AL_NO_ERROR)
-			UUrStartupMessage("[SS2/OAL] Play alGetError after alSourcePlay: 0x%x", al_err);
-	}
-
-	ALint post_state = -1;
-	alGetSourcei(inSoundChannel->pd.source, AL_SOURCE_STATE, &post_state);
-	UUrStartupMessage("[SS2/OAL] Play post src=%u state=%d (AL_PLAYING=%d)", inSoundChannel->pd.source, post_state, AL_PLAYING);
-
 	SSiSoundChannel_SetPlaying(inSoundChannel, UUcTrue);
 }
 
@@ -182,14 +153,8 @@ void
 SS2rPlatform_SoundChannel_Resume(
 	SStSoundChannel				*inSoundChannel)
 {
-	UUrStartupMessage("[SS2/OAL] Resume src=%u", inSoundChannel->pd.source);
 	alSourcePlay(inSoundChannel->pd.source);
 	CHECK_AL_ERROR();
-	{
-		ALenum al_err = alGetError();
-		if (al_err != AL_NO_ERROR)
-			UUrStartupMessage("[SS2/OAL] Resume alGetError after alSourcePlay: 0x%x", al_err);
-	}
 	SSiSoundChannel_SetPaused(inSoundChannel, UUcFalse);
 }
 
@@ -209,27 +174,17 @@ static UUtBool
 SS2r_DecompressMSADPCM(
 	SStSoundChannel	*inSoundChannel,
 	SStSoundData	*inSoundData,
+	unsigned		inChannels,
 	UUtUns16		*decoded,
 	size_t			*samples)
 {
 	UUtBool success = UUcFalse;
-	unsigned channels = SSrSound_GetNumChannels(inSoundData);
 
 	*samples = 0;
 
 	if (!inSoundData->data || (uintptr_t)inSoundData->data < 0x10000) {
 		return UUcFalse;
 	}
-
-	if (SScSamplesPerSecond != 8 && SScBitsPerSample != 16)
-	{
-		UUrPrintWarning("Unexpected SScBitsPerSample: %d", SScBitsPerSample);
-		return UUcFalse;
-	}
-
-#ifdef DEBUGGING
-	av_log_set_level(AV_LOG_DEBUG);
-#endif
 
 	const AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_ADPCM_MS);
 	if (!codec) {
@@ -242,11 +197,11 @@ SS2r_DecompressMSADPCM(
 		return UUcFalse;
 	}
 	c->ch_layout.order = AV_CHANNEL_ORDER_UNSPEC;
-	c->ch_layout.nb_channels = channels;
-	c->sample_rate = SScSamplesPerSecond;
-	c->sample_fmt = SScBitsPerSample == 8 ? AV_SAMPLE_FMT_U8 : AV_SAMPLE_FMT_S16;
-	c->block_align = 512 * channels;
-	c->bits_per_coded_sample = 4;
+	c->ch_layout.nb_channels = inChannels;
+	c->sample_rate = inSoundData->f.nSamplesPerSec;
+	c->sample_fmt = AV_SAMPLE_FMT_S16;
+	c->block_align = inSoundData->f.nBlockAlign;
+	c->bits_per_coded_sample = inSoundData->f.wBitsPerSample;
 	int ret = avcodec_open2(c, codec, NULL);
 	if (ret < 0) {
 		UUrPrintWarning("Failed to open ADPCM_MS codec (error %d)", ret);
@@ -263,7 +218,7 @@ SS2r_DecompressMSADPCM(
 	// this pointer will iterate over the data by framesz
 	char *frame = inSoundData->data;
 	char *frames_end = frame + inSoundData->num_bytes;
-	const size_t framesz = 512 * channels;
+	const size_t framesz = inSoundData->f.nBlockAlign;
 
 	AVFrame *decoded_frame = av_frame_alloc();
 	if (!decoded_frame) {
@@ -346,54 +301,29 @@ SS2rPlatform_SoundChannel_SetSoundData(
 	SStSoundChannel				*inSoundChannel,
 	SStSoundData				*inSoundData)
 {
-	{
-		UUtUns8 *raw = (UUtUns8 *)inSoundData;
-		UUrStartupMessage("[SS2/OAL] SoundData raw hex @ %p: %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
-			(void*)inSoundData,
-			raw[0],raw[1],raw[2],raw[3], raw[4],raw[5],raw[6],raw[7],
-			raw[8],raw[9],raw[10],raw[11], raw[12],raw[13],raw[14],raw[15],
-			raw[16],raw[17],raw[18],raw[19], raw[20],raw[21],raw[22],raw[23]);
-		UUrStartupMessage("[SS2/OAL] SoundData fields: flags=0x%x dur=%u num_bytes=%u data=%p",
-			inSoundData->flags, inSoundData->duration_ticks,
-			inSoundData->num_bytes, inSoundData->data);
-		if (inSoundData->data && (uintptr_t)inSoundData->data > 0x10000) {
-			UUtUns8 *d = (UUtUns8 *)inSoundData->data;
-			UUrStartupMessage("[SS2/OAL] SoundData first 16 bytes: %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
-				d[0],d[1],d[2],d[3], d[4],d[5],d[6],d[7],
-				d[8],d[9],d[10],d[11], d[12],d[13],d[14],d[15]);
-		}
-	}
-
-	UUtUns32 num_channels = SSrSound_GetNumChannels(inSoundData);
+	unsigned num_channels = inSoundData->f.nChannels;
+	if (num_channels == 0) num_channels = 1;
 	ALenum format;
-	if (num_channels == 1 && SScBitsPerSample == 16)
+	if (num_channels == 1)
 		format = AL_FORMAT_MONO16;
-	else if (num_channels == 2 && SScBitsPerSample == 16)
-		format = AL_FORMAT_STEREO16;
-	else if (num_channels == 1 && SScBitsPerSample == 8)
-		format = AL_FORMAT_MONO8;
-	else if (num_channels == 2 && SScBitsPerSample == 8)
-		format = AL_FORMAT_STEREO8;
 	else
-	{
-		UUrPrintWarning("Invalid format. bps=%d, channels=%u", SScBitsPerSample, num_channels);
-		return UUcFalse;
-	}
+		format = AL_FORMAT_STEREO16;
 
-	if (inSoundData->flags & SScSoundDataFlag_Compressed)
+	if (inSoundData->f.wFormatTag == 2)
 	{
 		UUtUns16 *decoded = UUrMemory_Block_New(inSoundData->num_bytes * 4);
 		if (!decoded) {
 			return UUcFalse;
 		}
 		size_t samples = 0;
-		UUtBool success = SS2r_DecompressMSADPCM(inSoundChannel, inSoundData, decoded, &samples);
-		UUrStartupMessage("[SS2/OAL] SetSoundData ADPCM src=%u samples=%zu %s",
-			inSoundChannel->pd.source, samples, success ? "OK" : "FAIL");
+		UUtBool success = SS2r_DecompressMSADPCM(inSoundChannel, inSoundData, num_channels, decoded, &samples);
+		UUrStartupMessage("[SS2/OAL] SetSoundData ADPCM src=%u chans=%u blkAlign=%u samples=%zu %s",
+			inSoundChannel->pd.source, num_channels, inSoundData->f.nBlockAlign,
+			samples, success ? "OK" : "FAIL");
 		if (success)
 		{
 			alSourcei(inSoundChannel->pd.source, AL_BUFFER, 0);
-			alBufferData(inSoundChannel->pd.buffer, format, decoded, samples * sizeof(*decoded), SScSamplesPerSecond);
+			alBufferData(inSoundChannel->pd.buffer, format, decoded, samples * sizeof(*decoded), inSoundData->f.nSamplesPerSec);
 			CHECK_AL_ERROR();
 			alSourcei(inSoundChannel->pd.source, AL_BUFFER, inSoundChannel->pd.buffer);
 			CHECK_AL_ERROR();
@@ -414,18 +344,6 @@ SS2rPlatform_SoundChannel_SetSoundData(
 			return UUcFalse;
 
 		SSrIMA_DecompressSoundData(inSoundData, pcm, num_packets, 0);
-
-		{
-			UUtInt16 *s = (UUtInt16*)pcm;
-			UUrStartupMessage("[SS2/OAL] IMA first 8 samples: %d %d %d %d %d %d %d %d",
-				s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7]);
-			UUtUns8 *raw = (UUtUns8*)inSoundData->data;
-			UUrStartupMessage("[SS2/OAL] IMA src first 8 bytes: %02x %02x %02x %02x %02x %02x %02x %02x",
-				raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7]);
-		}
-
-		UUrStartupMessage("[SS2/OAL] SetSoundData IMA src=%u fmt=0x%x packets=%u samples=%u pcmBytes=%u",
-			inSoundChannel->pd.source, format, num_packets, num_samples, pcm_bytes);
 
 		alSourcei(inSoundChannel->pd.source, AL_BUFFER, 0);
 		alBufferData(inSoundChannel->pd.buffer, format, pcm, pcm_bytes, SScSamplesPerSecond);

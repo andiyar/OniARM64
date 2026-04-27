@@ -62,13 +62,22 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Triggers / trigger volumes fire (→ `OT_Trigger`, `OT_TriggerVolume` callback truncation sweep)
 - [ ] AI state machines run (→ `Oni_AI2*.c`, `OT_Combat.c` callback truncation sweep — probably unblocks bone-horror too)
 - [ ] Character animation: bone transforms correct, no levitation / stretched joints
-- [ ] **Audio actually plays** — Bug A diagnosed in session 12: shipping data has no `.sep` files, so both `BDiBinaryData_ProcHandler` (BINA) and `OSiBinaryData_ProcHandler` (OSBD, audio) silently no-op. Fix verified working in isolation (`c039fa5`, reverted in `7e51a55`) — but unblocks Bug C below. Land paired.
+- [x] **Audio actually plays** — Bug A diagnosed in session 12: shipping data has no `.sep` files, so both `BDiBinaryData_ProcHandler` (BINA) and `OSiBinaryData_ProcHandler` (OSBD, audio) silently no-op. Fix verified working in isolation (`c039fa5`, reverted in `7e51a55`) — but unblocks Bug C below. Land paired.
 - [ ] **Bug C — particle loader 64-bit bridge gap** — `P3rLoad_PostProcess` SIGBUSes during 64-bit bridge of `P3tParticleDefinition`. KERN_PROTECTION_FAILURE at `0x19c8d9cb04` inside `P3rTraverseVarRef+2252` ← `P3rPackVariables+1624` ← `P3iProcessParticleClass+368`. Latent the whole port; only became reachable when Bug A unblocked the dispatch chain. Files: `BFW_Particle/BFW_Particle3.c`, `BFW_Headers/BFW_Particle3.h`. Must land paired with Bug A.
 - [ ] HiDPI window mapping: 640×480 render in the bottom-left of 2K display is a Retina backing-scale mismatch
 - [ ] `.app` bundle + code signing
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
 ## Rolling timeline (newest first)
+
+### 2026-04-27 — Session 16: Phase 1 complete — menu music plays
+
+- **Audio works end-to-end.** User audibly confirmed clean menu music (T1 verified). Phase 1 success criterion met.
+- Root cause of session 15's "music under static": the shipping data is Microsoft ADPCM (wFormatTag=2, stereo, 1024-byte blocks) but the code routed it to Bungie's custom IMA ADPCM decoder based on a flags field that didn't indicate compression. IMA decoder blew up within the first packet (step index diverging, output railing at ±32768).
+- Fix: route by `SStFormat.wFormatTag` (== 2 → ADPCM_MS via libavcodec) instead of `flags & SScSoundDataFlag_Compressed`. Read channel count, block alignment, sample rate, and bits-per-coded-sample from the SStFormat metadata rather than hardcoded constants. Stereo decode + OpenAL stereo upload now works correctly.
+- Secondary fix: removed `UUmSwapBig_2Byte` from IMA state-word reads in `BFW_SS2_IMA.c`. The shipping Windows `.raw` files store IMA data in little-endian (platform-native) byte order; the big-endian swap was producing wrong predictor/index values. IMA path not exercised by menu music (which is ADPCM_MS) but will matter for any future IMA-format sounds.
+- Stripped all session 15/16 audio instrumentation (Play/Resume logging, hex dumps, WAV dumps).
+- New Game still crashes (Bug CB — `ONiFlagsExist` via `OBJiObjectGroup_EnumerateObjects+196`, SIGSEGV at truncated pointer `0x6aee1bab`). This is the known callback-truncation class, Phase 2 work.
 
 ### 2026-04-26 — Session 15: Phase 1 audio investigation
 
