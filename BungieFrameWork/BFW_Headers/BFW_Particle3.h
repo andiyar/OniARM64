@@ -495,7 +495,7 @@ typedef struct P3tActionInstance_Version0 {
 
 typedef struct P3tActionInstance {
 	P3tActionType			action_type;
-	UUtUns32				action_data;		// computed at load time. depends on action_type;
+	uintptr_t				action_data;		// computed at load time. depends on action_type;
 												// may be particle class, action pointer etc
 	P3tVariableReference	action_var	[P3cActionMaxParameters];
 	P3tValue				action_value[P3cActionMaxParameters];

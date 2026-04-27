@@ -1191,8 +1191,10 @@ static void P3iCalculateArrayPointers(P3tParticleDefinition *inClassPtr)
      (c) P3tEmitter::emittedclass — widens 4 → 8 bytes per emitter; struct grows
          444 → 448.
 
-   P3tValue / P3tVariableInfo / P3tActionInstance contain no pointers and are
-   identical on both archs, so their array bodies copy verbatim. */
+   P3tValue / P3tVariableInfo contain no pointers and are identical on both
+   archs, so their array bodies copy verbatim.  P3tActionInstance::action_data
+   was widened from UUtUns32 to uintptr_t (runtime pointer cache), so each
+   action grows 424 → 432 bytes (4 wider + 4 alignment pad). */
 
 #include <stddef.h>  /* offsetof */
 
@@ -1200,7 +1202,8 @@ static void P3iCalculateArrayPointers(P3tParticleDefinition *inClassPtr)
    the bridge math breaks. */
 _Static_assert(sizeof(P3tValue)              == 28,  "P3tValue size changed");
 _Static_assert(sizeof(P3tVariableInfo)       == 52,  "P3tVariableInfo size changed");
-_Static_assert(sizeof(P3tActionInstance)     == 424, "P3tActionInstance size changed");
+_Static_assert(sizeof(P3tActionInstance)     == 432, "P3tActionInstance size changed");
+#define P3i32cAction_Size               424    /* 32-bit on-disk P3tActionInstance */
 _Static_assert(sizeof(P3tAttractor)          == 224, "P3tAttractor size changed");
 _Static_assert(offsetof(P3tAttractor, attractor_ptr)  == 8,   "attractor_ptr offset changed");
 _Static_assert(offsetof(P3tAttractor, attractor_name) == 16,  "attractor_name offset changed");
@@ -1242,7 +1245,7 @@ static UUtError P3iBridge32To64(P3tParticleClass *ioClass)
 
 	/* No-op if the on-disk size already matches the 64-bit layout (e.g. data
 	   produced by a 64-bit toolchain, or the class is empty). */
-	new_total_size = (UUtUns32) ioClass->memory.size + 20 + (UUtUns32) num_emitters * 4;
+	new_total_size = (UUtUns32) ioClass->memory.size + 20 + (UUtUns32) num_emitters * 4 + (UUtUns32) num_actions * 8;
 	if (new_total_size == ioClass->memory.size) {
 		return UUcError_None;
 	}
@@ -1294,20 +1297,26 @@ static UUtError P3iBridge32To64(P3tParticleClass *ioClass)
 					   new_bytes + sizeof(P3tParticleDefinition),
 					   (UUtUns32) num_variables * sizeof(P3tVariableInfo));
 
-	/* (6) Actions — action_data is UUtUns32 (not pointer), identical layout. */
-	UUrMemory_MoveFast(old_bytes + P3i32cDef_TotalSize
-						+ (UUtUns32) num_variables * sizeof(P3tVariableInfo),
-					   new_bytes + sizeof(P3tParticleDefinition)
-						+ (UUtUns32) num_variables * sizeof(P3tVariableInfo),
-					   (UUtUns32) num_actions * sizeof(P3tActionInstance));
+	/* (6) Actions — action_data widened from UUtUns32 to uintptr_t; copy per-action. */
+	src = old_bytes + P3i32cDef_TotalSize
+		+ (UUtUns32) num_variables * sizeof(P3tVariableInfo);
+	dst = new_bytes + sizeof(P3tParticleDefinition)
+		+ (UUtUns32) num_variables * sizeof(P3tVariableInfo);
+	for (itr = 0; itr < num_actions; itr++) {
+		P3tActionInstance *dst_action = (P3tActionInstance *) dst;
+		/* action_type (4 bytes) */
+		dst_action->action_type = *((P3tActionType *) src);
+		/* action_data — runtime-resolved, zero-fill */
+		dst_action->action_data = 0;
+		/* action_var + action_value (416 bytes at src offset 8, dst offset 16) */
+		UUrMemory_MoveFast(src + 8, dst + 16,
+						   (UUtUns32)(sizeof(P3tActionInstance) - 16));
+		src += P3i32cAction_Size;
+		dst += sizeof(P3tActionInstance);
+	}
 
 	/* (7) Emitters — bridge each emitter's embedded emittedclass pointer. */
-	src = old_bytes + P3i32cDef_TotalSize
-		+ (UUtUns32) num_variables * sizeof(P3tVariableInfo)
-		+ (UUtUns32) num_actions   * sizeof(P3tActionInstance);
-	dst = new_bytes + sizeof(P3tParticleDefinition)
-		+ (UUtUns32) num_variables * sizeof(P3tVariableInfo)
-		+ (UUtUns32) num_actions   * sizeof(P3tActionInstance);
+	/* src already points past the 32-bit actions; dst past 64-bit actions. */
 	for (itr = 0; itr < num_emitters; itr++) {
 		/* classname[64] is identical layout — copy verbatim. */
 		UUrMemory_MoveFast(src, dst, P3cParticleClassNameLength + 1);
@@ -2635,27 +2644,27 @@ void P3rUpdateActionData(P3tParticleClass *inClass, P3tActionInstance *inAction)
 					texturemap = NULL;
 				}
 			}
-			inAction->action_data = (UUtUns32) texturemap;
+			inAction->action_data = (uintptr_t) texturemap;
 		}
 		break;
 	case P3cActionType_CollisionEffect:
 		if (inAction->action_value[0].type == P3cValueType_String) {
 			P3iCalculateValue(NULL, &inAction->action_value[0], (void *) &classname);
-			inAction->action_data = (UUtUns32) P3rGetParticleClass(classname);
+			inAction->action_data = (uintptr_t) P3rGetParticleClass(classname);
 		}
 		break;
 
 	case P3cActionType_ImpactEffect:
 		if (inAction->action_value[0].type == P3cValueType_String) {
 			P3iCalculateValue(NULL, &inAction->action_value[0], (void *) &impactname);
-			inAction->action_data = (UUtUns32) MArImpactType_GetByName(impactname);
+			inAction->action_data = (uintptr_t) MArImpactType_GetByName(impactname);
 		}
 		break;
 
 	case P3cActionType_SoundStart:
 		if (inAction->action_value[0].type == P3cValueType_String) {
 			// look up the ambient sound with this name
-			inAction->action_data = (UUtUns32) OSrAmbient_GetByName(inAction->action_value[0].u.string_const.val);
+			inAction->action_data = (uintptr_t) OSrAmbient_GetByName(inAction->action_value[0].u.string_const.val);
 
 			// if sound data moves, this class's action data must be re-setup
 			inClass->non_persistent_flags |= P3cParticleClass_NonPersistentFlag_HasSoundPointers;
@@ -2665,7 +2674,7 @@ void P3rUpdateActionData(P3tParticleClass *inClass, P3tActionInstance *inAction)
 	case P3cActionType_ImpulseSound:
 		if (inAction->action_value[0].type == P3cValueType_String) {
 			// look up the impulse sound with this name
-			inAction->action_data = (UUtUns32) OSrImpulse_GetByName(inAction->action_value[0].u.string_const.val);
+			inAction->action_data = (uintptr_t) OSrImpulse_GetByName(inAction->action_value[0].u.string_const.val);
 
 			// if sound data moves, this class's action data must be re-setup
 			inClass->non_persistent_flags |= P3cParticleClass_NonPersistentFlag_HasSoundPointers;
