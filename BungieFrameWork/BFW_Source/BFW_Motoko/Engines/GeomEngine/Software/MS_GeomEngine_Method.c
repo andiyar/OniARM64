@@ -59,6 +59,7 @@ MSrTransformedVertexData_Init(
 	inData->frustumPoints = NULL;
 	inData->screenPoints = NULL;
 	inData->clipCodes = NULL;
+	inData->textureCoordsScratch = NULL;
 
 	inData->newClipTextureIndex = 0x5555;
 	inData->newClipVertexIndex = 0x5555;
@@ -77,6 +78,7 @@ MSrTransformedVertexData_Delete(
 	if(inData->frustumPoints != NULL) UUrMemory_Block_Delete(inData->frustumPoints);
 	if(inData->screenPoints != NULL) UUrMemory_Block_Delete(inData->screenPoints);
 	if(inData->clipCodes != NULL) UUrMemory_Block_Delete(inData->clipCodes);
+	if(inData->textureCoordsScratch != NULL) UUrMemory_Block_Delete(inData->textureCoordsScratch);
 
 	MSrTransformedVertexData_Init(inData);
 }
@@ -101,6 +103,9 @@ MSrTransformedVertexData_Alloc(
 
 	inData->clipCodes = UUrMemory_Block_New(sizeof(UUtUns8) * inArrayLength);
 	UUmError_ReturnOnNull(inData->clipCodes);
+
+	inData->textureCoordsScratch = UUrMemory_Block_New(sizeof(M3tTextureCoord) * inArrayLength);
+	UUmError_ReturnOnNull(inData->textureCoordsScratch);
 
 	return UUcError_None;
 }

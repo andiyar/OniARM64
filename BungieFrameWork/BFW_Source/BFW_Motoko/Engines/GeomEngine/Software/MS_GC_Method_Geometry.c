@@ -1303,13 +1303,17 @@ MSrGeomContext_Method_Geometry_Draw(
 		UUmAssert(inGeometryObject->baseMap != NULL);
 
 
+		UUmAssert(inGeometryObject->texCoordArray->numTextureCoords == inGeometryObject->pointArray->numPoints);
+
+		UUrMemory_MoveFast(
+			inGeometryObject->texCoordArray->textureCoords,
+			MSgGeomContextPrivate->objectVertexData.textureCoordsScratch,
+			sizeof(M3tTextureCoord) * inGeometryObject->texCoordArray->numTextureCoords);
+		MSgGeomContextPrivate->objectVertexData.textureCoords = MSgGeomContextPrivate->objectVertexData.textureCoordsScratch;
+
 		M3rDraw_State_SetPtr(
 			M3cDrawStatePtrType_TextureCoordArray,
-			inGeometryObject->texCoordArray->textureCoords);
-
-		MSgGeomContextPrivate->objectVertexData.textureCoords = inGeometryObject->texCoordArray->textureCoords;
-
-		UUmAssert(inGeometryObject->texCoordArray->numTextureCoords == inGeometryObject->pointArray->numPoints);
+			MSgGeomContextPrivate->objectVertexData.textureCoords);
 
 		M3rDraw_State_SetPtr(
 			M3cDrawStatePtrType_BaseTextureMap,

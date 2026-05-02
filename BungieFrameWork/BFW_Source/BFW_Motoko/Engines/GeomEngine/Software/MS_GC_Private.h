@@ -184,6 +184,7 @@ typedef struct MStTransformedVertexData
 	M3tPointScreen*		screenPoints;
 	UUtUns8*			clipCodes;
 	M3tTextureCoord*	textureCoords;
+	M3tTextureCoord*	textureCoordsScratch;
 	M3tPoint3D*			worldPoints;
 
 	// New indices - needs to be reset every time a clipping function is called

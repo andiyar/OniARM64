@@ -2,38 +2,24 @@
 
 Native ARM64 / Apple Silicon port of Oni (Bungie, 2001).
 
-## Status (2026-04-26)
+## Status (2026-05-02)
 
-Phase 0 of the path-to-playable spec landed (Steps 0.1 and 0.2): Options
-dialog opens cleanly on macOS, and a 64-bit particle-loader bridge sits
-inert in tree ready to pair with the Bug A audio fix. Step 0.3 (env-var
-resolution override) is deferred to Phase 4 — the architecture map shows
-five coordinate-space layers need aligning, not the one-liner the spec
-assumed. Phase 1 starts next session: re-apply Bug A paired with the
-particle bridge, chase whichever crash cascades out, fix audio init
-ordering, ship menu music as the first user-visible audio.
+Phase 3 of the path-to-playable spec is in progress. Bug B (character
+geometry crash in `MSrTransform_Geom_FaceNormalToWorld`) is fixed — the
+root cause was a clip-buffer overflow where `MSrClip_ComputeVertex_TextureInterpolate`
+wrote new clip-vertex texture coords past the end of geometry-owned
+`texCoordArray`, stomping `triNormalArray->numVectors` in adjacent template
+memory. Fix: allocate a scratch texture-coord buffer alongside the other
+clip scratch arrays and memcpy geometry texcoords into it at draw time.
 
-Gameplay rendering is live. Player spawns into level 1 (warehouse),
-first-person camera renders, HUD draws, walking / mouselook / stairs
-all work.
+Training cutscene now plays fully: Shinatama's dialogue, camera panning,
+and Konoko's character model all render. Body horror confirmed (levitating,
+flexing joints) — separate from Bug B, likely bone-transform issue.
+Game crashes after the cutscene dialogue finishes when the script system
+tries to look up a sound message (`SSiSubtitleArray_FindByName` → 
+`UUrString_Compare_NoCase` SIGSEGV at `0x144f700` — likely truncated pointer).
 
-Interactive systems are **not** live though — the player walks through
-doors instead of opening them, which means the object / trigger system
-isn't firing. Strong suspicion: the `UUtUns32 inUserData` truncation
-backlog (`OT_Door.c`, `OT_Trigger.c`, `OT_TriggerVolume.c`, `OT_Combat.c`,
-`Oni_AI2*.c`, `Oni_Character.c`). Every heap address on Apple Silicon is
-above 4 GB, so those callbacks receive garbage the first time they fire,
-and the affected subsystems silently never register or never hit their
-branches — no door collide, no trigger volume, no AI state transitions.
-
-Character animation is also visibly broken ("bone horror" — joints
-stretched, character levitates). Likely connected to the same class —
-AI state-machine callbacks almost certainly drive animation-state
-selection.
-
-Crashes still hit the per-frame draw path on some geometries after
-several seconds of play (`MSrTransform_Geom_FaceNormalToWorld` remnant
-after today's floor-div fix) — also being chased.
+Audio works (menu music, cutscene dialogue). Phases 0–2 complete.
 
 Most fixes chase 32→64 bit arithmetic that was correct on Bungie's
 original 32-bit target but breaks now. Common patterns:
@@ -57,7 +43,7 @@ original 32-bit target but breaks now. Common patterns:
 - [x] Multi-frame rendering without AKOT corruption
 - [x] Movement (WASD / mouselook) doesn't instantly SIGSEGV
 - [x] Crash-handler prevents UE-zombie processes after SIGSEGV (no more daily reboots)
-- [ ] Remaining per-frame draw-path crashes (whatever surfaces after decal / BSP / block8 fixes)
+- [x] Bug B — character geometry clip-buffer overflow fixed (texture-coord scratch buffer)
 - [x] Doors open instead of clipped-through (→ `OT_Door` callback truncation sweep) — **sweep landed session 17**
 - [x] Triggers / trigger volumes fire (→ `OT_Trigger`, `OT_TriggerVolume` callback truncation sweep) — **sweep landed session 17**
 - [x] AI state machines run (→ `Oni_AI2*.c`, `OT_Combat.c` callback truncation sweep) — **sweep landed session 17**
@@ -69,6 +55,14 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
 ## Rolling timeline (newest first)
+
+### 2026-05-02 — Session 19: Phase 3 — Bug B fixed (character geometry crash)
+
+- **Bug B root cause:** `MSrClip_ComputeVertex_TextureInterpolate` creates interpolated vertices at indices ≥ `numPoints` during frustum clipping. `objectVertexData.textureCoords` pointed directly into geometry's `texCoordArray` (exactly `numPoints` entries), while all other scratch arrays (`frustumPoints`, `screenPoints`, `clipCodes`) were pre-allocated with 2048 entries. Clip writes past `texCoordArray` stomped adjacent template memory — specifically `triNormalArray->numVectors` (329 → float 0.398506 bit pattern 1053559037), causing `FaceNormalToWorld` to loop into unmapped memory on the next frame.
+- **Fix:** added `textureCoordsScratch` field to `MStTransformedVertexData`, allocated in `MSrTransformedVertexData_Alloc` with 2048 entries (matching other scratch arrays). At geometry draw time, `texCoordArray` contents are copied into the scratch buffer via `UUrMemory_MoveFast`, and both `objectVertexData.textureCoords` and the draw-state pointer are redirected to the scratch. Same pattern as the existing env-clipper fix for `gqVertexData` (session 9, `103496b`). Separate `textureCoordsScratch` pointer needed because sprite/contrail draw paths overwrite and NULL `textureCoords` between geometry draws.
+- **Verified:** full training cutscene plays (Shinatama dialogue + camera pan + Konoko character model renders). All `[FNtW]` log entries show `numVec` in normal range (2–353). No corruption.
+- **Body horror confirmed:** Konoko levitating mid-air, flexing joints. Separate from Bug B — bone-transform or animation-state issue (Step 3.2).
+- **New cascade:** game crashes after cutscene when script system calls `AIiScript_Message` → `SSrMessage_Find` → `SSiSubtitleArray_FindByName` → `UUrString_Compare_NoCase` (SIGSEGV at `0x144f700`). Likely another truncated pointer in the sound/subtitle data structures.
 
 ### 2026-04-27 — Session 17: Phase 2 — callback truncation sweep (Bug CB)
 
