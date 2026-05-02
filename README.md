@@ -62,7 +62,8 @@ original 32-bit target but breaks now. Common patterns:
 - **Fix:** added `textureCoordsScratch` field to `MStTransformedVertexData`, allocated in `MSrTransformedVertexData_Alloc` with 2048 entries (matching other scratch arrays). At geometry draw time, `texCoordArray` contents are copied into the scratch buffer via `UUrMemory_MoveFast`, and both `objectVertexData.textureCoords` and the draw-state pointer are redirected to the scratch. Same pattern as the existing env-clipper fix for `gqVertexData` (session 9, `103496b`). Separate `textureCoordsScratch` pointer needed because sprite/contrail draw paths overwrite and NULL `textureCoords` between geometry draws.
 - **Verified:** full training cutscene plays (Shinatama dialogue + camera pan + Konoko character model renders). All `[FNtW]` log entries show `numVec` in normal range (2–353). No corruption.
 - **Body horror confirmed:** Konoko levitating mid-air, flexing joints. Separate from Bug B — bone-transform or animation-state issue (Step 3.2).
-- **New cascade:** game crashes after cutscene when script system calls `AIiScript_Message` → `SSrMessage_Find` → `SSiSubtitleArray_FindByName` → `UUrString_Compare_NoCase` (SIGSEGV at `0x144f700`). Likely another truncated pointer in the sound/subtitle data structures.
+- **Subtitle/message fix:** `SSiSubtitleArray_FindByName` and `FindByNumber` used `(UUtUns32) TMrInstance_GetRawOffset()` which truncated the 64-bit rawPtr base. Changed to `uintptr_t`. Subtitles display correctly (T1 — user saw Shinatama's dialogue with portrait). Tutorial scripting runs end-to-end (25+ message lookups).
+- **New cascade:** game crashes when an NPC becomes active and AI initializes pathfinding — `PHrGrid_Decompress` hits bad memory during `AI2rMovementState_Initialize`. The game now gets far enough into the tutorial to activate NPCs.
 
 ### 2026-04-27 — Session 17: Phase 2 — callback truncation sweep (Bug CB)
 

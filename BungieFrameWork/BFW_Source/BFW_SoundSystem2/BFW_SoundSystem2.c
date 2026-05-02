@@ -669,14 +669,7 @@ SSiSubtitleArray_FindByName(
 	{
 		UUtInt32 itr;
 		UUtInt32 count = inArray->numSubtitles;
-		/* 64-bit: inArray->data is already a resolved pointer (rawPtr+off);
-		   adding rawPtr again would double-offset.
-		   See docs/handoff-2026-04-20-newgame-crash-part3.md */
-#if UUmPlatform_PointerSize == 8
-		UUtUns32 offset = 0;
-#else
-		UUtUns32 offset = (UUtUns32) TMrInstance_GetRawOffset(inArray);
-#endif
+		uintptr_t offset = (uintptr_t) TMrInstance_GetRawOffset(inArray);
 
 		for(itr = 0; itr < count; itr++)
 		{
@@ -712,12 +705,7 @@ SSiSubtitleArray_FindByNumber(
 	{
 		UUtInt32 itr;
 		UUtInt32 count = inArray->numSubtitles;
-		/* 64-bit: same double-offset bug as FindByName above. */
-#if UUmPlatform_PointerSize == 8
-		UUtUns32 offset = 0;
-#else
-		UUtUns32 offset = (UUtUns32) TMrInstance_GetRawOffset(inArray);
-#endif
+		uintptr_t offset = (uintptr_t) TMrInstance_GetRawOffset(inArray);
 
 		for(itr = 0; itr < count; itr++)
 		{
