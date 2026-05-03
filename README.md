@@ -2,22 +2,13 @@
 
 Native ARM64 / Apple Silicon port of Oni (Bungie, 2001).
 
-## Status (2026-05-02)
+## Status (2026-05-03)
 
-Phase 3 of the path-to-playable spec is in progress. Bug B (character
-geometry crash in `MSrTransform_Geom_FaceNormalToWorld`) is fixed — the
-root cause was a clip-buffer overflow where `MSrClip_ComputeVertex_TextureInterpolate`
-wrote new clip-vertex texture coords past the end of geometry-owned
-`texCoordArray`, stomping `triNormalArray->numVectors` in adjacent template
-memory. Fix: allocate a scratch texture-coord buffer alongside the other
-clip scratch arrays and memcpy geometry texcoords into it at draw time.
-
-Training cutscene now plays fully: Shinatama's dialogue, camera panning,
-and Konoko's character model all render. Body horror confirmed (levitating,
-flexing joints) — separate from Bug B, likely bone-transform issue.
-Game crashes after the cutscene dialogue finishes when the script system
-tries to look up a sound message (`SSiSubtitleArray_FindByName` → 
-`UUrString_Compare_NoCase` SIGSEGV at `0x144f700` — likely truncated pointer).
+Phase 3 continues. NPCs now render and the game survives NPC visibility
+(pathfinding + character sorting both fixed). Crash has moved deeper into
+AI combat behavior (`AI2rBehavior_Default` — bad pointer in
+`weapon_parameters`). Tutorial is playable through to the combat room;
+NPCs appear on screen for the first time.
 
 Audio works (menu music, cutscene dialogue). Phases 0–2 complete.
 
@@ -47,6 +38,7 @@ original 32-bit target but breaks now. Common patterns:
 - [x] Doors open instead of clipped-through (→ `OT_Door` callback truncation sweep) — **sweep landed session 17**
 - [x] Triggers / trigger volumes fire (→ `OT_Trigger`, `OT_TriggerVolume` callback truncation sweep) — **sweep landed session 17**
 - [x] AI state machines run (→ `Oni_AI2*.c`, `OT_Combat.c` callback truncation sweep) — **sweep landed session 17**
+- [x] NPCs render on screen — pathfinding + character visibility sorting fixed (session 20)
 - [ ] Character animation: bone transforms correct, no levitation / stretched joints
 - [x] **Audio actually plays** — Bug A diagnosed in session 12: shipping data has no `.sep` files, so both `BDiBinaryData_ProcHandler` (BINA) and `OSiBinaryData_ProcHandler` (OSBD, audio) silently no-op. Fix verified working in isolation (`c039fa5`, reverted in `7e51a55`) — but unblocks Bug C below. Land paired.
 - [ ] **Bug C — particle loader 64-bit bridge gap** — `P3rLoad_PostProcess` SIGBUSes during 64-bit bridge of `P3tParticleDefinition`. KERN_PROTECTION_FAILURE at `0x19c8d9cb04` inside `P3rTraverseVarRef+2252` ← `P3rPackVariables+1624` ← `P3iProcessParticleClass+368`. Latent the whole port; only became reachable when Bug A unblocked the dispatch chain. Files: `BFW_Particle/BFW_Particle3.c`, `BFW_Headers/BFW_Particle3.h`. Must land paired with Bug A.
@@ -56,8 +48,11 @@ original 32-bit target but breaks now. Common patterns:
 
 ## Rolling timeline (newest first)
 
-### 2026-05-03 — Session 20: HiDPI viewport fix
+### 2026-05-03 — Session 20: NPC activation fixes + HiDPI viewport fix
 
+- **Pathfinding crash fixed:** `AKiPrepareGrids` had `offset = 0` on 64-bit, assuming the template bridge resolved AKVA's `tm_raw` pointers. But AKVA is a Leaf template — the bridge skips Leaf templates during `PreparePointers`. On 32-bit Bungie resolved raw pointers manually in subsystem `LoadPostProcess` callbacks; the prior session's `offset=0` broke this. Fix: restore resolution with `uintptr_t offset` (not `UUtUns32`, which truncates the rawBase). Also bypasses `UUmOffsetPtr` which casts offset to `UUtUns32`. Same fix applied to `gqDebug` name pointers in the same handler.
+- **Character sort crash fixed:** `distance_from_camera_compare` took `UUtUns32` parameters (truncating 8-byte `ONtCharacter*` pointers), and `AUrQSort_32` sorted the array as 4-byte elements. Replaced with standard `qsort()` using pointer-width comparator. NPCs now render on screen for the first time.
+- **Cascade status:** game now crashes in `AI2rBehavior_Default` (AI combat behavior) — bad `weapon_parameters` pointer (0x2e810310). Next investigation target.
 - **HiDPI viewport scaling**: `glViewport` now uses `SDL_GL_GetDrawableSize()` to fill the actual screen instead of rendering 640×480 in the bottom-left corner. Mouse coordinates scaled from window space to game space in all three input paths (GetMouse, MouseMotion, MouseButton). Game's internal resolution stays 640×480 (ortho projection unchanged); the viewport stretches it to fullscreen. Files: `gl_sdl.c`, `gl_engine.c`, `gl_utility.c`, `OGL_DrawGeom_Common.c`, `BFW_LI_Platform_SDL.c`.
 
 ### 2026-05-02 — Session 19: Phase 3 — Bug B fixed (character geometry crash)

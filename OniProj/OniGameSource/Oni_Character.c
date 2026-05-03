@@ -6805,24 +6805,18 @@ static UUtInt32 ONrCharacterList_GetPolygonCount(ONtCharacter **inCharacters, ON
 
 // 16. loop from closest to most distant character raising bias by 1, halting & resetting if we exceed count
 
-static UUtBool distance_from_camera_compare(UUtUns32 inA, UUtUns32 inB)
+static int distance_from_camera_compare(const void *a, const void *b)
 {
-	UUtBool result;
-	ONtCharacter *characterA = (ONtCharacter *) inA;
-	ONtCharacter *characterB = (ONtCharacter *) inB;
+	ONtCharacter *characterA = *(ONtCharacter *const *)a;
+	ONtCharacter *characterB = *(ONtCharacter *const *)b;
 	ONtCharacter *player_character = ONgGameState->local.playerCharacter;
 
-	if (player_character == characterA) {
-		result = UUcFalse;
-	}
-	else if (player_character == characterB) {
-		result = UUcTrue;
-	}
-	else {
-		result = characterA->distance_from_camera_squared > characterB->distance_from_camera_squared;
-	}
+	if (player_character == characterA) return -1;
+	if (player_character == characterB) return 1;
 
-	return result;
+	if (characterA->distance_from_camera_squared < characterB->distance_from_camera_squared) return -1;
+	if (characterA->distance_from_camera_squared > characterB->distance_from_camera_squared) return 1;
+	return 0;
 }
 
 static void ONrGameState_ComputeCharacterVisibility(UUtUns32 *outNumVisible, ONtCharacter **outVisibleChars,
@@ -6930,7 +6924,7 @@ static void ONrGameState_ComputeCharacterLOD(UUtUns32 inNumVisible, ONtCharacter
 	}
 
 	// step 2: sort the visible chracacters by distance from camera
-	AUrQSort_32(inVisibleChars, inNumVisible, distance_from_camera_compare);
+	qsort(inVisibleChars, inNumVisible, sizeof(ONtCharacter*), distance_from_camera_compare);
 	for(itr = 0; itr < inNumVisible; itr++) {
 		inVisibleActiveChars[itr] = ONrGetActiveCharacter(inVisibleChars[itr]);
 		UUmAssertReadPtr(inVisibleActiveChars[itr], sizeof(*inVisibleActiveChars[itr]));

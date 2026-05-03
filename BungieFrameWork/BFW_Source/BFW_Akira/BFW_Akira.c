@@ -104,25 +104,31 @@ static void AKiPrepareGrids(AKtEnvironment *inEnvironment)
 	UUtUns32 itr, itr2;
 	UUtUns32 count = inEnvironment->bnvNodeArray->numNodes;
 	AKtBNVNode *nodes = inEnvironment->bnvNodeArray->nodes;
-	/* On 64-bit the bridge has already resolved tm_raw pointers; adding
-	   rawPtr_base (truncated to u32) here would double-offset. See
-	   docs/handoff-2026-04-20-newgame-crash-part3.md */
 #if UUmPlatform_PointerSize == 8
-	UUtUns32 offset = 0;
+	uintptr_t offset = (uintptr_t) TMrInstance_GetRawOffset(inEnvironment);
 #else
 	UUtUns32 offset = (UUtUns32) TMrInstance_GetRawOffset(inEnvironment);
 #endif
 	PHtDebugInfo *debug_info;
 
+	UUrStartupMessage("[AKiPrepareGrids] count=%u offset=0x%lx", (unsigned)count, (unsigned long)offset);
+	if (count > 0) {
+		UUrStartupMessage("[AKiPrepareGrids] node[0].compressed_grid=%p (before)", (void*)nodes[0].roomData.compressed_grid);
+	}
+
 	for(itr = 0; itr < count; itr++)
 	{
 		if (nodes[itr].roomData.compressed_grid != NULL) {
-			nodes[itr].roomData.compressed_grid = UUmOffsetPtr(nodes[itr].roomData.compressed_grid, offset);
+			if (itr < 3) {
+				UUrStartupMessage("[AKiPrepareGrids] node[%u] grid_before=%p resolved=%p",
+					(unsigned)itr, (void*)nodes[itr].roomData.compressed_grid,
+					(void*)((uintptr_t)nodes[itr].roomData.compressed_grid + offset));
+			}
+			nodes[itr].roomData.compressed_grid = (PHtSquare*)((uintptr_t)nodes[itr].roomData.compressed_grid + offset);
 		}
 
 		if (nodes[itr].roomData.debug_info != NULL) {
-			// read and byte-swap the raw debugging info
-			nodes[itr].roomData.debug_info = UUmOffsetPtr(nodes[itr].roomData.debug_info, offset);
+			nodes[itr].roomData.debug_info = (PHtDebugInfo*)((uintptr_t)nodes[itr].roomData.debug_info + offset);
 			UUmAssertReadPtr(nodes[itr].roomData.debug_info, nodes[itr].roomData.debug_info_count * sizeof(PHtDebugInfo));
 
 
@@ -238,10 +244,8 @@ AKrEnvironment_TemplateHandler(
 			if (environment->gqDebugArray != NULL)
 			{
 				AKtGQ_Debug *gqDebug;
-				/* 64-bit: bridge already resolved the tm_raw name pointers.
-				   See docs/handoff-2026-04-20-newgame-crash-part3.md */
 #if UUmPlatform_PointerSize == 8
-				UUtUns32 offset = 0;
+				uintptr_t offset = (uintptr_t) TMrInstance_GetRawOffset(environment);
 #else
 				UUtUns32 offset = (UUtUns32) TMrInstance_GetRawOffset(environment);
 #endif
@@ -250,8 +254,8 @@ AKrEnvironment_TemplateHandler(
 
 				for(itr = 0; itr < environment->gqDebugArray->numGQs; itr++)
 				{
-					gqDebug->object_name = ((char *) gqDebug->object_name) + offset;
-					gqDebug->file_name = ((char *) gqDebug->file_name) + offset;
+					gqDebug->object_name = (char*)((uintptr_t)gqDebug->object_name + offset);
+					gqDebug->file_name = (char*)((uintptr_t)gqDebug->file_name + offset);
 
 					gqDebug++;
 				}
