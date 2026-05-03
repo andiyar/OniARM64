@@ -54,6 +54,7 @@ original 32-bit target but breaks now. Common patterns:
 - **Character sort crash fixed:** `distance_from_camera_compare` took `UUtUns32` parameters (truncating 8-byte `ONtCharacter*` pointers), and `AUrQSort_32` sorted the array as 4-byte elements. Replaced with standard `qsort()` using pointer-width comparator. NPCs now render on screen for the first time.
 - **Cascade status:** game now crashes in `AI2rBehavior_Default` (AI combat behavior) — bad `weapon_parameters` pointer (0x2e810310). Next investigation target.
 - **HiDPI viewport scaling**: `glViewport` now uses `SDL_GL_GetDrawableSize()` to fill the actual screen instead of rendering 640×480 in the bottom-left corner. Mouse coordinates scaled from window space to game space in all three input paths (GetMouse, MouseMotion, MouseButton). Game's internal resolution stays 640×480 (ortho projection unchanged); the viewport stretches it to fullscreen. Files: `gl_sdl.c`, `gl_engine.c`, `gl_utility.c`, `OGL_DrawGeom_Common.c`, `BFW_LI_Platform_SDL.c`.
+- **Resolution switcher fixed:** `ONiResolution_Switch` forced `osx = UUcTrue` for SDL builds, triggering the 2001-era "You must restart Oni" exit path on any resolution change — a workaround for 3Dfx/S3 video cards that couldn't hot-switch. Set `osx = UUcFalse` for SDL since viewport scaling handles runtime resolution changes natively.
 
 ### 2026-05-02 — Session 19: Phase 3 — Bug B fixed (character geometry crash)
 

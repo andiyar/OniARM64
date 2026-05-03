@@ -276,8 +276,8 @@ ONiResolution_Switch(
 		}
 	}
 #elif defined(UUmPlatform) && (UUmPlatform == UUmPlatform_Mac) && defined(UUmSDL)
-	// Modern macOS with SDL - always treat as OSX for restart behavior
-	osx= UUcTrue;
+	// SDL handles runtime resolution switching fine via viewport scaling
+	osx= UUcFalse;
 #endif
 
 	if (voodoo_fullscreen || s3_crappy_card_fullscreen || osx)
