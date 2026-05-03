@@ -729,7 +729,10 @@ OGLrCommon_State_Initialize(
 	OGLrCommon_glEnable(GL_TEXTURE_2D);
 	glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
 
-	glViewport(0, 0, OGLgCommon.width, OGLgCommon.height);
+	{
+		extern int GLgViewportWidth, GLgViewportHeight;
+		glViewport(0, 0, GLgViewportWidth, GLgViewportHeight);
+	}
 
 	OGLgCommon.convertedDataBuffer = UUrMemory_Block_New(256 * 256 * 4);
 	UUmError_ReturnOnNull(OGLgCommon.convertedDataBuffer);

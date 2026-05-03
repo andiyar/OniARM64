@@ -402,9 +402,15 @@ LIrPlatform_InputEvent_GetMouse(
 
 	if (inMode == LIcMode_Normal)
 	{
-		int x, y;
+		int x, y, winW, winH;
+		extern int GLgGameWidth, GLgGameHeight;
 
 		Uint32 buttons = SDL_GetMouseState(&x, &y);
+		SDL_GetWindowSize(LIgWindow, &winW, &winH);
+		if (winW > 0 && winH > 0) {
+			x = x * GLgGameWidth / winW;
+			y = y * GLgGameHeight / winH;
+		}
 		outInputEvent->where.x = (UUtInt16)x;
 		outInputEvent->where.y = (UUtInt16)y;
 		// Mac checks Shift, left and right mouse buttons
@@ -539,8 +545,13 @@ LIrPlatform_Update(
 				);
 			break;
 			case SDL_MOUSEMOTION:
-				where.x = event.motion.x;
-				where.y = event.motion.y;
+			{
+				int winW, winH;
+				extern int GLgGameWidth, GLgGameHeight;
+				SDL_GetWindowSize(LIgWindow, &winW, &winH);
+				where.x = (winW > 0) ? event.motion.x * GLgGameWidth / winW : event.motion.x;
+				where.y = (winH > 0) ? event.motion.y * GLgGameHeight / winH : event.motion.y;
+			}
 
 				if (current_mouse_buttons != event.motion.state)
 				{
@@ -572,8 +583,13 @@ LIrPlatform_Update(
 						return UUcTrue;
 				}
 
-				where.x = event.button.x;
-				where.y = event.button.y;
+				{
+					int winW, winH;
+					extern int GLgGameWidth, GLgGameHeight;
+					SDL_GetWindowSize(LIgWindow, &winW, &winH);
+					where.x = (winW > 0) ? event.button.x * GLgGameWidth / winW : event.button.x;
+					where.y = (winH > 0) ? event.button.y * GLgGameHeight / winH : event.button.y;
+				}
 
 				if (event.button.state == SDL_PRESSED)
 				{

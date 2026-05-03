@@ -357,7 +357,10 @@ boolean initialize_opengl(
 
 		gl_depth_mode_set(TRUE, TRUE);
 
-		GL_FXN(glViewport)(0, 0, gl->display_mode.width, gl->display_mode.height);
+		{
+			extern int GLgViewportWidth, GLgViewportHeight;
+			GL_FXN(glViewport)(0, 0, GLgViewportWidth, GLgViewportHeight);
+		}
 		GL_FXN(glDepthRange)(0.f, 1.f);
 	}
 

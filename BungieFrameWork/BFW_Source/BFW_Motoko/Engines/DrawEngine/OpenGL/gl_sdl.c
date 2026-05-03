@@ -202,6 +202,11 @@ boolean gl_create_render_context(
 	return success;
 }
 
+int GLgViewportWidth = 640;
+int GLgViewportHeight = 480;
+int GLgGameWidth = 640;
+int GLgGameHeight = 480;
+
 //#define DESTROY_CONTEXTS_ON_DISPLAY_CHANGE we will just crash on cards that don't work with this
 // WARNING! This call is also used for resolution switching!!!
 UUtBool gl_platform_initialize(
@@ -280,6 +285,10 @@ UUtBool gl_platform_initialize(
 		current_width= gl->display_mode.width;
 		current_height= gl->display_mode.height;
 		current_depth= gl->display_mode.bitDepth;
+
+		GLgGameWidth = gl->display_mode.width;
+		GLgGameHeight = gl->display_mode.height;
+		SDL_GL_GetDrawableSize(ONgPlatformData.gameWindow, &GLgViewportWidth, &GLgViewportHeight);
 	}
 
 	return success;

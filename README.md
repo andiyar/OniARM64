@@ -50,11 +50,15 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Character animation: bone transforms correct, no levitation / stretched joints
 - [x] **Audio actually plays** — Bug A diagnosed in session 12: shipping data has no `.sep` files, so both `BDiBinaryData_ProcHandler` (BINA) and `OSiBinaryData_ProcHandler` (OSBD, audio) silently no-op. Fix verified working in isolation (`c039fa5`, reverted in `7e51a55`) — but unblocks Bug C below. Land paired.
 - [ ] **Bug C — particle loader 64-bit bridge gap** — `P3rLoad_PostProcess` SIGBUSes during 64-bit bridge of `P3tParticleDefinition`. KERN_PROTECTION_FAILURE at `0x19c8d9cb04` inside `P3rTraverseVarRef+2252` ← `P3rPackVariables+1624` ← `P3iProcessParticleClass+368`. Latent the whole port; only became reachable when Bug A unblocked the dispatch chain. Files: `BFW_Particle/BFW_Particle3.c`, `BFW_Headers/BFW_Particle3.h`. Must land paired with Bug A.
-- [ ] HiDPI window mapping: 640×480 render in the bottom-left of 2K display is a Retina backing-scale mismatch
+- [x] HiDPI viewport scaling: game renders fullscreen instead of 640×480 corner; mouse coords aligned
 - [ ] `.app` bundle + code signing
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
 ## Rolling timeline (newest first)
+
+### 2026-05-03 — Session 20: HiDPI viewport fix
+
+- **HiDPI viewport scaling**: `glViewport` now uses `SDL_GL_GetDrawableSize()` to fill the actual screen instead of rendering 640×480 in the bottom-left corner. Mouse coordinates scaled from window space to game space in all three input paths (GetMouse, MouseMotion, MouseButton). Game's internal resolution stays 640×480 (ortho projection unchanged); the viewport stretches it to fullscreen. Files: `gl_sdl.c`, `gl_engine.c`, `gl_utility.c`, `OGL_DrawGeom_Common.c`, `BFW_LI_Platform_SDL.c`.
 
 ### 2026-05-02 — Session 19: Phase 3 — Bug B fixed (character geometry crash)
 

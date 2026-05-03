@@ -280,7 +280,10 @@ static UUtError gl_change_mode(
 	}
 	else
 	{
-		GL_FXN(glViewport)(0, 0, gl->display_mode.width, gl->display_mode.height);
+		{
+			extern int GLgViewportWidth, GLgViewportHeight;
+			GL_FXN(glViewport)(0, 0, GLgViewportWidth, GLgViewportHeight);
+		}
 		// force an update of the view
 		gl->camera_mode= _camera_mode_3d;
 		gl_camera_update(_camera_mode_2d);
