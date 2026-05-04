@@ -1694,7 +1694,7 @@ static void TRrQuatArray_SetAnimationInternal(
 		int compressionSize= inAnimation->compressionSize;
 
 		// Get the location of the start of the frame data.
-	#if defined(UUmPlatform) && (UUmPlatform == UUmPlatform_Mac)
+	#if UUmEndian == UUmEndian_Big
 		{
 			unsigned short swapped= ((unsigned short *)inAnimation->data)[i];
 			swapped= (((swapped & 0xFF00) >> 8) | ((swapped & 0x00FF) << 8));
