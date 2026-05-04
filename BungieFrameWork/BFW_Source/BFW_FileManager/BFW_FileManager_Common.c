@@ -866,6 +866,10 @@ BFtFile *BFrFile_FOpen(char *inName, char *inMode)
 
 	error = BFrFileRef_Set(&fileRef, inName);
 	if (error != UUcError_None) {
+		if (strcmp(inMode, "w") == 0) {
+			file = (BFtFile *) fopen(inName, "wb");
+			return file;
+		}
 		goto errorExit;
 	}
 
