@@ -315,6 +315,11 @@ void AI2rCombat_Enter(ONtCharacter *ioCharacter)
 
 	// initialize combat state variables
 	combat_state->combat_parameters = &ioCharacter->characterClass->ai2_behavior.combat_parameters;
+	UUrStartupMessage("[WEAPON-DBG] %s: Combat_Enter charClass=%p combat_params=%p weapons[0]=%p",
+		ioCharacter->player_name,
+		(void*)ioCharacter->characterClass,
+		(void*)combat_state->combat_parameters,
+		(void*)ioCharacter->inventory.weapons[0]);
 	combat_state->currently_dazed = UUcFalse;
 	combat_state->have_los = UUcFalse;
 	combat_state->desire_env_los = UUcFalse;
@@ -499,6 +504,10 @@ void AI2rCombat_Update(ONtCharacter *ioCharacter)
 		}
 
 		if (combat_state->current_weapon != NULL) {
+			UUrStartupMessage("[WEAPON-DBG] %s: max_range deref, weapon_params=%p cur_weapon=%p",
+				ioCharacter->player_name,
+				(void*)combat_state->targeting.weapon_parameters,
+				(void*)combat_state->current_weapon);
 			max_range = combat_state->targeting.weapon_parameters->max_range;
 			if ((max_range > 0) && (combat_state->distance_to_target > max_range)) {
 				// we are too far away from our target to shoot them
@@ -580,6 +589,10 @@ void AI2rCombat_Update(ONtCharacter *ioCharacter)
 
 			} else {
 				// we are too close to fire our gun. perhaps do something else.
+				UUrStartupMessage("[WEAPON-DBG] %s: sending TooClose, weapon_params=%p too_close=%f",
+					ioCharacter->player_name,
+					(void*)combat_state->targeting.weapon_parameters,
+					too_close_weight);
 				AI2rCombat_Behavior(ioCharacter, combat_state, AI2cCombatMessage_TooClose, &handled, (uintptr_t) &too_close_weight, 0, 0);
 			}
 		}
@@ -833,10 +846,20 @@ static void AI2rCombat_CheckTargetingWeapon(ONtCharacter *ioCharacter, AI2tComba
 		if (ioCharacter->inventory.weapons[0] == NULL) {
 			weapon_params = NULL;
 			weapon_matrix = NULL;
+			UUrStartupMessage("[WEAPON-DBG] %s: weapon=NULL, weapon_params=NULL",
+				ioCharacter->player_name);
 		} else {
 			weapon_class = WPrGetClass(ioCharacter->inventory.weapons[0]);
 			weapon_params = ioCombatState->alternate_fire ? &weapon_class->ai_parameters_alt : &weapon_class->ai_parameters;
 			weapon_matrix = ONrCharacter_GetMatrix(ioCharacter, ONcWeapon_Index);
+			UUrStartupMessage("[WEAPON-DBG] %s: weapon=%p weaponClass=%p ai_params=%p ai_params_alt=%p chosen=%p sizeof_WPC=%zu",
+				ioCharacter->player_name,
+				(void*)ioCharacter->inventory.weapons[0],
+				(void*)weapon_class,
+				(void*)&weapon_class->ai_parameters,
+				(void*)&weapon_class->ai_parameters_alt,
+				(void*)weapon_params,
+				sizeof(WPtWeaponClass));
 		}
 
 		AI2rTargeting_ChangeWeapon(&ioCombatState->targeting, weapon_params, weapon_matrix);
@@ -1094,7 +1117,7 @@ void AI2rCombat_NotifyKnowledge(ONtCharacter *ioCharacter, AI2tKnowledgeEntry *i
 	} else {
 		if ((inEntry->last_type == AI2cContactType_Hit_Weapon) ||
 			(inEntry->last_type == AI2cContactType_Hit_Melee)) {
-			AI2rCombat_Behavior(ioCharacter, combat_state, AI2cCombatMessage_Hurt, &handled, inEntry->last_user_data, (UUtUns32) inEntry, 0);
+			AI2rCombat_Behavior(ioCharacter, combat_state, AI2cCombatMessage_Hurt, &handled, inEntry->last_user_data, (uintptr_t) inEntry, 0);
 		}
 
 		if (inEntry == combat_state->target_knowledge) {
@@ -3960,6 +3983,10 @@ UUtUns32 AI2rBehavior_Default(ONtCharacter *ioCharacter, AI2tCombatState *ioComb
 		// determine whether we want to fight the target instead of backing away
 		engage_in_melee = AI2iCheckFightBack(ioCharacter, ioCombatState, ioCharacter->ai2State.combatSettings.melee_when);
 
+		UUrStartupMessage("[WEAPON-DBG] %s: TooClose handler, weapon_params=%p too_close=%f engage_melee=%d",
+			ioCharacter->player_name,
+			(void*)ioCombatState->targeting.weapon_parameters,
+			too_close, (int)engage_in_melee);
 		UUmAssertReadPtr(ioCombatState->targeting.weapon_parameters, sizeof(AI2tWeaponParameters));
 		ioCombatState->maneuver.primary_movement_weights[AI2cPrimaryMovement_Advance] *= 1.0f - too_close;
 		ioCombatState->maneuver.primary_movement_weights[AI2cPrimaryMovement_Hold] *= 1.0f - too_close;

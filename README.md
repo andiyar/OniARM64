@@ -2,13 +2,19 @@
 
 Native ARM64 / Apple Silicon port of Oni (Bungie, 2001).
 
-## Status (2026-05-03)
+## Status (2026-05-04)
 
-Phase 3 continues. NPCs now render and the game survives NPC visibility
-(pathfinding + character sorting both fixed). Crash has moved deeper into
-AI combat behavior (`AI2rBehavior_Default` — bad pointer in
-`weapon_parameters`). Tutorial is playable through to the combat room;
-NPCs appear on screen for the first time.
+Phase 3 continues. AI combat crash is root-caused and fixed — pointer
+truncation in `AI2rCombat_NotifyKnowledge` was passing an 8-byte
+`AI2tKnowledgeEntry *` through a `(UUtUns32)` cast into the behavior
+dispatcher, which then cast the truncated 4-byte value back to a pointer
+and crashed on first access. Fix verified end-to-end: NPCs enter combat
+without crashing.
+
+Cascade exposed: AI combat starts but stalls intermittently — multiple
+latent truncation sites in the AI message-passing layer (knowledge
+contacts, `AI2_ERROR` macro, pathfinding error handler, melee animation
+through `inParam3`). Tutorial combat doesn't progress to completion.
 
 Audio works (menu music, cutscene dialogue). Phases 0–2 complete.
 
@@ -47,6 +53,12 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
 ## Rolling timeline (newest first)
+
+### 2026-05-04 — Session 21: AI combat crash root-caused
+
+- **AI combat crash fixed.** `AI2rCombat_NotifyKnowledge` (Combat.c:1120) passed `(UUtUns32) inEntry` as `inParam2` to `AI2rCombat_Behavior`, truncating an 8-byte `AI2tKnowledgeEntry *` to its lower 32 bits. The Hurt message handler at line 4055 cast `inParam2` back to `AI2tKnowledgeEntry *` and crashed on the first field access (`entry->enemy` at offset +8, address `0x4ea7e6b0` was the lower 32 bits of a real heap pointer). Changed cast to `(uintptr_t)`. Note: `inParam1` and `inParam2` are already `uintptr_t` in the typedef — only the call-site cast was wrong. Three NPCs entered combat without crashing in verification run. Initial handoff diagnosis (`weapon_parameters` at line 3963) was a stale crash report — the live crash was on a completely different path (`AI2rCombat_NotifyKnowledge` → `AI2rCombat_Behavior` → `AI2rBehavior_Default` Hurt handler, not the TooClose handler).
+- **Cascade exposed:** AI combat now reachable but stalls intermittently. Audit identified 4+ remaining truncation sites in the AI message system: knowledge contact `last_user_data` field is `UUtUns32` and is fed by truncated pointers at Knowledge.c:648/652; `AI2tBehaviorFunction.inParam3` is `UUtUns32` (Melee.c:1300 truncates `TRtAnimation *`); `AI2_ERROR` macro pre-truncates all four params with `(UUtUns32)` casts; `AI2rManeuver_PathfindingErrorHandler` declares `inParam3` as `UUtUns32` and reads back `(PHtNode *) inParam3`. Tutorial combat playable but doesn't progress reliably — next investigation: coordinated sweep of these layers.
+- **AUrQSort_32 audit (not landed):** 6 broken call sites identified that sort arrays of pointers through the 4-byte sort: `BFW_SoundSystem2.c:1015`, `Oni_Object.c:4168`, `BFW_Timer.c:398`, `BFW_Console.c:734`, `BFW_Particle3.c:2918,3027`. 11 other call sites are safe (they sort `UUtUns32` indices). Latent until those code paths execute.
 
 ### 2026-05-03 — Session 20: NPC activation fixes + HiDPI viewport fix
 

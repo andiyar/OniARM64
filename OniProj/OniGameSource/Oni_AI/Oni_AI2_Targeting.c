@@ -127,8 +127,12 @@ void AI2rTargeting_Update(AI2tTargetingState *ioTargetingState, UUtBool inPredic
 		// work out if we are too close to the target to fire
 		*outTooCloseWeight = 0;
 		if ((params != NULL) && inPointWeapon) {
+			UUrStartupMessage("[WEAPON-DBG] Targeting_Update: weapon_params=%p target_dist=%f about_to_deref_min_safe",
+				(void*)params, ioTargetingState->target_distance);
 			if (ioTargetingState->target_distance < params->min_safe_distance) {
 				*outTooCloseWeight = 1.0f - (ioTargetingState->target_distance / params->min_safe_distance);
+				UUrStartupMessage("[WEAPON-DBG] Targeting_Update: too_close_weight=%f min_safe=%f",
+					*outTooCloseWeight, params->min_safe_distance);
 			}
 		}
 	}
