@@ -2711,6 +2711,17 @@ static void TRrAnimation_Prepare(TRtAnimation *animation)
 
 	animation->flags |= (1 << TRcAnimFlag_Prepared);
 
+	{
+		static int prep_diag = 0;
+		if (prep_diag < 30) {
+			fprintf(stderr, "ANIM_PREP: %s sndName=0x%x sndFrame=%d type=%d\n",
+				animation->instanceName ? animation->instanceName : "?",
+				animation->soundName, animation->soundFrame, animation->type);
+			fflush(stderr);
+			prep_diag++;
+		}
+	}
+
 	return;
 }
 

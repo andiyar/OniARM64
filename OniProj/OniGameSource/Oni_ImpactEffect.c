@@ -23,6 +23,15 @@
 #define MODIFIER_OVERRIDE				0
 #define ONcMinImpactVolume				0.3f
 
+// On-disk record sizes (Win32 32-bit, fixed by shipping data). On 64-bit
+// ONtIESound and ONtIEParticle grew because they embed 8-byte pointer
+// slots where the disk file holds 4-byte slots, so the load path must
+// bridge per-record instead of casting the buffer in place. The other
+// impact-effect structs are pointer-free and disk-size == runtime-size.
+#define ONcIESound_OnDiskSize			48	// V2: name[32] + dummy(4) + impulse_ptr_slot(4) + flags(2) + ai_soundtype(2) + ai_soundradius(4)
+#define ONcEffectSpec_OnDiskSize		20	// particle_class_slot(4) + collision_orientation(4) + location_type(4) + location_data_union(8)
+#define ONcIEParticle_OnDiskSize		84	// name[64] + effect_spec(20)
+
 // ======================================================================
 // enums
 // ======================================================================
@@ -215,6 +224,122 @@ static UUtError ONiImpactEffect_MakeDynamicArray(
 
 	// store the new array
 	*outDynamicArray = new_array;
+	*ioIsDynamic = UUcTrue;
+	return UUcError_None;
+}
+
+// ----------------------------------------------------------------------
+// Per-record disk-format readers for structs that embed pointers.
+//
+// The shipping .dat data was written by Bungie's 2001 Win32 tools with
+// 4-byte pointer slots. On 64-bit our in-memory structs have 8-byte
+// pointers plus alignment padding, so casting the buffer in place is
+// wrong (the size sanity check at "Impact Effect Load: expected size X
+// but buffer is Y" trips and the entire impact-effect table is dropped,
+// silencing footsteps among other things).
+//
+// Pointer slots are zeroed; the existing ONrImpactEffects_SetupSoundPointers
+// and ONrImpactEffects_SetupParticlePointers re-resolve them by name once
+// the sound and particle subsystems have finished their own init.
+static void
+ONiIESound_ReadFromDisk(
+	const UUtUns8 *			inDisk,
+	ONtIESound *			outSound)
+{
+	// Disk layout (V2, 48 B): name[32] | dummy(4) | impulse_ptr_slot(4) | flags(2) | ai_soundtype(2) | ai_soundradius(4)
+	UUrMemory_MoveFast((void *)(inDisk +  0), outSound->sound_name,      BFcMaxFileNameLength);
+	UUrMemory_MoveFast((void *)(inDisk + 32), &outSound->dummy,          4);
+	outSound->impulse_ptr = NULL;
+	UUrMemory_MoveFast((void *)(inDisk + 40), &outSound->flags,          2);
+	UUrMemory_MoveFast((void *)(inDisk + 42), &outSound->ai_soundtype,   2);
+	UUrMemory_MoveFast((void *)(inDisk + 44), &outSound->ai_soundradius, 4);
+}
+
+static void
+ONiIEParticle_ReadFromDisk(
+	const UUtUns8 *			inDisk,
+	ONtIEParticle *			outParticle)
+{
+	// Disk layout (84 B): name[64] | effect_spec(20)
+	//   effect_spec disk: particle_class_slot(4) | collision_orientation(4) | location_type(4) | location_data_union(8)
+	const UUtUns8 *spec_disk = inDisk + 64;
+
+	UUrMemory_MoveFast((void *)(inDisk + 0), outParticle->particle_class_name, P3cParticleClassNameLength + 1);
+
+	outParticle->effect_spec.particle_class = NULL;
+	UUrMemory_MoveFast((void *)(spec_disk + 4),  &outParticle->effect_spec.collision_orientation, 4);
+	UUrMemory_MoveFast((void *)(spec_disk + 8),  &outParticle->effect_spec.location_type,         4);
+	UUrMemory_MoveFast((void *)(spec_disk + 12), &outParticle->effect_spec.location_data,         8);
+}
+
+static UUtError
+ONiIESound_ConvertArrayFromDisk(
+	UUtBool *				ioIsDynamic,
+	UUtUns32				inNumElements,
+	UUtUns8 *				inDiskArray,
+	ONtIESound **			outArray)
+{
+	UUtMemory_Array *new_array;
+	UUtUns32 itr;
+	ONtIESound *destptr;
+	UUtUns8 *srcptr;
+
+	if (*ioIsDynamic) {
+		return UUcError_None;
+	}
+
+	new_array = UUrMemory_Array_New(sizeof(ONtIESound), ONcIE_ChunkSize, inNumElements, inNumElements + ONcIE_ChunkSize);
+	UUmError_ReturnOnNull(new_array);
+
+	if (inNumElements > 0) {
+		UUmAssertReadPtr(inDiskArray, inNumElements * ONcIESound_OnDiskSize);
+		destptr = (ONtIESound *) UUrMemory_Array_GetMemory(new_array);
+		srcptr = inDiskArray;
+		for (itr = 0; itr < inNumElements; itr++) {
+			UUrMemory_Clear(destptr, sizeof(ONtIESound));
+			ONiIESound_ReadFromDisk(srcptr, destptr);
+			srcptr += ONcIESound_OnDiskSize;
+			destptr++;
+		}
+	}
+
+	*outArray = (ONtIESound *) new_array;
+	*ioIsDynamic = UUcTrue;
+	return UUcError_None;
+}
+
+static UUtError
+ONiIEParticle_ConvertArrayFromDisk(
+	UUtBool *				ioIsDynamic,
+	UUtUns32				inNumElements,
+	UUtUns8 *				inDiskArray,
+	ONtIEParticle **		outArray)
+{
+	UUtMemory_Array *new_array;
+	UUtUns32 itr;
+	ONtIEParticle *destptr;
+	UUtUns8 *srcptr;
+
+	if (*ioIsDynamic) {
+		return UUcError_None;
+	}
+
+	new_array = UUrMemory_Array_New(sizeof(ONtIEParticle), ONcIE_ChunkSize, inNumElements, inNumElements + ONcIE_ChunkSize);
+	UUmError_ReturnOnNull(new_array);
+
+	if (inNumElements > 0) {
+		UUmAssertReadPtr(inDiskArray, inNumElements * ONcIEParticle_OnDiskSize);
+		destptr = (ONtIEParticle *) UUrMemory_Array_GetMemory(new_array);
+		srcptr = inDiskArray;
+		for (itr = 0; itr < inNumElements; itr++) {
+			UUrMemory_Clear(destptr, sizeof(ONtIEParticle));
+			ONiIEParticle_ReadFromDisk(srcptr, destptr);
+			srcptr += ONcIEParticle_OnDiskSize;
+			destptr++;
+		}
+	}
+
+	*outArray = (ONtIEParticle *) new_array;
 	*ioIsDynamic = UUcTrue;
 	return UUcError_None;
 }
@@ -2062,12 +2187,27 @@ UUtError ONrIEBinaryData_Process(void)
 	expected_size += ONgIE_FileNumImpactTypes * sizeof(ONtImpactTranslator);
 	expected_size += ONgIE_FileNumMaterialTypes * sizeof(ONtMaterialTranslator);
 	expected_size += ONgIE_FileNumImpactTypes * sizeof(ONtImpactLookupIndex);
+#if UUmPlatform_PointerSize == 4
 	expected_size += ONgNumImpactParticles * sizeof(ONtIEParticle);
 	if (version >= ONcIEVersion_2) {
 		sound_size = sizeof(ONtIESound);
 	} else {
 		sound_size = sizeof(ONtIESound_Version1);
 	}
+#else
+	// 64-bit: ONtIEParticle and (V2) ONtIESound grew vs the on-disk Win32 layout
+	// because they embed pointers. Use the fixed disk sizes here; the load
+	// blocks below convert per-record into the larger runtime structs.
+	// The V1 sound path is not bridged because no shipping data is V1 and we
+	// don't want to grow scope; if it's ever encountered the size check will
+	// fail just as it does today.
+	expected_size += ONgNumImpactParticles * ONcIEParticle_OnDiskSize;
+	if (version >= ONcIEVersion_2) {
+		sound_size = ONcIESound_OnDiskSize;
+	} else {
+		sound_size = sizeof(ONtIESound_Version1);
+	}
+#endif
 	expected_size += ONgNumImpactSounds * sound_size;
 	expected_size += ONgNumImpactEntries * sizeof(ONtImpactEntry);
 	expected_size += ONgNumImpactMaterialIndices * sizeof(ONtImpactMaterialIndex);
@@ -2142,8 +2282,19 @@ UUtError ONrIEBinaryData_Process(void)
 	 * read the particles
 	 */
 
+#if UUmPlatform_PointerSize == 4
 	ONgImpactParticles = (ONtIEParticle *) buffer;
 	buffer += ONgNumImpactParticles * sizeof(ONtIEParticle);
+#else
+	// 64-bit: bridge per-record from the 32-bit on-disk layout.
+	error = ONiIEParticle_ConvertArrayFromDisk(&ONgImpactEffect_DynamicParticleArray, ONgNumImpactParticles,
+												(UUtUns8 *) buffer, &ONgImpactParticles);
+	if (error != UUcError_None) {
+		UUrDebuggerMessage("Impact Effect Load: error converting particles from on-disk layout!\n");
+		goto cleanup;
+	}
+	buffer += ONgNumImpactParticles * ONcIEParticle_OnDiskSize;
+#endif
 	error = ONiIESwap_Particles(ONgNumImpactParticles, ONiImpactEffect_GetParticle(0, 0), ONgImpactEffectsBuffer_SwapIt, UUcTrue);
 	if (error != UUcError_None) {
 		UUrDebuggerMessage("Impact Effect Load: error loading particles!\n");
@@ -2156,9 +2307,20 @@ UUtError ONrIEBinaryData_Process(void)
 	 */
 
 	if (version >= ONcIEVersion_2) {
+#if UUmPlatform_PointerSize == 4
 		// sounds are the correct size, no padding necessary. we can byte-swap in place.
 		ONgImpactSounds = (ONtIESound *) buffer;
 		buffer += ONgNumImpactSounds * sizeof(ONtIESound);
+#else
+		// 64-bit: bridge per-record from the 32-bit on-disk layout.
+		error = ONiIESound_ConvertArrayFromDisk(&ONgImpactEffect_DynamicSoundArray, ONgNumImpactSounds,
+												(UUtUns8 *) buffer, &ONgImpactSounds);
+		if (error != UUcError_None) {
+			UUrDebuggerMessage("Impact Effect Load: error converting sounds from on-disk layout!\n");
+			goto cleanup;
+		}
+		buffer += ONgNumImpactSounds * ONcIESound_OnDiskSize;
+#endif
 	} else {
 		// the sound data is the wrong version, and it must be padded out before being byte-swapped
 		error = ONiImpactEffect_MakeDynamicArray(&ONgImpactEffect_DynamicSoundArray, ONgNumImpactSounds, (UUtUns8 *) buffer,

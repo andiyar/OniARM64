@@ -1834,6 +1834,16 @@ OSrSoundAnimation_Play(
 	sound_anim_type = OSiTotoroToSound(totoro_anim_type)->sound_anim_type;
 	sound_mod_type = OSiTotoroToSound(totoro_anim_type)->sound_mod_type;
 	has_sound = (TRrAnimation_GetSoundName(inAnimation) != NULL);
+	{
+		static int snd_diag_count = 0;
+		if (snd_diag_count < 200) {
+			fprintf(stderr, "SND: ttype=%d stype=%d has=%d name=%s\n",
+				totoro_anim_type, sound_anim_type, has_sound,
+				TMrInstance_GetInstanceName(inAnimation));
+			fflush(stderr);
+			snd_diag_count++;
+		}
+	}
 	if ((sound_anim_type == OScAnimType_None) && (has_sound == UUcFalse)) { return; }
 
 	// get a mod type based on damage
