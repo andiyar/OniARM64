@@ -71,7 +71,7 @@ typedef struct AI2tKnowledgePending
 	AI2tContactStrength		strength;
 	M3tPoint3D				location;
 	AI2tContactType			type;
-	UUtUns32				user_data;
+	uintptr_t				user_data;
 	UUtBool					disable_notify;
 	UUtBool					force_target;
 
@@ -123,11 +123,11 @@ const IMtShade AI2gKnowledge_DebugSoundShade[AI2cContactType_Max] = {IMcShade_Bl
 static void AI2iKnowledge_AddPending(void);
 static void AI2iKnowledge_PostContact(ONtCharacter *inCharacter, AI2tContactType inType,
 									 AI2tContactStrength inStrength, M3tPoint3D *inLocation,
-									 ONtCharacter *inTarget, UUtUns32 inAIUserData,
+									 ONtCharacter *inTarget, uintptr_t inAIUserData,
 									 UUtBool inDisableNotify, UUtBool inForceTarget);
 static void AI2iKnowledge_AddContact(ONtCharacter *inCharacter, AI2tContactType inType,
 									 AI2tContactStrength inStrength, M3tPoint3D *inLocation,
-									 ONtCharacter *inTarget, UUtUns32 inAIUserData,
+									 ONtCharacter *inTarget, uintptr_t inAIUserData,
 									 UUtBool inDisableNotify, UUtBool inForceTarget);
 static void	AI2iKnowledge_CheckVisible(ONtCharacter *inCharacter, ONtActiveCharacter *inActiveCharacter,
 									   UUtUns32 inCheckCount, ONtCharacter **inCheckList);
@@ -644,12 +644,16 @@ void AI2rKnowledge_Sound(AI2tContactType inImportance, M3tPoint3D *inLocation, f
 		// causing characters' location **NOT** the location of the sound. This is
 		// so things like warning shouts work.
 		if (!ignore_target1) {
+			UUrStartupMessage("[KNOWLEDGE-DBG] PostContact (sound t1) char=%s tgt1=%p tgt2=%p (passing tgt2 as user_data)",
+				character->player_name, (void*)inTarget1, (void*)inTarget2);
 			AI2iKnowledge_PostContact(character, inImportance, contact_strength, (inTarget1 == NULL) ? inLocation : &target1_pt,
-										inTarget1, (UUtUns32) inTarget2, UUcFalse, UUcFalse);
+										inTarget1, (uintptr_t) inTarget2, UUcFalse, UUcFalse);
 		}
 		if (!ignore_target2) {
 			UUmAssert(inTarget2 != NULL);
-			AI2iKnowledge_PostContact(character, inImportance, AI2cContactStrength_Strong, &target2_pt, inTarget2, (UUtUns32) inTarget1, UUcFalse, UUcFalse);
+			UUrStartupMessage("[KNOWLEDGE-DBG] PostContact (sound t2) char=%s tgt2=%p tgt1=%p (passing tgt1 as user_data)",
+				character->player_name, (void*)inTarget2, (void*)inTarget1);
+			AI2iKnowledge_PostContact(character, inImportance, AI2cContactStrength_Strong, &target2_pt, inTarget2, (uintptr_t) inTarget1, UUcFalse, UUcFalse);
 		}
 	}
 }
@@ -1050,7 +1054,7 @@ static void	AI2iKnowledge_CheckVisible(ONtCharacter *inCharacter, ONtActiveChara
 // new knowledge has been received
 static void AI2iKnowledge_PostContact(ONtCharacter *inCharacter, AI2tContactType inType,
 									 AI2tContactStrength inStrength, M3tPoint3D *inLocation,
-									 ONtCharacter *inTarget, UUtUns32 inAIUserData,
+									 ONtCharacter *inTarget, uintptr_t inAIUserData,
 									 UUtBool inDisableNotify, UUtBool inForceTarget)
 {
 	AI2tKnowledgePending *pending;
@@ -1123,7 +1127,7 @@ static void AI2iKnowledge_AddPending(void)
 // add data to our contact list
 static void AI2iKnowledge_AddContact(ONtCharacter *inCharacter, AI2tContactType inType,
 									 AI2tContactStrength inStrength, M3tPoint3D *inLocation,
-									 ONtCharacter *inTarget, UUtUns32 inAIUserData,
+									 ONtCharacter *inTarget, uintptr_t inAIUserData,
 									 UUtBool inDisableNotify, UUtBool inForceTarget)
 {
 	AI2tKnowledgeState *knowledge_state;
@@ -1202,6 +1206,10 @@ static void AI2iKnowledge_AddContact(ONtCharacter *inCharacter, AI2tContactType 
 	entry->last_location = *inLocation;
 	entry->last_type = inType;
 	entry->last_user_data = inAIUserData;
+	UUrStartupMessage("[KNOWLEDGE-DBG] AddContact STORE owner=%s enemy=%s type=%d user_data=0x%lx",
+		inCharacter->player_name,
+		(entry->enemy ? entry->enemy->player_name : "(none)"),
+		(int)inType, (unsigned long)inAIUserData);
 
 	// update the strength of our contact with this character
 	if (inStrength > entry->highest_strength) {
@@ -1258,6 +1266,8 @@ static void AI2iKnowledge_AddContact(ONtCharacter *inCharacter, AI2tContactType 
 	} else if ((inType == AI2cContactType_Sound_Melee) || (inType == AI2cContactType_Sound_Gunshot)) {
 		// determine whether someone is attacking or shooting a friend of ours
 		ONtCharacter *target_character = (ONtCharacter *) inAIUserData;
+		UUrStartupMessage("[KNOWLEDGE-DBG] AddContact READ-AS-PTR user_data=0x%lx target_character=%p",
+			(unsigned long)inAIUserData, (void*)target_character);
 
 		if ((entry->enemy != NULL) && (target_character != NULL)) {
 			UUtUns32 enemy_status = AI2rTeam_FriendOrFoe(inCharacter->teamNumber, entry->enemy->teamNumber);

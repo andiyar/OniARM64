@@ -84,7 +84,7 @@ typedef struct AI2tKnowledgeEntry
 	UUtUns32				last_time;
 	M3tPoint3D				last_location;
 	AI2tContactType			last_type;
-	UUtUns32				last_user_data;
+	uintptr_t				last_user_data;
 
 	AI2tContactStrength		strength;
 	AI2tContactStrength		last_strength;			// equals strength at all times except when in

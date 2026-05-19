@@ -2,7 +2,7 @@
 
 Native ARM64 / Apple Silicon port of Oni (Bungie, 2001).
 
-## Status (2026-05-04)
+## Status (2026-05-19)
 
 Phase 3 continues. AI combat crash is root-caused and fixed — pointer
 truncation in `AI2rCombat_NotifyKnowledge` was passing an 8-byte
@@ -53,6 +53,13 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
 ## Rolling timeline (newest first)
+
+### 2026-05-19 — Session 23: AI Knowledge `user_data` widening landed
+
+- **Knowledge `user_data` widened** (`Oni_AI2_Knowledge.h:87`, `Oni_AI2_Knowledge.c:74` and signatures at 124/130/1053/1126): `UUtUns32` → `uintptr_t` for `AI2tKnowledgeEntry.last_user_data`, `AI2tKnowledgePending.user_data`, and the `inAIUserData` parameter of `AI2iKnowledge_PostContact` / `AI2iKnowledge_AddContact`. Two truncating call-site casts in `AI2rKnowledge_Sound` (lines 648 and 654) switched from `(UUtUns32) inTargetN` to `(uintptr_t) inTargetN` so target-character pointers survive the trip into the knowledge layer. Cascade fix #1 from session 21's audit.
+- **Behavioural run (verified non-regression, not symptom-verified):** game launched under `lldb -b`, played through the level-0 spectator combat room (3 NPCs: 2 hostile + 1 neutral) and quit normally. Clean exit, no crash. `[KNOWLEDGE-DBG] STORE` tracer fired 49 times across demo1/demo2/demo3/`char_0` with `user_data` values in `{0x0, 0x4, 0x5, 0x6, 0xa}` — all zero or damage-amount small ints. **`PostContact (sound...)` tracer and `READ-AS-PTR` tracer never fired** — the sound-event codepath the widening protects was not exercised by observed combat. Widening is structurally correct (closes a latent 32→64 truncation trap) but the test run did not bite into the protected bytes.
+- **Symptom carried forward:** one pair fought to completion, then the surviving two locked into combat-ready stance facing each other and could not initiate engagement. That is target-acquisition-after-first-kill failure — AI knows there's an enemy (combat stance was entered), but cannot decide to act. Sits downstream of Knowledge, in pathfinding or behaviour-decision territory. Likely candidate: cascade fix #2 (`AI2iManeuver_PathfindingErrorHandler` declaring `inParam3` as `UUtUns32` and reading back `(PHtNode *) inParam3`).
+- **Diagnostics retained** in tree per `feedback_keep_diagnostics` policy: `[KNOWLEDGE-DBG]` tracers at PostContact call-site (Knowledge.c:647/654), AddContact STORE (Knowledge.c:1209), AddContact READ-AS-PTR (Knowledge.c:1269).
 
 ### 2026-05-04 — Session 21: AI combat crash root-caused
 
