@@ -1784,6 +1784,12 @@ static UUtBool ASiDetermineEndPoint(AStPath *inAstar)
 		}
 	}
 
+	UUrStartupMessage("[GRID-DBG] DetEnd-FAIL char=%s start=(%d,%d) end=(%d,%d) gridXY=(%dx%d) maxRadius=%d",
+		(inAstar->owner ? inAstar->owner->player_name : "(null)"),
+		(int)inAstar->start.x, (int)inAstar->start.y,
+		(int)inAstar->end.x, (int)inAstar->end.y,
+		(int)inAstar->room->gridX, (int)inAstar->room->gridY,
+		(int)AScMaxDestImpassableRadius);
 	return UUcFalse;
 }
 

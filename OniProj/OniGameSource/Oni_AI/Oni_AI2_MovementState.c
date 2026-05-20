@@ -758,12 +758,22 @@ static UUtBool AI2iMovementState_SetupPath(ONtCharacter *ioCharacter, AI2tMoveme
 								ioCharacter, ioCharacter->pathState.moving_onto_stairs, (inActiveTransition && AI2gDebug_ShowActivationPaths),
 								AI2gDebug_ShowAstarEvaluation);
 
+	UUrStartupMessage("[GRID-DBG] SetParams char=%s success=%d node=%p room=%p gridXY=(%dx%d) pinStart=(%.2f,%.2f,%.2f) pinEnd=(%.2f,%.2f,%.2f)",
+		ioCharacter->player_name, (int)success, (void*)inNode, (void*)room,
+		(int)room->gridX, (int)room->gridY,
+		ioMovementState->grid_path_start.x, ioMovementState->grid_path_start.y, ioMovementState->grid_path_start.z,
+		ioMovementState->grid_path_end.x, ioMovementState->grid_path_end.y, ioMovementState->grid_path_end.z);
+
 	if (success) {
 		success = ASrPath_Generate(ASgAstar_Path, AI2cMax_PathPoints, &ioMovementState->grid_num_points,
 									ioMovementState->grid_path, ioCharacter, UUcTrue, (inActiveTransition || ioMovementState->grid_failure));
+		UUrStartupMessage("[GRID-DBG] Generate char=%s success=%d grid_num_points=%d active_transition=%d grid_failure=%d",
+			ioCharacter->player_name, (int)success, (int)ioMovementState->grid_num_points,
+			(int)inActiveTransition, (int)ioMovementState->grid_failure);
 	}
 
 	if (!success) {
+		UUrStartupMessage("[GRID-DBG] SetupPath-FAIL char=%s about to ClearPath", ioCharacter->player_name);
 		AI2_ERROR(AI2cWarning, AI2cSubsystem_Pathfinding, AI2cError_Pathfinding_AStarFailed, ioCharacter,
 			&ioMovementState->grid_path_start, &ioMovementState->grid_path_end, room, inNode);
 		AI2rMovementState_ClearPath(ioCharacter, ioMovementState);
