@@ -322,34 +322,67 @@ iFixupEmbeddedStructAlignment(
     TMtTemplateDefinition*  inTemplate,
     TMtLayoutDescriptor*    inDesc)
 {
-    if (inTemplate->tag != UUm4CharToUns32('A', 'K', 'V', 'A')) return;
-
-    /* AKVA layout: outer descriptor has [pad0[20] FixedArray, numNodes 4B,
-       nodes VarArray]. The VarArray sub-descriptor is the AKtBNVNode element.
-       Find it. */
-    TMtFieldDescriptor* vararray = NULL;
-    for (UUtUns32 i = 0; i < inDesc->num_fields; i++) {
-        if (inDesc->fields[i].kind == TMcFieldKind_VarArray &&
-            inDesc->fields[i].sub != NULL) {
-            vararray = &inDesc->fields[i];
-            break;
+    if (inTemplate->tag == UUm4CharToUns32('A', 'K', 'V', 'A')) {
+        /* AKVA layout: outer descriptor has [pad0[20] FixedArray, numNodes 4B,
+           nodes VarArray]. The VarArray sub-descriptor is the AKtBNVNode element.
+           Find it. */
+        TMtFieldDescriptor* vararray = NULL;
+        for (UUtUns32 i = 0; i < inDesc->num_fields; i++) {
+            if (inDesc->fields[i].kind == TMcFieldKind_VarArray &&
+                inDesc->fields[i].sub != NULL) {
+                vararray = &inDesc->fields[i];
+                break;
+            }
         }
+        if (vararray == NULL) return;
+
+        TMtLayoutDescriptor* elem = vararray->sub;
+
+        /* Shift the two leading PHtRoomData scalars (originally walker-placed at
+           dst_offset 28 and 32) by +4 bytes each. Iterate by original offset;
+           the walker appends fields in stream order so gridX precedes gridY. */
+        for (UUtUns32 i = 0; i < elem->num_fields; i++) {
+            TMtFieldDescriptor* f = &elem->fields[i];
+            if (f->dst_size != 4) continue;
+            if (f->dst_offset == 28) {
+                f->dst_offset = 32;
+            } else if (f->dst_offset == 32) {
+                f->dst_offset = 36;
+            }
+        }
+        return;
     }
-    if (vararray == NULL) return;
 
-    TMtLayoutDescriptor* elem = vararray->sub;
+    if (inTemplate->tag == UUm4CharToUns32('I', 'G', 'S', 't')) {
+        /* IGSt (ONtIGUI_String) embeds ONtIGUI_FontInfo at the head:
+             TStFontFamily *font_family;  // 8 bytes (pointer)
+             TStFontStyle  font_style;    // 4 bytes
+             UUtUns32      font_shade;    // 4 bytes
+             UUtUns16      font_size;     // 2 bytes
+             UUtUns16      flags;         // 2 bytes
+             // C compiler 8-aligns embedded struct end → 4-byte trailing pad
+             char          string[384];   // C: starts at struct offset 24
+           Walker has font_info fields ending at struct offset 20 (no trailing
+           pad); the next field is the 1-byte-aligned string[] FixedArray, so
+           there is no later alignment bump to absorb the drift. Result: the
+           walker writes string[0] at dst offset 20-after-preamble (= absolute
+           28) but C reads string[0] from struct offset 24-after-preamble
+           (= absolute 32). The first 4 bytes of the on-disk string fall into
+           C's font_info trailing-pad slot and disappear, producing user-
+           visible "TH METER TRAINING" instead of "HEALTH METER TRAINING".
 
-    /* Shift the two leading PHtRoomData scalars (originally walker-placed at
-       dst_offset 28 and 32) by +4 bytes each. Iterate by original offset;
-       the walker appends fields in stream order so gridX precedes gridY. */
-    for (UUtUns32 i = 0; i < elem->num_fields; i++) {
-        TMtFieldDescriptor* f = &elem->fields[i];
-        if (f->dst_size != 4) continue;
-        if (f->dst_offset == 28) {
-            f->dst_offset = 32;
-        } else if (f->dst_offset == 32) {
-            f->dst_offset = 36;
+           Fix: shift every field at-or-after absolute dst offset 28 by +4.
+           The string is encoded as two consecutive FixedArrays (255 + 129
+           bytes = 384). Both need the shift. The walker already padded the
+           descriptor's total dst_size to 8-align (= 416), so the 4 bytes
+           come from the trailing pad — no buffer overflow. */
+        for (UUtUns32 i = 0; i < inDesc->num_fields; i++) {
+            TMtFieldDescriptor* f = &inDesc->fields[i];
+            if (f->dst_offset >= 28) {
+                f->dst_offset += 4;
+            }
         }
+        return;
     }
 }
 
