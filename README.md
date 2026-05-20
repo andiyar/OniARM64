@@ -31,24 +31,47 @@ original 32-bit target but breaks now. Common patterns:
 
 ## Milestones
 
-- [x] Build as ARM64 binary
-- [x] All subsystem init runs end-to-end
-- [x] `loading level 0…` reaches the template-manager bridge
-- [x] Main menu renders
-- [x] `New Game` → level 1 load completes, splash clears
-- [x] First gameplay frame on screen (warehouse, textures, HUD, player)
-- [x] Multi-frame rendering without AKOT corruption
-- [x] Movement (WASD / mouselook) doesn't instantly SIGSEGV
-- [x] Crash-handler prevents UE-zombie processes after SIGSEGV (no more daily reboots)
-- [x] Bug B — character geometry clip-buffer overflow fixed (texture-coord scratch buffer)
-- [x] Doors open instead of clipped-through (→ `OT_Door` callback truncation sweep) — **sweep landed session 17**
-- [x] Triggers / trigger volumes fire (→ `OT_Trigger`, `OT_TriggerVolume` callback truncation sweep) — **sweep landed session 17**
-- [x] AI state machines run (→ `Oni_AI2*.c`, `OT_Combat.c` callback truncation sweep) — **sweep landed session 17**
-- [x] NPCs render on screen — pathfinding + character visibility sorting fixed (session 20)
-- [ ] Character animation: bone transforms correct, no levitation / stretched joints
-- [x] **Audio actually plays** — Bug A diagnosed in session 12: shipping data has no `.sep` files, so both `BDiBinaryData_ProcHandler` (BINA) and `OSiBinaryData_ProcHandler` (OSBD, audio) silently no-op. Fix verified working in isolation (`c039fa5`, reverted in `7e51a55`) — but unblocks Bug C below. Land paired.
-- [ ] **Bug C — particle loader 64-bit bridge gap** — `P3rLoad_PostProcess` SIGBUSes during 64-bit bridge of `P3tParticleDefinition`. KERN_PROTECTION_FAILURE at `0x19c8d9cb04` inside `P3rTraverseVarRef+2252` ← `P3rPackVariables+1624` ← `P3iProcessParticleClass+368`. Latent the whole port; only became reachable when Bug A unblocked the dispatch chain. Files: `BFW_Particle/BFW_Particle3.c`, `BFW_Headers/BFW_Particle3.h`. Must land paired with Bug A.
-- [x] HiDPI viewport scaling: game renders fullscreen instead of 640×480 corner; mouse coords aligned
+### Phase 1 — Boot & init ✅
+- [x] Builds as native ARM64 binary on Apple Silicon
+- [x] All subsystems initialise end-to-end without SIGSEGV
+- [x] Crash handler prevents zombie processes after a SIGSEGV
+
+### Phase 2 — Render & UI
+- [x] Main menu renders and is interactive
+- [x] HiDPI viewport scaling — game renders fullscreen, mouse aligned
+- [x] Multi-frame rendering without geometry corruption (Bug B closed, session 19)
+- [x] Characters render with correct bone transforms (no levitation, no stretched joints — endian fix landed session 20)
+- [ ] In-game UI text renders without left-edge clipping (windows / dialog boxes show "TH METER TRAINING" instead of "HEALTH METER TRAINING")
+
+### Phase 3 — Level load & gameplay primitives
+- [x] Level 0 (main menu) loads and runs
+- [x] Level 1 (tutorial / warehouse) loads from New Game
+- [x] Movement (WASD / mouselook) works without crashing
+- [x] Doors open in response to triggers
+- [x] Trigger volumes fire scripted events
+- [x] AI state machines run without crashing
+- [x] Resolution / window-size persists across launches
+
+### Phase 4 — Audio & effects
+- [x] Menu / cutscene / dialogue audio plays
+- [x] Footstep impact sounds play (impact-effect on-disk bridge, session 23)
+- [ ] Particle classes load without size-class overflow (`w10_sni_p01 is too large (268)` warning still latent)
+
+### Phase 5 — AI behaviour
+- [x] NPCs detect the player via sight and sound (Knowledge layer)
+- [x] NPCs escalate alert → combat correctly when player is in central vision (session 24, verified end-to-end through `Combat_Enter`)
+- [x] AI combat behaviour fires (melee + ranged both work end-to-end once Combat_Enter happens)
+- [ ] **NPCs close distance to engage the player** — graph-level pathfinding works, grid-level `ASrPath_Generate` produces zero waypoints, NPC commits `Stopped` every frame (session 24 diagnosed; current top blocker)
+- [ ] Scripted NPC movement (walk-into-room patrol paths) executes — same root cause as above
+- [ ] NPC-vs-NPC combat completes to first kill and surviving NPCs re-target
+
+### Phase 6 — Gameplay completion
+- [ ] Konoko can engage NPCs in combat end-to-end across a full encounter
+- [ ] Tutorial level completable to next-level transition
+- [ ] Save / load works across runs
+- [ ] All 14 levels playable
+
+### Phase 7 — Shippable artefact
 - [ ] `.app` bundle + code signing
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 

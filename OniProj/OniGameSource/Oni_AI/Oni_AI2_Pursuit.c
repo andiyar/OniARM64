@@ -444,6 +444,12 @@ static void AI2iPursuit_BeginMode(ONtCharacter *ioCharacter, AI2tPursuitState *i
 			ioPursuitState->running_to_contact = ioPursuitState->pursue_danger;
 			ioPursuitState->scanning_area = UUcFalse;
 
+			UUrStartupMessage("[PURSUIT-DBG] BeginGoTo char=%s tgtloc=(%.1f,%.1f,%.1f) closedist=%.1f enemy=%p curloc=(%.1f,%.1f,%.1f) currentPathnode=%p",
+				ioCharacter->player_name, ioPursuitState->target->last_location.x, ioPursuitState->target->last_location.y, ioPursuitState->target->last_location.z,
+				AI2cPursuit_GoToContact_CloseDist, (void*)ioPursuitState->target->enemy,
+				ioCharacter->location.x, ioCharacter->location.y, ioCharacter->location.z,
+				(void*)ioCharacter->currentPathnode);
+
 			// pathfind to the last known location of the target
 			AI2rPath_GoToPoint(ioCharacter, &ioPursuitState->target->last_location, AI2cPursuit_GoToContact_CloseDist,
 								UUcTrue, AI2cAngle_None, ioPursuitState->target->enemy);

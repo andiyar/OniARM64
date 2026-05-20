@@ -449,6 +449,11 @@ static UUtBool AI2iPath_MakePath(ONtCharacter *ioCharacter, UUtBool inForce)
 		nodeEnd		= PHrAkiraNodeToGraphNode(akNodeEnd, graph);
 	}
 
+	UUrStartupMessage("[PURSUIT-DBG] MakePath char=%s nodeStart=%p nodeEnd=%p akNodeEnd=%p destType=%d endloc=(%.1f,%.1f,%.1f) at_final=%d",
+		ioCharacter->player_name, (void*)nodeStart, (void*)nodeEnd, (void*)akNodeEnd,
+		ioCharacter->pathState.destinationType, locationEnd.x, locationEnd.y, locationEnd.z,
+		ioCharacter->pathState.at_finalpoint);
+
 	if (nodeStart == NULL) {
 		patherror = AI2cError_Pathfinding_NoBNVAtStart;
 
@@ -514,7 +519,14 @@ static UUtBool AI2iPath_MakePath(ONtCharacter *ioCharacter, UUtBool inForce)
 #endif
 	}
 
-	return AI2iPath_NewNode(ioCharacter, reuse_path);
+	{
+		UUtBool _newnode_ok = AI2iPath_NewNode(ioCharacter, reuse_path);
+		UUrStartupMessage("[PURSUIT-DBG] NewNode char=%s ok=%d num_nodes=%d cur=%d",
+			ioCharacter->player_name, _newnode_ok,
+			(int)ioCharacter->pathState.path_num_nodes,
+			(int)ioCharacter->pathState.path_current_node);
+		return _newnode_ok;
+	}
 }
 
 // there is a problem with following the path that we constructed

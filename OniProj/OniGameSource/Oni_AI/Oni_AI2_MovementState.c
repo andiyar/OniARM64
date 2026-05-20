@@ -1653,6 +1653,11 @@ static void AI2iMovementState_Calculate_Movement(ONtCharacter *ioCharacter, AI2t
 		}
 	}
 
+	UUrStartupMessage("[MOVE-DBG] Commit char=%s actual_dir=%d move_dir=%.2f facing=%.2f mode=%d at_final=%d next_pt=%p grid_num=%d",
+		ioCharacter->player_name, actual_movement_direction, ioMovementState->move_direction, facing_direction,
+		movement_mode, ioCharacter->pathState.at_finalpoint,
+		(void*)ioMovementState->next_path_point, (int)ioMovementState->grid_num_points);
+
 	// commit our choices
 	AI2rExecutor_Move(ioCharacter, facing_direction, movement_mode, actual_movement_direction, turn_danger);
 }
