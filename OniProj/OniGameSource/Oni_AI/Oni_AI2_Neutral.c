@@ -518,7 +518,7 @@ UUtBool AI2rNeutral_Stop(ONtCharacter *ioCharacter, UUtBool inForce, UUtBool inA
 
 UUtBool AI2rNeutral_PathfindingHandler(ONtCharacter *inCharacter, UUtUns32 inErrorID,
 										uintptr_t inParam1, uintptr_t inParam2,
-										UUtUns32 inParam3, UUtUns32 inParam4)
+										uintptr_t inParam3, uintptr_t inParam4)
 {
 	// silently stop neutral interaction
 	AI2rNeutral_Stop(inCharacter, UUcTrue, UUcFalse, UUcFalse, UUcTrue);

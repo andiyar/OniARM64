@@ -112,6 +112,6 @@ UUtBool AI2rNeutral_Stop(ONtCharacter *ioCharacter, UUtBool inForce, UUtBool inA
 // handle pathfinding errors
 UUtBool AI2rNeutral_PathfindingHandler(ONtCharacter *inCharacter, UUtUns32 inErrorID,
 										uintptr_t inParam1, uintptr_t inParam2,
-										UUtUns32 inParam3, UUtUns32 inParam4);
+										uintptr_t inParam3, uintptr_t inParam4);
 
 #endif // ONI_AI2_NEUTRAL_H

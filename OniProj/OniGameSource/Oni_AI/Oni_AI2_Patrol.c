@@ -438,7 +438,7 @@ static void AI2iPatrol_FindNearestWaypoint(ONtCharacter *ioCharacter, AI2tPatrol
 // handle pathfinding errors
 UUtBool AI2rPatrol_PathfindingHandler(ONtCharacter *inCharacter, UUtUns32 inErrorID,
 										uintptr_t inParam1, uintptr_t inParam2,
-										UUtUns32 inParam3, UUtUns32 inParam4)
+										uintptr_t inParam3, uintptr_t inParam4)
 {
 	// note that we had a pathfinding error - will be handled in update loop
 	UUmAssert(inCharacter->ai2State.currentGoal == AI2cGoal_Patrol);

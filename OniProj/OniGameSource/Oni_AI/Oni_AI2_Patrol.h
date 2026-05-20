@@ -280,7 +280,7 @@ void AI2rPatrol_Reset(ONtCharacter *ioCharacter, AI2tPatrolState *ioPatrolState)
 // handle pathfinding errors
 UUtBool AI2rPatrol_PathfindingHandler(ONtCharacter *inCharacter, UUtUns32 inErrorID,
 										uintptr_t inParam1, uintptr_t inParam2,
-										UUtUns32 inParam3, UUtUns32 inParam4);
+										uintptr_t inParam3, uintptr_t inParam4);
 // pause a patrol for some number of frames
 void AI2rPatrol_Pause(ONtCharacter *ioCharacter, AI2tPatrolState *ioPatrolState, UUtUns32 inPauseFrames);
 

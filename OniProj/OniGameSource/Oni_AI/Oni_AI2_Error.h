@@ -98,15 +98,15 @@ extern AI2tPathfindingErrorStorage AI2gPathfindingErrorStorage;
 
 typedef void (*AI2tErrorReportFunction)(ONtCharacter *inCharacter,
 								  uintptr_t inParam1, uintptr_t inParam2,
-								  UUtUns32 inParam3, UUtUns32 inParam4);
+								  uintptr_t inParam3, uintptr_t inParam4);
 
 typedef UUtBool (*AI2tErrorHandleFunction)(ONtCharacter *inCharacter,
 								  uintptr_t inParam1, uintptr_t inParam2,
-								  UUtUns32 inParam3, UUtUns32 inParam4);
+								  uintptr_t inParam3, uintptr_t inParam4);
 
 typedef UUtBool (*AI2tPathfindingErrorHandler)(ONtCharacter *inCharacter, UUtUns32 inErrorID,
 								  uintptr_t inParam1, uintptr_t inParam2,
-								  UUtUns32 inParam3, UUtUns32 inParam4);
+								  uintptr_t inParam3, uintptr_t inParam4);
 
 typedef struct AI2tErrorTableEntry {
 	UUtUns32					error_id;
@@ -227,7 +227,7 @@ void AI2rError_Terminate(void);
 
 // handle an error - can be used to catch problems before they blow up
 UUtBool AI2rHandleError(AI2tErrorSubsystem inSystem, UUtUns32 inErrorID, ONtCharacter *inCharacter,
-						uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4,
+						uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3, uintptr_t inParam4,
 						AI2tErrorTableEntry **outEntry);
 
 // install a temporary error handler for pathfinding
@@ -239,7 +239,7 @@ void AI2rError_RestorePathfindingHandler(AI2tPathfindingErrorHandler inHandler);
 // errors may be reported to the console and logged
 #define AI2_ERROR(sev, system, err_id, character, p1, p2, p3, p4)					\
 		AI2rReportError(system, err_id, character,									\
-			(UUtUns32) (p1), (UUtUns32) (p2), (UUtUns32) (p3), (UUtUns32) (p4),		\
+			(uintptr_t) (p1), (uintptr_t) (p2), (uintptr_t) (p3), (uintptr_t) (p4),		\
 			__FILE__, __LINE__, sev);
 
 #else	// AI2_ERROR_REPORT
@@ -247,12 +247,12 @@ void AI2rError_RestorePathfindingHandler(AI2tPathfindingErrorHandler inHandler);
 // errors are only checked for handling and are not logged or reported
 #define AI2_ERROR(sev, system, err_id, character, p1, p2, p3, p4)                   \
 		AI2rHandleError(system, err_id, character,									\
-			(UUtUns32) (p1), (UUtUns32) (p2), (UUtUns32) (p3), (UUtUns32) (p4), NULL);
+			(uintptr_t) (p1), (uintptr_t) (p2), (uintptr_t) (p3), (uintptr_t) (p4), NULL);
 
 #endif	// AI2_ERROR_REPORT
 
 UUtBool AI2rReportError(AI2tErrorSubsystem inSystem, UUtUns32 inErrorID, ONtCharacter *inCharacter,
-						uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3, UUtUns32 inParam4,
+						uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3, uintptr_t inParam4,
 						const char *inFile, UUtUns32 inLine, AI2tErrorSeverity inSeverity);
 
 void AI2rError_ReportLine(char *inLine);
@@ -277,6 +277,6 @@ void AI2rError_DisplayPathfindingErrors(void);
 /* default pathfinding error handling */
 UUtBool AI2rError_DefaultPathfindingHandler(ONtCharacter *inCharacter, UUtUns32 inErrorID,
 											uintptr_t inParam1, uintptr_t inParam2,
-											UUtUns32 inParam3, UUtUns32 inParam4);
+											uintptr_t inParam3, uintptr_t inParam4);
 
 #endif // ONI_AI2_ERROR_H

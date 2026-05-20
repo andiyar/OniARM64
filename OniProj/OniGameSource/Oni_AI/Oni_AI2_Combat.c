@@ -175,59 +175,59 @@ static void AI2iCombat_RemoveFromFight(ONtCharacter *ioCharacter, AI2tCombatStat
 // shared behavior functions
 static UUtUns32 AI2iTryToFindGunBehavior(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 static UUtUns32 AI2iNoGunBehavior(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 
 // specific behavior functions
 static UUtUns32 AI2iBehavior_Stare(ONtCharacter *ioCharacter, struct AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 static UUtUns32 AI2iBehavior_HoldAndFire(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 static UUtUns32 AI2iBehavior_FiringCharge(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 static UUtUns32 AI2iBehavior_Melee(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 static UUtUns32 AI2iBehavior_RunForAlarm(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 
 // barabbas's special case AI functions
 static UUtBool AI2iBehavior_BarabbasCheckRegen(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 											   AI2tBehaviorState_Barabbas *ioBarabbasState);
 static UUtUns32 AI2iBehavior_BarabbasMelee(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 static UUtUns32 AI2iBehavior_BarabbasShoot(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 static UUtUns32 AI2iBehavior_BarabbasAdvance(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 
 // super ninja's special case AI functions
 static UUtUns32 AI2iBehavior_SuperNinjaMelee(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 static UUtUns32 AI2iBehavior_SuperNinjaFireball(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 static UUtUns32 AI2iBehavior_SuperNinjaAdvance(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 
 // mutant muro's special case AI functions
 static UUtUns32 AI2iBehavior_MutantMuroMelee(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 static UUtUns32 AI2iBehavior_MutantMuroZeus(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 
 // ------------------------------------------------------------------------------------
 // -- global combat behavior table
@@ -1818,7 +1818,7 @@ static UUtBool AI2iCheckFightBack(ONtCharacter *ioCharacter, AI2tCombatState *io
 
 static UUtUns32 AI2iTryToFindGunBehavior(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	UUtBool nogun_handled, fight_instead;
 
@@ -1879,7 +1879,7 @@ static UUtUns32 AI2iTryToFindGunBehavior(ONtCharacter *ioCharacter, AI2tCombatSt
 
 static UUtUns32 AI2iNoGunBehavior(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	*inHandled = UUcTrue;
 
@@ -2062,7 +2062,7 @@ static UUtBool AI2iBehavior_FindRetreatFlag(M3tPoint3D *inEnemy, float inDesired
 
 static UUtUns32 AI2iBehavior_Stare(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	*inHandled = UUcTrue;
 
@@ -2101,7 +2101,7 @@ static UUtUns32 AI2iBehavior_Stare(ONtCharacter *ioCharacter, AI2tCombatState *i
 
 static UUtUns32 AI2iBehavior_HoldAndFire(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	*inHandled = UUcTrue;
 
@@ -2148,7 +2148,7 @@ static UUtUns32 AI2iBehavior_HoldAndFire(ONtCharacter *ioCharacter, AI2tCombatSt
 
 static UUtUns32 AI2iBehavior_FiringCharge(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	*inHandled = UUcTrue;
 
@@ -2198,7 +2198,7 @@ static UUtUns32 AI2iBehavior_FiringCharge(ONtCharacter *ioCharacter, AI2tCombatS
 
 static UUtUns32 AI2iBehavior_Melee(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	*inHandled = UUcTrue;
 
@@ -2238,7 +2238,7 @@ static UUtUns32 AI2iBehavior_Melee(ONtCharacter *ioCharacter, AI2tCombatState *i
 
 static UUtUns32 AI2iBehavior_RunForAlarm(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	*inHandled = UUcTrue;
 
@@ -2424,7 +2424,7 @@ static UUtBool AI2iBehavior_BarabbasCheckRegen(ONtCharacter *ioCharacter, AI2tCo
 
 static UUtUns32 AI2iBehavior_Barabbas(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	ONtActiveCharacter *active_character = ONrForceActiveCharacter(ioCharacter);
 	AI2tBehaviorState_Barabbas *barabbas_state;
@@ -2675,7 +2675,7 @@ static UUtUns32 AI2iBehavior_Barabbas(ONtCharacter *ioCharacter, AI2tCombatState
 
 static UUtUns32 AI2iBehavior_BarabbasShoot(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	UUtBool fired, alternate;
 
@@ -2721,7 +2721,7 @@ static UUtUns32 AI2iBehavior_BarabbasShoot(ONtCharacter *ioCharacter, AI2tCombat
 
 static UUtUns32 AI2iBehavior_BarabbasAdvance(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	UUtBool fired, alternate;
 
@@ -2764,7 +2764,7 @@ static UUtUns32 AI2iBehavior_BarabbasAdvance(ONtCharacter *ioCharacter, AI2tComb
 
 static UUtUns32 AI2iBehavior_BarabbasMelee(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	*inHandled = UUcFalse;
 
@@ -2934,7 +2934,7 @@ static UUtBool AI2iBehavior_SuperNinjaCheckTeleportAdvance(ONtCharacter *ioChara
 
 static UUtUns32 AI2iBehavior_SuperNinja(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	ONtActiveCharacter *active_character = ONrForceActiveCharacter(ioCharacter);
 	AI2tBehaviorState_SuperNinja *superninja_state;
@@ -3381,7 +3381,7 @@ static UUtUns32 AI2iBehavior_SuperNinja(ONtCharacter *ioCharacter, AI2tCombatSta
 
 static UUtUns32 AI2iBehavior_SuperNinjaFireball(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	*inHandled = UUcFalse;
 
@@ -3408,7 +3408,7 @@ static UUtUns32 AI2iBehavior_SuperNinjaFireball(ONtCharacter *ioCharacter, AI2tC
 
 static UUtUns32 AI2iBehavior_SuperNinjaAdvance(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	*inHandled = UUcFalse;
 
@@ -3431,7 +3431,7 @@ static UUtUns32 AI2iBehavior_SuperNinjaAdvance(ONtCharacter *ioCharacter, AI2tCo
 
 static UUtUns32 AI2iBehavior_SuperNinjaMelee(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	*inHandled = UUcFalse;
 
@@ -3484,7 +3484,7 @@ static void AI2iMutantMuro_DisableShield(AI2tBehaviorState_MutantMuro *ioMuroSta
 
 static UUtUns32 AI2iBehavior_MutantMuro(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	ONtActiveCharacter *active_character = ONrForceActiveCharacter(ioCharacter);
 	AI2tBehaviorState_MutantMuro *muro_state;
@@ -3617,7 +3617,7 @@ static UUtUns32 AI2iBehavior_MutantMuro(ONtCharacter *ioCharacter, AI2tCombatSta
 
 static UUtUns32 AI2iBehavior_MutantMuroZeus(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	UUtUns32 returnval;
 	AI2tBehaviorState_MutantMuro *muro_state = &ioCombatState->behavior_state.mutantMuro;
@@ -3769,7 +3769,7 @@ static UUtUns32 AI2iBehavior_MutantMuroZeus(ONtCharacter *ioCharacter, AI2tComba
 
 static UUtUns32 AI2iBehavior_MutantMuroMelee(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	UUtUns32 returnval;
 	AI2tBehaviorState_MutantMuro *muro_state = &ioCombatState->behavior_state.mutantMuro;
@@ -3891,7 +3891,7 @@ static UUtUns32 AI2iBehavior_MutantMuroMelee(ONtCharacter *ioCharacter, AI2tComb
 // handle any messages that weren't covered by our current behavior function
 UUtUns32 AI2rBehavior_Default(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState,
 								   AI2tCombatMessage inMsg, UUtBool *inHandled,
-								   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+								   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	ONtActiveCharacter *active_character = ONrGetActiveCharacter(ioCharacter);
 	AI2tKnowledgeEntry *entry;

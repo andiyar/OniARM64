@@ -186,7 +186,7 @@ typedef struct AI2tCombatSettings {
 // and calls combat actions as necessary.
 typedef UUtUns32 (*AI2tBehaviorFunction)(ONtCharacter *ioCharacter, struct AI2tCombatState *ioCombatState,
 										 AI2tCombatMessage inMsg, UUtBool *inHandled,
-										 uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+										 uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 
 typedef struct AI2tBehaviorDefinition {
 	AI2tBehaviorType			type;
@@ -453,7 +453,7 @@ void AI2rCombat_NotifyKnowledge(ONtCharacter *ioCharacter, AI2tKnowledgeEntry *i
 // handle a message that wasn't handled by our current behavior
 UUtUns32 AI2rBehavior_Default(ONtCharacter *ioCharacter, struct AI2tCombatState *ioCombatState,
 							   AI2tCombatMessage inMsg, UUtBool *inHandled,
-							   uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3);
+							   uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3);
 
 // handle whether or not we must wait for our super shield to recharge
 UUtBool AI2rCombat_WaitingForShieldCharge(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState);
@@ -471,7 +471,7 @@ void AI2rCombat_Report(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState
 // call a behavior with a particular message
 static UUcInline UUtUns32 AI2rCombat_Behavior(ONtCharacter *ioCharacter, struct AI2tCombatState *ioCombatState,
 										  AI2tCombatMessage inMsg, UUtBool *inHandled,
-										  uintptr_t inParam1, uintptr_t inParam2, UUtUns32 inParam3)
+										  uintptr_t inParam1, uintptr_t inParam2, uintptr_t inParam3)
 {
 	UUtUns32 returnval;
 	AI2tBehaviorFunction function = ioCombatState->current_behavior.function;

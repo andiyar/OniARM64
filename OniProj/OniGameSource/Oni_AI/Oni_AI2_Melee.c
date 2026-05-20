@@ -295,7 +295,7 @@ static void AI2iMelee_ApplyFacing(ONtCharacter *ioCharacter, AI2tMeleeState *ioM
 // catch errors fired off when trying to find a path
 static UUtBool AI2iMelee_PathfindingErrorHandler(ONtCharacter *inCharacter, UUtUns32 inErrorID,
 													uintptr_t inParam1, uintptr_t inParam2,
-													UUtUns32 inParam3, UUtUns32 inParam4);
+													uintptr_t inParam3, uintptr_t inParam4);
 
 // set up orders for the situation when we don't have any melee techniques
 static UUtBool AI2iMelee_HandleNoTechnique(ONtCharacter *ioCharater, AI2tCombatState *ioCombatState, AI2tMeleeState *ioMeleeState);
@@ -2399,7 +2399,7 @@ UUtBool AI2rMelee_Update(ONtCharacter *ioCharacter, AI2tMeleeState *ioMeleeState
 
 static UUtBool AI2iMelee_PathfindingErrorHandler(ONtCharacter *inCharacter, UUtUns32 inErrorID,
 													uintptr_t inParam1, uintptr_t inParam2,
-													UUtUns32 inParam3, UUtUns32 inParam4)
+													uintptr_t inParam3, uintptr_t inParam4)
 {
 	// just store the error ID and flag error as handled
 	AI2gMelee_PathfindingError = inErrorID;
