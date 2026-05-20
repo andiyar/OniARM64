@@ -2,19 +2,37 @@
 
 Native ARM64 / Apple Silicon port of Oni (Bungie, 2001).
 
-## Status (2026-05-19)
+## Status (2026-05-20)
 
-Phase 3 continues. AI combat crash is root-caused and fixed — pointer
-truncation in `AI2rCombat_NotifyKnowledge` was passing an 8-byte
-`AI2tKnowledgeEntry *` through a `(UUtUns32)` cast into the behavior
-dispatcher, which then cast the truncated 4-byte value back to a pointer
-and crashed on first access. Fix verified end-to-end: NPCs enter combat
-without crashing.
+Phase 3 continues. The "NPC won't advance toward the player" pursuit bug
+is narrowed further: session 25 closed two diagnostic gaps that misled
+session 24. First, `AI2_ERROR_REPORT` is `0` in release builds, so all
+`AI2_ERROR(...)` calls compile to the silent `AI2rHandleError` path and
+produce no log line — session 24's "no AI2_ERROR in startup.txt → SetupPath
+succeeded" inference was wrong. Second, the one "successful" MakePath in
+the prior repro turned out to fire during `[lvl-load] SLrScript_ExecuteOnce(main)`,
+not during real combat. The 19 in-combat events all silently failed inside
+`AI2iMovementState_SetupPath` via `ASrPath_SetParams` or `ASrPath_Generate`
+returning false → `AI2_ERROR` (silent) → `AI2rMovementState_ClearPath` →
+`grid_num=0`, `next_pt=NULL`, `actual_dir=Stopped` every frame.
 
-Cascade exposed: AI combat starts but stalls intermittently — multiple
-latent truncation sites in the AI message-passing layer (knowledge
-contacts, `AI2_ERROR` macro, pathfinding error handler, melee animation
-through `inParam3`). Tutorial combat doesn't progress to completion.
+Three `[GRID-DBG]` tracers landed (SetParams / Generate / DetEnd-FAIL) to
+categorise the failure on the next repro. Fix is then one of four pre-analysed
+branches depending on which call returns false.
+
+Most fixes chase 32→64 bit arithmetic that was correct on Bungie's
+original 32-bit target but breaks now. Common patterns:
+- Unsigned-index underflow that used to wrap mod 2³² to benign heap
+  padding, now goes ~48 GB into unmapped space.
+- Encoded indices (top-bit flags) dereferenced without masking.
+- Ceiling-divide loops without a paired remainder-loop that worked
+  because the extra reads fell in 32-bit heap slack.
+- `UUtUns32` callback userdata that silently truncates passed-in
+  pointers — any heap address above 4 GB (i.e. all of them on Apple
+  Silicon) loses its upper bits.
+- **Silent error macros: `AI2_ERROR_REPORT=0` in release builds routes all
+  AI2_ERROR calls to a no-log handler. Absence of an error in startup.txt
+  proves nothing on its own.**
 
 Audio works (menu music, cutscene dialogue). Phases 0–2 complete.
 
@@ -61,7 +79,7 @@ original 32-bit target but breaks now. Common patterns:
 - [x] NPCs detect the player via sight and sound (Knowledge layer)
 - [x] NPCs escalate alert → combat correctly when player is in central vision (session 24, verified end-to-end through `Combat_Enter`)
 - [x] AI combat behaviour fires (melee + ranged both work end-to-end once Combat_Enter happens)
-- [ ] **NPCs close distance to engage the player** — graph-level pathfinding works, grid-level `ASrPath_Generate` produces zero waypoints, NPC commits `Stopped` every frame (session 24 diagnosed; current top blocker)
+- [ ] **NPCs close distance to engage the player** — graph-level pathfinding works, grid-level `AI2iMovementState_SetupPath` silently fails (`AI2_ERROR` is compiled to no-log in release; one of `ASrPath_SetParams` / `ASrPath_Generate` / `ASiDetermineEndPoint` returns false); NPC commits `Stopped` every frame. Session 25 added `[GRID-DBG]` tracers to categorise. Current top blocker.
 - [ ] Scripted NPC movement (walk-into-room patrol paths) executes — same root cause as above
 - [ ] NPC-vs-NPC combat completes to first kill and surviving NPCs re-target
 
@@ -76,6 +94,14 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
 ## Rolling timeline (newest first)
+
+### 2026-05-20 — Session 25: [GRID-DBG] tracers land; AI2_ERROR silent-in-release explains session 24's misread
+
+- **Three `[GRID-DBG]` tracers added** around `AI2iMovementState_SetupPath`'s two failure-bearing calls (`ASrPath_SetParams`, `ASrPath_Generate`) and at the silent UUcFalse return in `ASiDetermineEndPoint` (`Oni_AStar.c:1787`). Retained per `feedback_keep_diagnostics`. Plus one tracer at the SetupPath ClearPath site for confirmation.
+- **Diagnostic discovery #1: `AI2_ERROR` is silent in release.** `Oni_AI2_Error.h:22-25` defines `AI2_ERROR_REPORT=0` for non-TOOL_VERSION builds, so the `AI2_ERROR(...)` macro expands to `AI2rHandleError(...)` (no console / log output) instead of `AI2rReportError(...)`. Session 24's conclusion "no AI2_ERROR in startup.txt ⇒ SetupPath returned true" was wrong — the absence carried zero information. SetupPath was almost certainly returning false silently and calling `AI2rMovementState_ClearPath` (which is what produced `grid_num=0`, `next_pt=NULL` in MOVE-DBG).
+- **Diagnostic discovery #2: the "successful" 7890/7891 PURSUIT-DBG event was during level-load.** The two lines immediately around it in startup.txt are `[lvl-load] before SLrScript_ExecuteOnce(main)` and `[lvl-load] after SLrScript_ExecuteOnce(main) err=0`. It was a script-driven path (different BNVs, took the `path_connections[0]->from` branch), not a real-combat pursuit. The 19 in-combat events (all same-BNV, all `ok=0 num_nodes=1`) are the actual symptom — every one of them silently failed in SetupPath.
+- **No code semantics changed.** Diagnostic-only commit. Next repro categorises the failure (SetParams vs Generate vs DetEnd vs CalcWaypoints), then a targeted fix from one of four pre-analysed branches.
+- **Build observation noted for follow-up:** `Oni_AStar.c:809-810` warns on `UUtInt16 *` → `UUtUns16 *` pointer-sign mismatch in `PHrWorldToGridSpace` calls. Pre-existing in Bungie's source; not 32→64, but worth keeping in mind if the GRID-DBG tracers show out-of-bounds grid coordinates being silently pinned to UUtUns8.
 
 ### 2026-05-20 — Session 24: Alert-escalation tracers land, reveal Pursuit-movement is the bug
 
