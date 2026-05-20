@@ -4,29 +4,38 @@ Native ARM64 / Apple Silicon port of Oni (Bungie, 2001).
 
 ## Status (2026-05-20)
 
-Phase 3 / Phase 5 progress. **The pursuit-movement bug is fixed** —
-NPCs now physically translate toward the player when they enter Pursuit
-goal. User-verified visually ("he came and got me") and via log
-(`MOVE-DBG` `next_pt` non-NULL on 368/869 commits, `actual_dir != Stopped`
-on 519/869, mostly Forward). Root cause was in the 32→64 template-instance
-bridge: the walker had no concept of embedded `tm_struct` alignment, so
-`PHtRoomData` (which is embedded in `AKtBNVNode` and contains pointers
-that force 8-byte alignment) ended up with its leading scalars shifted
-−4 bytes vs the C compiler's layout. Result: `room->gridX` was reading
-disk's gridY, `room->gridY` was reading memset-zero. With `gridY=0`
-the A* end-point search rejected every candidate square →
-`ASrPath_Generate` returned false silently (`AI2_ERROR` is compiled to
-no-log in release) → `ClearPath` wiped the grid path every frame.
+**Phase 5 done. Phase 6 has its first ticks.** Session 26: the user
+played the tutorial level start-to-finish, crossed the level-1 → level-2
+transition without a crash (the first time this port has ever crossed
+a level boundary mid-gameplay), and verified that weapons, melee combat,
+NPC-vs-NPC combat, and Konoko-vs-NPC combat all work end-to-end. Three
+milestones tick at once: Phase 5's last item, plus Phase 6's first two.
 
-The fix is a post-pass in `TMrBridge_BuildDescriptor` (BFW_TM_Bridge.c)
-that shifts the two leading PHtRoomData scalars (gridX, gridY) by +4
-bytes for AKVA specifically. The RawPtr that follows them was already
-correctly placed; that alignment cancels the cumulative drift for the
-rest of the embedded struct.
+**Two visible bugs survived the playthrough**, neither blocking
+completion:
+- **Text clipping** in tutorial popups: `"TH METER TRAINING"` instead
+  of `"HEALTH METER TRAINING"`, consistent 3–5 char left-edge clip on
+  title and body lines. Phase 2 known item, now seen across every
+  tutorial dialog.
+- **Security-laser tripwire beams** don't render in the tutorial laser
+  room: wall-mounted projector hardware (the three-rail emitter mounts)
+  renders correctly, but the beams between paired emitters are missing.
+  Strong hypothesis: same embed-struct bridge-alignment bug class as
+  session 25, applied to whichever env-effect / particle-class template
+  defines the laser visual (113 templates were never audited after the
+  AKVA fix).
 
-Open audit: PHtRoomData is the only known case of an embedded
-multi-pointer tm_struct in this codebase, but a systematic sweep of the
-114 templates for similar patterns is a follow-up.
+The session-25 fix (`fix(64bit): bridge embedded PHtRoomData alignment
+in AKVA template`, commit `6c030e0`) was the load-bearing change: a
+post-pass in `TMrBridge_BuildDescriptor` shifts the two leading
+PHtRoomData scalars (gridX, gridY) by +4 bytes for AKVA. With grid-path
+generation no longer silently failing, NPCs can navigate, which
+unlocks combat which unlocks tutorial completion.
+
+**Open audit still pending:** PHtRoomData is the only known case of an
+embedded multi-pointer tm_struct in this codebase, but a systematic
+sweep of the 114 templates for similar patterns is a follow-up. The
+missing-laser bug is the first concrete reason to do that audit.
 
 Most fixes chase 32→64 bit arithmetic that was correct on Bungie's
 original 32-bit target but breaks now. Common patterns:
@@ -82,18 +91,19 @@ original 32-bit target but breaks now. Common patterns:
 - [x] Menu / cutscene / dialogue audio plays
 - [x] Footstep impact sounds play (impact-effect on-disk bridge, session 23)
 - [ ] Particle classes load without size-class overflow (`w10_sni_p01 is too large (268)` warning still latent)
+- [ ] Security-laser tripwire beams render in the tutorial level (session 26: wall-mounted projectors render, but the actual beams between them don't — emitter hardware visible, beam visual missing. Likely the same embed-struct bridge bug class as session 25, applied to an env-effect / particle-class template).
 
-### Phase 5 — AI behaviour
+### Phase 5 — AI behaviour ✅
 - [x] NPCs detect the player via sight and sound (Knowledge layer)
 - [x] NPCs escalate alert → combat correctly when player is in central vision (session 24, verified end-to-end through `Combat_Enter`)
 - [x] AI combat behaviour fires (melee + ranged both work end-to-end once Combat_Enter happens)
 - [x] **NPCs close distance to engage the player** — fixed in session 25 by bridging embedded-PHtRoomData alignment in the 32→64 template-instance walker (BFW_TM_Bridge.c). User-verified: NPC walked over and attacked.
 - [x] Scripted NPC movement (walk-into-room patrol paths) executes — verified session 25: an NPC followed its patrol route, turned around, detected the player on sight, and pursued up a flight of stairs. Same AKVA bridge fix covers this path.
-- [ ] NPC-vs-NPC combat completes to first kill and surviving NPCs re-target
+- [x] NPC-vs-NPC combat completes to first kill and surviving NPCs re-target — verified session 26 in tutorial-level playthrough.
 
 ### Phase 6 — Gameplay completion
-- [ ] Konoko can engage NPCs in combat end-to-end across a full encounter
-- [ ] Tutorial level completable to next-level transition
+- [x] **Konoko can engage NPCs in combat end-to-end across a full encounter** — verified session 26: user played the full tutorial level, weapons + melee + Konoko-vs-NPC combat all worked through to level exit.
+- [x] **Tutorial level completable to next-level transition** — verified session 26: tutorial completed, next level loaded successfully (no crash on level boundary — first time we've ever crossed one mid-gameplay).
 - [ ] Save / load works across runs
 - [ ] All 14 levels playable
 
@@ -102,6 +112,16 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
 ## Rolling timeline (newest first)
+
+### 2026-05-20 — Session 26: Tutorial level completed end-to-end — Phase 5 done, Phase 6 first ticks
+
+- **User completed the tutorial level start-to-finish and crossed the next-level transition** with no crash. First time the port has ever crossed a level boundary mid-gameplay. Three milestones tick in one playthrough: Phase 5's last item (NPC-vs-NPC combat completes), Phase 6's "Konoko vs NPC end-to-end combat", and Phase 6's "Tutorial completable to next-level transition".
+- **What worked, observed visually:** info-panel tutorial dialogs render and step through Next/Previous, weapons fire and reload correctly, melee combat works on NPCs, NPC-vs-NPC combat resolves to a kill, level-exit trigger fires, next-level load completes without SIGBUS/SIGSEGV.
+- **Two visible bugs survived the playthrough.** Both are pre-existing; neither blocked completion:
+  - **Text clipping** (known, Phase 2 open item): `"TH METER TRAINING"` instead of `"HEALTH METER TRAINING"`, `"ISTIC AMMO"` instead of `"BALLISTIC AMMO"`, `"ading a weapon takes time"` instead of `"Reloading a weapon takes time"`. Consistent 3–5 char left-edge clip in dialog body and title text. Affects every tutorial popup.
+  - **Security-laser beams not rendering** (new): in the tutorial security-laser room, the wall-mounted projector hardware (the three-rail emitter mounts) renders correctly, but no beam visual appears between paired emitters. Strong hypothesis: same embed-struct bridge-alignment bug class as session 25 (113 templates not audited), applied to whichever env-effect / particle-class template defines the laser beam visual. Symptom signature matches the `can't find emitted particle ''` warning floods we already see in debugger.txt — env-effect template loading a name field that came back empty because the bridge dropped a slot.
+- **Logging gotcha discovered:** `startup.txt` is unlinked-while-open by Oni (lsof confirms FD held, dir entry absent). It survives a SIGKILL (kernel flushes on FD release) but vanishes on graceful exit — so a clean playthrough leaves no log on disk. To capture logs from a clean run we either need to SIGKILL the process before it shuts down OR fix the Oni code to not unlink. Filed as a workflow concern, not a port bug.
+- **No code changes this session** — pure verification + docs.
 
 ### 2026-05-20 — Session 25 (continued): Scripted patrol movement also verified
 
