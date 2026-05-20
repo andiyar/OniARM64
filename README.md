@@ -4,21 +4,29 @@ Native ARM64 / Apple Silicon port of Oni (Bungie, 2001).
 
 ## Status (2026-05-20)
 
-Phase 3 continues. The "NPC won't advance toward the player" pursuit bug
-is narrowed further: session 25 closed two diagnostic gaps that misled
-session 24. First, `AI2_ERROR_REPORT` is `0` in release builds, so all
-`AI2_ERROR(...)` calls compile to the silent `AI2rHandleError` path and
-produce no log line — session 24's "no AI2_ERROR in startup.txt → SetupPath
-succeeded" inference was wrong. Second, the one "successful" MakePath in
-the prior repro turned out to fire during `[lvl-load] SLrScript_ExecuteOnce(main)`,
-not during real combat. The 19 in-combat events all silently failed inside
-`AI2iMovementState_SetupPath` via `ASrPath_SetParams` or `ASrPath_Generate`
-returning false → `AI2_ERROR` (silent) → `AI2rMovementState_ClearPath` →
-`grid_num=0`, `next_pt=NULL`, `actual_dir=Stopped` every frame.
+Phase 3 / Phase 5 progress. **The pursuit-movement bug is fixed** —
+NPCs now physically translate toward the player when they enter Pursuit
+goal. User-verified visually ("he came and got me") and via log
+(`MOVE-DBG` `next_pt` non-NULL on 368/869 commits, `actual_dir != Stopped`
+on 519/869, mostly Forward). Root cause was in the 32→64 template-instance
+bridge: the walker had no concept of embedded `tm_struct` alignment, so
+`PHtRoomData` (which is embedded in `AKtBNVNode` and contains pointers
+that force 8-byte alignment) ended up with its leading scalars shifted
+−4 bytes vs the C compiler's layout. Result: `room->gridX` was reading
+disk's gridY, `room->gridY` was reading memset-zero. With `gridY=0`
+the A* end-point search rejected every candidate square →
+`ASrPath_Generate` returned false silently (`AI2_ERROR` is compiled to
+no-log in release) → `ClearPath` wiped the grid path every frame.
 
-Three `[GRID-DBG]` tracers landed (SetParams / Generate / DetEnd-FAIL) to
-categorise the failure on the next repro. Fix is then one of four pre-analysed
-branches depending on which call returns false.
+The fix is a post-pass in `TMrBridge_BuildDescriptor` (BFW_TM_Bridge.c)
+that shifts the two leading PHtRoomData scalars (gridX, gridY) by +4
+bytes for AKVA specifically. The RawPtr that follows them was already
+correctly placed; that alignment cancels the cumulative drift for the
+rest of the embedded struct.
+
+Open audit: PHtRoomData is the only known case of an embedded
+multi-pointer tm_struct in this codebase, but a systematic sweep of the
+114 templates for similar patterns is a follow-up.
 
 Most fixes chase 32→64 bit arithmetic that was correct on Bungie's
 original 32-bit target but breaks now. Common patterns:
@@ -79,8 +87,8 @@ original 32-bit target but breaks now. Common patterns:
 - [x] NPCs detect the player via sight and sound (Knowledge layer)
 - [x] NPCs escalate alert → combat correctly when player is in central vision (session 24, verified end-to-end through `Combat_Enter`)
 - [x] AI combat behaviour fires (melee + ranged both work end-to-end once Combat_Enter happens)
-- [ ] **NPCs close distance to engage the player** — graph-level pathfinding works, grid-level `AI2iMovementState_SetupPath` silently fails (`AI2_ERROR` is compiled to no-log in release; one of `ASrPath_SetParams` / `ASrPath_Generate` / `ASiDetermineEndPoint` returns false); NPC commits `Stopped` every frame. Session 25 added `[GRID-DBG]` tracers to categorise. Current top blocker.
-- [ ] Scripted NPC movement (walk-into-room patrol paths) executes — same root cause as above
+- [x] **NPCs close distance to engage the player** — fixed in session 25 by bridging embedded-PHtRoomData alignment in the 32→64 template-instance walker (BFW_TM_Bridge.c). User-verified: NPC walked over and attacked.
+- [ ] Scripted NPC movement (walk-into-room patrol paths) executes — likely fixed by the same bridge fix, but needs separate verification on a scripted-patrol NPC
 - [ ] NPC-vs-NPC combat completes to first kill and surviving NPCs re-target
 
 ### Phase 6 — Gameplay completion
@@ -95,7 +103,16 @@ original 32-bit target but breaks now. Common patterns:
 
 ## Rolling timeline (newest first)
 
-### 2026-05-20 — Session 25: [GRID-DBG] tracers land; AI2_ERROR silent-in-release explains session 24's misread
+### 2026-05-20 — Session 25: Pursuit movement FIXED — embedded PHtRoomData bridge alignment
+
+- **The fix landed and is user-verified.** Konoko stood in front of an NPC in level 1; the NPC walked over and engaged. MOVE-DBG metrics flipped from 0/1041 → 368/869 commits with non-NULL `next_pt`, 519/869 with `actual_dir` non-Stopped, mostly Forward. PHrPrepRoomForPath tracer flipped from `gridX=80 gridY=0` (broken) to `gridX=37 gridY=80` (correct — room is 37 columns × 80 rows, was previously reading disk's gridY into the gridX slot and zero into the gridY slot).
+- **Root cause (`fix(64bit): bridge embedded PHtRoomData alignment in AKVA template`, commit `6c030e0`):** the 32→64 template-instance bridge walker in `BFW_TM_Bridge.c` (which translates on-disk 32-bit instance data into 64-bit in-memory C structs) walks the swap-code stream as a flat sequence of scalars/pointers/arrays. There is no swap-code marker for "begin embedded `tm_struct`" — those boundaries were a no-op on 32-bit because no `tm_struct` had an alignment requirement larger than 4. On 64-bit, `PHtRoomData` (embedded inside `AKtBNVNode`) contains pointers (`compressed_grid`, `debug_info`) and therefore has alignment 8. The C compiler 8-aligns the embedded struct by inserting 4 bytes of pad before `roomData` in `AKtBNVNode`. The walker, oblivious, placed `gridX` and `gridY` at dst offsets 28/32 — the C compiler has them at 32/36. Because the walker correctly aligns `RawPtr` to 8 when it later hits `compressed_grid`, the drift cancels at offset 40 and every field after `compressed_grid` ends up correct. So the visible damage is exactly: `room->gridX` reads disk's `gridY`, `room->gridY` reads memset-zero.
+- **Why the symptom looked like AI movement and not the template manager:** `room->gridY = 0` made every `(inY >= room->gridY)` bounds check in `ASiDetermineEndPoint` (Oni_AStar.c:1795) succeed for all `inY ≥ 0`, so no destination square was ever passable. `ASrPath_Generate` returned `UUcFalse` for every call. Inside `AI2iMovementState_SetupPath`, that triggered `AI2_ERROR` + `AI2rMovementState_ClearPath` — but `AI2_ERROR_REPORT = 0` in release, so the error was completely silent. The visible symptom was just "NPC sees you, enters Pursuit, never moves." Session 24's diagnostics narrowed to "grid-path generation is empty" but couldn't see why. Session 25 added three GRID-DBG tracers, the very first SetParams event printed `gridXY=(80x0)`, and the bridge bug became immediately obvious.
+- **Fix scope:** a small post-pass (`iFixupEmbeddedStructAlignment`) in `TMrBridge_BuildDescriptor` recognises the `'AKVA'` template tag and shifts the two leading scalars in the element sub-descriptor by +4 bytes each. 64 lines added, all in `BFW_TM_Bridge.c`. No changes to swap codes, no checksum changes, no on-disk format changes.
+- **Audit deferred:** `PHtRoomData` is the only known embedded multi-pointer `tm_struct` in this codebase (grep confirms it's embedded only in `AKtBNVNode` per `BFW_Akira.h:516`). A systematic audit of the other 113 templates for similar patterns is a follow-up — any template embedding a `tm_struct` whose alignment is `> 4` on 64-bit will have an equivalent bug, manifesting as some other "silent struct field is zero" symptom downstream.
+- **Diagnostics retained per `feedback_keep_diagnostics`:** `[GRID-DBG] SetParams`, `[GRID-DBG] Generate`, `[GRID-DBG] DetEnd-FAIL`, `[GRID-DBG] SetupPath-FAIL`. The first two are also useful for verifying any future grid-path regression.
+
+### 2026-05-20 — Session 25 (earlier): [GRID-DBG] tracers land; AI2_ERROR silent-in-release explains session 24's misread
 
 - **Three `[GRID-DBG]` tracers added** around `AI2iMovementState_SetupPath`'s two failure-bearing calls (`ASrPath_SetParams`, `ASrPath_Generate`) and at the silent UUcFalse return in `ASiDetermineEndPoint` (`Oni_AStar.c:1787`). Retained per `feedback_keep_diagnostics`. Plus one tracer at the SetupPath ClearPath site for confirmation.
 - **Diagnostic discovery #1: `AI2_ERROR` is silent in release.** `Oni_AI2_Error.h:22-25` defines `AI2_ERROR_REPORT=0` for non-TOOL_VERSION builds, so the `AI2_ERROR(...)` macro expands to `AI2rHandleError(...)` (no console / log output) instead of `AI2rReportError(...)`. Session 24's conclusion "no AI2_ERROR in startup.txt ⇒ SetupPath returned true" was wrong — the absence carried zero information. SetupPath was almost certainly returning false silently and calling `AI2rMovementState_ClearPath` (which is what produced `grid_num=0`, `next_pt=NULL` in MOVE-DBG).
