@@ -995,6 +995,7 @@ void AI2rEnterState(ONtCharacter *ioCharacter)
 		break;
 
 		case AI2cGoal_Combat:
+			UUrStartupMessage("[ALERT-DBG] EnterState dispatching Combat for %s", ioCharacter->player_name);
 			AI2rCombat_Enter(ioCharacter);
 		break;
 
