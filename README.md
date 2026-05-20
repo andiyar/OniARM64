@@ -11,26 +11,33 @@ a level boundary mid-gameplay), and verified that weapons, melee combat,
 NPC-vs-NPC combat, and Konoko-vs-NPC combat all work end-to-end. Three
 milestones tick at once: Phase 5's last item, plus Phase 6's first two.
 
-**Two visible bugs survived the playthrough**, neither blocking
-completion:
-- **Text clipping** in tutorial popups: `"TH METER TRAINING"` instead
-  of `"HEALTH METER TRAINING"`, consistent 3–5 char left-edge clip on
-  title and body lines. Phase 2 known item, now seen across every
-  tutorial dialog.
+**Text clipping is also fixed.** Session 26 follow-up (`fix(64bit):
+bridge embedded ONtIGUI_FontInfo alignment in IGSt template`, commit
+`9821d11`) closed the Phase 2 left-edge text clip. Same bug class as
+session 25's AKVA fix, applied to the `'IGSt'` template — embedded
+`ONtIGUI_FontInfo` has alignment 8 on 64-bit (it contains a
+`TStFontFamily*`), the bridge walker missed the 4-byte trailing pad, so
+the first 4 bytes of every on-disk string landed in C's font_info pad
+slot and disappeared. User-verified: full text in diary, weapon info
+panel, encrypted-message screen, tutorial popups — `"BALLISTIC AMMO"`,
+`"Coordinating the arms..."`, `"Reloading a weapon takes time:"`, and
+everything else now intact.
+
+**One known bug remains:**
 - **Security-laser tripwire beams** don't render in the tutorial laser
   room: wall-mounted projector hardware (the three-rail emitter mounts)
   renders correctly, but the beams between paired emitters are missing.
-  Strong hypothesis: same embed-struct bridge-alignment bug class as
-  session 25, applied to whichever env-effect / particle-class template
-  defines the laser visual (113 templates were never audited after the
-  AKVA fix).
+  Strong hypothesis: same embed-struct bridge-alignment bug class
+  again — third instance, this time in whichever env-effect /
+  particle-class template defines the laser visual. The 112 still-
+  unaudited templates are the suspect pool.
 
-The session-25 fix (`fix(64bit): bridge embedded PHtRoomData alignment
-in AKVA template`, commit `6c030e0`) was the load-bearing change: a
-post-pass in `TMrBridge_BuildDescriptor` shifts the two leading
-PHtRoomData scalars (gridX, gridY) by +4 bytes for AKVA. With grid-path
-generation no longer silently failing, NPCs can navigate, which
-unlocks combat which unlocks tutorial completion.
+Two embed-struct bridge-alignment fixes have now landed in the same
+post-pass (`iFixupEmbeddedStructAlignment` in `BFW_TM_Bridge.c`): AKVA
+(session 25, commit `6c030e0`) and IGSt (session 26, commit `9821d11`).
+Two instances of the same class, two completely different visible
+symptoms (silent AI movement failure vs silent text clipping). The
+remaining ~112 templates still need an audit.
 
 **Open audit still pending:** PHtRoomData is the only known case of an
 embedded multi-pointer tm_struct in this codebase, but a systematic
@@ -76,7 +83,7 @@ original 32-bit target but breaks now. Common patterns:
 - [x] HiDPI viewport scaling — game renders fullscreen, mouse aligned
 - [x] Multi-frame rendering without geometry corruption (Bug B closed, session 19)
 - [x] Characters render with correct bone transforms (no levitation, no stretched joints — endian fix landed session 20)
-- [ ] In-game UI text renders without left-edge clipping (windows / dialog boxes show "TH METER TRAINING" instead of "HEALTH METER TRAINING")
+- [x] In-game UI text renders without left-edge clipping — fixed session 26 by bridging embedded ONtIGUI_FontInfo alignment in IGSt template (BFW_TM_Bridge.c). User-verified: diary screen, weapon info panel, tutorial popups all render full text ("BALLISTIC AMMO", "Coordinating the arms...", "Reloading a weapon takes time", etc.).
 
 ### Phase 3 — Level load & gameplay primitives
 - [x] Level 0 (main menu) loads and runs
@@ -112,6 +119,15 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
 ## Rolling timeline (newest first)
+
+### 2026-05-20 — Session 26 (continued): Text clipping FIXED — second instance of the embed-struct bridge bug
+
+- **The session 26 text-clip bug is fixed and user-verified.** Three screenshots after the fix show the diary screen rendering full text everywhere: `BALLISTIC AMMO...........RELOAD WEAPON` (was `ISTIC AMMO`), `Coordinating the arms of mercenary...` (was `dinating...`), `Their solution was modular...` (was `r solution...`), `Hint:` (was `:`), `Reloading a weapon takes time:` (was `ading a weapon...`), `Plan accordingly.` (was ` accordingly.`), plus the encrypted-message diary entry and the weapon info panel all render their leading characters intact.
+- **Root cause (`fix(64bit): bridge embedded ONtIGUI_FontInfo alignment in IGSt template`, commit `9821d11`):** exact same bug class as session 25's AKVA fix, applied to a different template. `ONtIGUI_String` (template `'IGSt'`) embeds `ONtIGUI_FontInfo` at its head; `ONtIGUI_FontInfo` contains a `TStFontFamily*` pointer so its alignment on 64-bit is 8 and its compiler-rounded sizeof is 24 (vs the 20-byte sum of field sizes). The bridge walker, oblivious to embedded-struct boundaries, walks the field stream flatly — `font_info`'s last field (`flags`, 2 bytes) ends at walker descriptor offset 28 (preamble 8 + 20), and the following `char string[384]` array is 1-byte-aligned so no alignment bump absorbs the drift. Walker writes `string[0]` at offset 28 but C reads `string[0]` from offset 32. The first 4 bytes of every on-disk string fall into the `font_info` trailing-pad slot in C's view and disappear.
+- **Why the symptom looked like a clip-rect bug:** every dialog title and body line lost its leading 3-5 characters. The actual mechanism was upstream of the renderer — the strings were already truncated at template-load time. The first investigation agent hypothesised a `WMrClipRect` trivial-reject; the `[TEXT-DBG]` tracer I added at `TSiContext_DrawTextLine` showed every glyph at correct position with `glyph.left == clip.left` for i=0 — proving the renderer was getting already-clipped strings, not clipping them itself. Two screenshots from the user (showing `TH METER TRAINING` and `ISTIC AMMO`) made the 4-byte-character-offset pattern obvious enough to inspect `ONtIGUI_FontInfo` directly.
+- **Fix:** extended `iFixupEmbeddedStructAlignment` in `BFW_TM_Bridge.c` with an `'IGSt'` branch that shifts every field at-or-after walker offset 28 by +4 bytes. The 384-byte string is encoded as two consecutive FixedArrays (255 + 129); both get the shift. The walker's existing 8-alignment padding on the descriptor's `dst_size` (= 416) supplies the 4 extra bytes — no overflow.
+- **Embed-struct bug class scoreboard:** AKVA (PHtRoomData embed → silent AI movement failure, session 25) and IGSt (ONtIGUI_FontInfo embed → silent text clipping, session 26). Two instances of the same class, two completely different visible symptoms. The remaining ~112 templates still need an audit. The leading candidate is the laser-beam template flagged earlier this session: env-effect / particle-class templates are the next likely embed sites.
+- **Diagnostic retained per `feedback_keep_diagnostics`:** `[TEXT-DBG]` tracer at `BFW_TextSystem.c:1829` logs glyph clip vs bounds for first 5 chars of every text-line draw. Confirmed innocent in this investigation; kept in tree for the next text-rendering regression.
 
 ### 2026-05-20 — Session 26: Tutorial level completed end-to-end — Phase 5 done, Phase 6 first ticks
 
