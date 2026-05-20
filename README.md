@@ -88,7 +88,7 @@ original 32-bit target but breaks now. Common patterns:
 - [x] NPCs escalate alert → combat correctly when player is in central vision (session 24, verified end-to-end through `Combat_Enter`)
 - [x] AI combat behaviour fires (melee + ranged both work end-to-end once Combat_Enter happens)
 - [x] **NPCs close distance to engage the player** — fixed in session 25 by bridging embedded-PHtRoomData alignment in the 32→64 template-instance walker (BFW_TM_Bridge.c). User-verified: NPC walked over and attacked.
-- [ ] Scripted NPC movement (walk-into-room patrol paths) executes — likely fixed by the same bridge fix, but needs separate verification on a scripted-patrol NPC
+- [x] Scripted NPC movement (walk-into-room patrol paths) executes — verified session 25: an NPC followed its patrol route, turned around, detected the player on sight, and pursued up a flight of stairs. Same AKVA bridge fix covers this path.
 - [ ] NPC-vs-NPC combat completes to first kill and surviving NPCs re-target
 
 ### Phase 6 — Gameplay completion
@@ -102,6 +102,11 @@ original 32-bit target but breaks now. Common patterns:
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs — scope capped there)
 
 ## Rolling timeline (newest first)
+
+### 2026-05-20 — Session 25 (continued): Scripted patrol movement also verified
+
+- After the AKVA bridge fix landed, a separate repro confirmed scripted NPC patrol paths now execute end-to-end. User observed an NPC follow its patrol route, turn around (waypoint completion), detect the player on sight (Knowledge contact + Pursuit goal transition), and pursue up a flight of stairs (cross-BNV pathfinding + stair-flag handling). One fix, two milestones ticked.
+- 55 GRID-DBG events on this run, 55 success=1, zero DetEnd-FAIL, MOVE-DBG with non-NULL next_pt on 946/1814 commits. Stable behaviour across multiple NPCs / multiple BNVs / scripted vs reactive movement paths.
 
 ### 2026-05-20 — Session 25: Pursuit movement FIXED — embedded PHtRoomData bridge alignment
 
