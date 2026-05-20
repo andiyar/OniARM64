@@ -291,6 +291,68 @@ iWalkSwapCodes(TMtBuildState* ioState, UUtUns8* inSwapCodes)
     }
 }
 
+/*
+ * Post-pass: fix up dst_offsets for embedded tm_struct members whose own
+ * alignment is greater than what the swap-code walker can infer from a flat
+ * scalar stream. The bridge format encodes neither struct boundaries nor
+ * alignment hints, so when an outer tm_struct embeds an inner tm_struct that
+ * contains pointers (alignment 8 on 64-bit), the C compiler inserts padding
+ * before the inner struct that the walker doesn't reproduce. Result: the
+ * walker places the inner struct's leading fields at offsets the C struct
+ * leaves as padding, and the C struct's actual fields end up reading whatever
+ * memset(0) left there.
+ *
+ * The single observed case is AKVA (BNV Node Array): each AKtBNVNode element
+ * embeds PHtRoomData. On 32-bit (on-disk) PHtRoomData starts at element
+ * offset 28; on 64-bit (in-memory) it starts at element offset 32 (4-byte
+ * pad before it). The walker emits gridX@28 and gridY@32 in the element
+ * sub-descriptor; they should be at 32 and 36. The RawPtr (compressed_grid)
+ * that follows is already correctly placed at element offset 40 because the
+ * walker aligns RawPtr to 8 — that re-alignment cancels the cumulative drift
+ * for every field after it. So the fixup is exactly: shift the two leading
+ * PHtRoomData scalars +4 bytes each.
+ *
+ * Other templates with similar embedded-multi-pointer-struct layouts will
+ * need analogous fixups; AKVA is the only one currently known (PHtRoomData
+ * is only embedded inside AKtBNVNode in this codebase — see
+ * BFW_Akira.h:516).
+ */
+static void
+iFixupEmbeddedStructAlignment(
+    TMtTemplateDefinition*  inTemplate,
+    TMtLayoutDescriptor*    inDesc)
+{
+    if (inTemplate->tag != UUm4CharToUns32('A', 'K', 'V', 'A')) return;
+
+    /* AKVA layout: outer descriptor has [pad0[20] FixedArray, numNodes 4B,
+       nodes VarArray]. The VarArray sub-descriptor is the AKtBNVNode element.
+       Find it. */
+    TMtFieldDescriptor* vararray = NULL;
+    for (UUtUns32 i = 0; i < inDesc->num_fields; i++) {
+        if (inDesc->fields[i].kind == TMcFieldKind_VarArray &&
+            inDesc->fields[i].sub != NULL) {
+            vararray = &inDesc->fields[i];
+            break;
+        }
+    }
+    if (vararray == NULL) return;
+
+    TMtLayoutDescriptor* elem = vararray->sub;
+
+    /* Shift the two leading PHtRoomData scalars (originally walker-placed at
+       dst_offset 28 and 32) by +4 bytes each. Iterate by original offset;
+       the walker appends fields in stream order so gridX precedes gridY. */
+    for (UUtUns32 i = 0; i < elem->num_fields; i++) {
+        TMtFieldDescriptor* f = &elem->fields[i];
+        if (f->dst_size != 4) continue;
+        if (f->dst_offset == 28) {
+            f->dst_offset = 32;
+        } else if (f->dst_offset == 32) {
+            f->dst_offset = 36;
+        }
+    }
+}
+
 TMtLayoutDescriptor*
 TMrBridge_BuildDescriptor(
     TMtTemplateDefinition*  inTemplate)
@@ -343,6 +405,8 @@ TMrBridge_BuildDescriptor(
     desc->fields     = (TMtFieldDescriptor*)((UUtUns8*)desc + sizeof(TMtLayoutDescriptor));
     memcpy(desc->fields, state.fields,
            state.num_fields * sizeof(TMtFieldDescriptor));
+
+    iFixupEmbeddedStructAlignment(inTemplate, desc);
 
     return desc;
 }
