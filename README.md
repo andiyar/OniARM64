@@ -120,6 +120,10 @@ original 32-bit target but breaks now. Common patterns:
 
 ## Rolling timeline (newest first)
 
+### 2026-05-21 — Session 27: Cheats usable from a fresh save
+
+- 2026-05-21: Cheats usable from fresh save. Removed `THE_DAY_IS_MINE` compile-time gate around `thedayismine` and removed the `ONrPersist_GetWonGame()` runtime gate. All entries in `ONgCheatTable` (winlevel, liveforever, etc.) now work on first launch with developer access enabled. Test-loop accelerator for the rest of Phase 6.
+
 ### 2026-05-20 — Session 26 (continued): Text clipping FIXED — second instance of the embed-struct bridge bug
 
 - **The session 26 text-clip bug is fixed and user-verified.** Three screenshots after the fix show the diary screen rendering full text everywhere: `BALLISTIC AMMO...........RELOAD WEAPON` (was `ISTIC AMMO`), `Coordinating the arms of mercenary...` (was `dinating...`), `Their solution was modular...` (was `r solution...`), `Hint:` (was `:`), `Reloading a weapon takes time:` (was `ading a weapon...`), `Plan accordingly.` (was ` accordingly.`), plus the encrypted-message diary entry and the weapon info panel all render their leading characters intact.

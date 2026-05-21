@@ -3105,16 +3105,9 @@ void ONrGameState_HandleCheats(const LItInputEvent *inEvent)
 		{ "killmequick",		"Ultra Mode Enabled",			"Ultra Mode Disabled",			ONcCheat_UltraMode },
 		{ "carousel",			"Slow Motion Enabled",			"Slow Motion Disabled",			ONcCheat_SlowMotion },
 
-		// CB: REMOVE THIS for last final candidate(s) and GM
-#if THE_DAY_IS_MINE
 		{ "thedayismine",		"Developer Access Enabled",		"Developer Access Disabled",	ONcCheat_DeveloperAccess },
-#endif
 		{ NULL, NULL, NULL, 0 }
 	};
-
-	if (!ONrPersist_GetWonGame()) {
-		goto exit;
-	}
 
 	if (LIcInputEvent_KeyDown != inEvent->type) {
 		goto exit;
