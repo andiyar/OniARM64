@@ -1427,6 +1427,19 @@ COrTextArea_Resize(
 		return UUcError_None;
 	}
 
+	// Hi-res console adjustment: at modern resolutions the command line
+	// is clipped at the bottom of the screen. Shift command line top up
+	// 10px (giving it more vertical room) and console-lines bottom up 10
+	// (to not overlap the taller command line). Matches Daodan's design
+	// at Daodan/src/Patches/Patches.c:125-133.
+	if (inBounds != NULL) {
+		if (inTextArea == COgCommandLine) {
+			inBounds->top -= 10;
+		} else if (inTextArea == COgConsoleLines) {
+			inBounds->bottom -= 10;
+		}
+	}
+
 	if (inTextArea->scale_font) {
 		font_size = (inTextArea->font_size * M3rDraw_GetHeight()) / 480;
 	} else {

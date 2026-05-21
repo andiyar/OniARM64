@@ -123,6 +123,7 @@ original 32-bit target but breaks now. Common patterns:
 ### 2026-05-21 — Session 27: Cheats usable from a fresh save
 
 - 2026-05-21: Cheats usable from fresh save. Removed `THE_DAY_IS_MINE` compile-time gate around `thedayismine` and removed the `ONrPersist_GetWonGame()` runtime gate. All entries in `ONgCheatTable` (winlevel, liveforever, etc.) now work on first launch with developer access enabled. Test-loop accelerator for the rest of Phase 6.
+- 2026-05-21: Hi-res console fix. `COrTextArea_Resize` now shifts the command line's top up 10px and the console-lines area's bottom up 10px so the input line isn't clipped at the bottom edge at modern resolutions. Lifted from Daodan's `DD_COrTextArea_Resize` patch (community-svn `Oni2/Daodan/src/Patches/Patches.c:125-133`).
 
 ### 2026-05-20 — Session 26 (continued): Text clipping FIXED — second instance of the embed-struct bridge bug
 
