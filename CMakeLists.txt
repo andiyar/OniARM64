@@ -123,3 +123,8 @@ if (ONI_BINK_VIDEO)
 endif ()
 add_subdirectory(OniProj/OniCMakeProjs/TEVCProj/)
 add_subdirectory(OniProj/OniCMakeProjs/OniProj/)
+
+# macOS .app bundle assembly
+if(APPLE)
+    include(macos/bundle.cmake)
+endif()
