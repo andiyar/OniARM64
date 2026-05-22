@@ -2,14 +2,37 @@
 
 Native ARM64 / Apple Silicon port of Oni (Bungie, 2001).
 
-## Status (2026-05-20)
+## Status (2026-05-21)
 
-**Phase 5 done. Phase 6 has its first ticks.** Session 26: the user
-played the tutorial level start-to-finish, crossed the level-1 → level-2
-transition without a crash (the first time this port has ever crossed
-a level boundary mid-gameplay), and verified that weapons, melee combat,
-NPC-vs-NPC combat, and Konoko-vs-NPC combat all work end-to-end. Three
-milestones tick at once: Phase 5's last item, plus Phase 6's first two.
+**Phase 5 done. Phase 6 advancing.** Session 27: cheats and developer
+access usable from a fresh save (commit `f9cb27c`); hi-res console fix
+lifted from Daodan (`eea154a`); level 2 cinematic + combat playthrough
+verified under LLDB (using the now-unlocked `winlevel` cheat and a
+dev-mode level-select menu to skip there). Tutorial completes
+(session 26), level 2 plays through (session 27) — gameplay reach is
+now two levels deep with cheats enabling deeper testing for the rest of
+Phase 6.
+
+**Community-SVN audit completed.** Five-agent parallel audit of
+`/Users/andiyar/Developer/oni/community-svn/` documented at
+`docs/community-svn-audit-2026-05-21.md`. Three references are now
+authoritative second-sources for our work: OniSplit's
+`InstanceMetadata.cs:2613-2707` (canonical 32-bit wire format for ~99
+templates), OUP's `structdefs/*.txt` (independent RE with engineer
+comments, 122-template superset), Daodan's `Patches/*.c` (engine logic
+patches portable to our tree, of which Cheater.c and the console fix
+have now been lifted). CLAUDE.md updated to point future sessions at
+the new tree.
+
+**Bug C symptom confirmed.** The latent particle-loader 64-bit bridge
+bug from the path-to-playable spec fired its documented signature in
+the session-27 LLDB log:
+`Particle class 'w10_sni_p01' is too large (268) for largest size class
+(256)!`. Twice on level 2 load, game continued. Same particle name as
+the spec — the drafted-but-unlanded bridge from session 12 is still
+the right artifact to investigate when audio (Bug A, `c039fa5`) is
+revisited. Audio and Bug C must land paired (see
+`feedback_cascade_pattern`).
 
 **Text clipping is also fixed.** Session 26 follow-up (`fix(64bit):
 bridge embedded ONtIGUI_FontInfo alignment in IGSt template`, commit
@@ -122,6 +145,7 @@ original 32-bit target but breaks now. Common patterns:
 
 ### 2026-05-21 — Session 27: Cheats usable from a fresh save
 
+- 2026-05-21: Gunshot lag fixed — root cause was OUR debug instrumentation, not audio. Gated per-frame `[WEAPON-DBG]` / `[KNOWLEDGE-DBG]` / `[ALERT-DBG]` tracers in `OniProj/OniGameSource/Oni_AI/Oni_AI2_{Targeting,Combat,Knowledge,Alert}.c` and the per-triangle `[FNtW]` tracer in `BFW_Source/BFW_Motoko/Engines/GeomEngine/Software/MS_Geom_Transform.c` behind env vars (`ONI_AI_TRACE=1`, `ONI_FNTW_TRACE=1`). With 5 armed AIs in combat the per-frame Targeting tracer alone was hitting `fflush` ~300×/sec, stalling the main thread and triggering downstream `HALC_ProxyIOContext` overload events. Kept in tree per `feedback_keep_diagnostics`; off by default. Pending behavioral verification next at-desk run.
 - 2026-05-21: Cheats usable from fresh save. Removed `THE_DAY_IS_MINE` compile-time gate around `thedayismine` and removed the `ONrPersist_GetWonGame()` runtime gate. All entries in `ONgCheatTable` (winlevel, liveforever, etc.) now work on first launch with developer access enabled. Test-loop accelerator for the rest of Phase 6.
 - 2026-05-21: Hi-res console fix. `COrTextArea_Resize` now shifts the command line's top up 10px and the console-lines area's bottom up 10px so the input line isn't clipped at the bottom edge at modern resolutions. Lifted from Daodan's `DD_COrTextArea_Resize` patch (community-svn `Oni2/Daodan/src/Patches/Patches.c:125-133`).
 

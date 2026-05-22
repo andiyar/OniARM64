@@ -44,6 +44,19 @@ const UUtUns32 AI2cContact_GlanceLength[AI2cContactType_Max] =
 
 static UUtBool AI2iAlert_Startle(ONtCharacter *ioCharacter, AI2tAlertStatus inFromStatus, AI2tKnowledgeEntry *inContact);
 
+/* Gate the [ALERT-DBG] tracers (see Oni_AI2_Targeting.c for rationale).
+   Set ONI_AI_TRACE=1 to re-enable. */
+static UUtBool oniAiTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_AI_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 // ------------------------------------------------------------------------------------
 // -- function definitions
 
@@ -66,7 +79,7 @@ void AI2rAlert_NotifyKnowledge(ONtCharacter *ioCharacter, AI2tKnowledgeEntry *in
 	UUmAssert(ioCharacter == inEntry->owner);
 	knowledge_state = &ioCharacter->ai2State.knowledgeState;
 
-	UUrStartupMessage("[ALERT-DBG] NotifyKnowledge char=%s type=%d strength=%d priority=%d enemy=%p goal=%d alertStatus=%d entry==head=%d degrade=%d locked=%d",
+	if (oniAiTraceEnabled()) UUrStartupMessage("[ALERT-DBG] NotifyKnowledge char=%s type=%d strength=%d priority=%d enemy=%p goal=%d alertStatus=%d entry==head=%d degrade=%d locked=%d",
 		ioCharacter->player_name, inEntry->last_type, inEntry->strength, inEntry->priority,
 		(void*)inEntry->enemy, ioCharacter->ai2State.currentGoal, ioCharacter->ai2State.alertStatus,
 		(inEntry == knowledge_state->contacts),
@@ -113,7 +126,7 @@ void AI2rAlert_NotifyKnowledge(ONtCharacter *ioCharacter, AI2tKnowledgeEntry *in
 			AI2rMovement_GlanceAtPoint(ioCharacter, &inEntry->last_location, glance_length, UUcFalse, 0);
 			ioCharacter->ai2State.knowledgeState.vision_delay_timer = glance_length;
 		}
-		UUrStartupMessage("[ALERT-DBG] NotThreat-return char=%s type=%d priority=%d strength=%d (returning without escalation)",
+		if (oniAiTraceEnabled()) UUrStartupMessage("[ALERT-DBG] NotThreat-return char=%s type=%d priority=%d strength=%d (returning without escalation)",
 			ioCharacter->player_name, inEntry->last_type, inEntry->priority, inEntry->strength);
 		return;
 	}
@@ -135,7 +148,7 @@ void AI2rAlert_NotifyKnowledge(ONtCharacter *ioCharacter, AI2tKnowledgeEntry *in
 	new_status = AI2cContact_ChangeAlert[inEntry->last_type];
 	old_status = ioCharacter->ai2State.alertStatus;
 
-	UUrStartupMessage("[ALERT-DBG] UpgradeStatus-call char=%s new=%d old=%d will-call=%d",
+	if (oniAiTraceEnabled()) UUrStartupMessage("[ALERT-DBG] UpgradeStatus-call char=%s new=%d old=%d will-call=%d",
 		ioCharacter->player_name, new_status, old_status, (new_status >= old_status));
 
 	if (new_status >= old_status) {
@@ -219,7 +232,7 @@ UUtBool AI2rAlert_UpgradeStatus(ONtCharacter *ioCharacter, AI2tAlertStatus inSta
 	}
 	ioCharacter->ai2State.alertTimer = 0;
 
-	UUrStartupMessage("[ALERT-DBG] CombatGate char=%s inStatus=%d inContact=%p enemy=%p will-enter=%d",
+	if (oniAiTraceEnabled()) UUrStartupMessage("[ALERT-DBG] CombatGate char=%s inStatus=%d inContact=%p enemy=%p will-enter=%d",
 		ioCharacter->player_name, inStatus, (void*)inContact,
 		(void*)((inContact != NULL) ? inContact->enemy : NULL),
 		(inStatus == AI2cAlertStatus_Combat && (inContact != NULL) && (inContact->enemy != NULL)));

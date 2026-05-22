@@ -618,6 +618,22 @@ MSrTransform_Geom_PointListAndVertexNormalToWorldComputeViewVector(
 		outResultWorldVertexNormals);
 }
 
+/* Gate the per-triangle [FNtW] tracer originally added for Bug B (closed
+   session 19). Fired uncapped on every triangle of every drawn geometry,
+   with synchronous fflush per line — ~3.1M log lines per 5-min session,
+   massive disk-I/O overhead. Kept in tree per feedback_keep_diagnostics;
+   set ONI_FNTW_TRACE=1 to re-enable. (Session 27, 2026-05-21.) */
+static UUtBool oniFntwTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_FNTW_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 void
 MSrTransform_Geom_FaceNormalToWorld(
 	M3tGeometry*			inGeometry,
@@ -674,10 +690,10 @@ MSrTransform_Geom_FaceNormalToWorld(
 	block8 = numVectors >> 3;
 
 	/* breadcrumb: per-call state for chasing the FaceNormalToWorld crash.
-	   Every call logged, uncapped. startup.txt fflushes each line so the
-	   last one written is the one that crashed. Remove when the remnant
-	   is located. */
-	UUrStartupMessage(
+	   Bug B closed session 19; gated session 27 because uncapped fflush
+	   per triangle was a major disk-I/O cost. Set ONI_FNTW_TRACE=1 to
+	   re-enable. */
+	if (oniFntwTraceEnabled()) UUrStartupMessage(
 		"[FNtW] inGeom=%p triNormArr=%p vectors=%p numVec=%u block8=%u outPtr=%p",
 		(void*)inGeometry,
 		(void*)inGeometry->triNormalArray,

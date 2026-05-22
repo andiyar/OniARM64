@@ -151,6 +151,19 @@ UUtUns32 AI2gCombat_LOSUsedPoints, AI2gCombat_LOSNextPoint;
 // -- internal function prototypes
 
 // behavior control
+/* Gate the [WEAPON-DBG] tracers (see Oni_AI2_Targeting.c for rationale).
+   Set ONI_AI_TRACE=1 to re-enable. */
+static UUtBool oniAiTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_AI_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 static void AI2iCombat_ChangeBehavior(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState);
 static void AI2iCombat_RevertToBasicBehavior(ONtCharacter *ioCharacter, AI2tCombatState *ioCombatState);
 
@@ -315,7 +328,7 @@ void AI2rCombat_Enter(ONtCharacter *ioCharacter)
 
 	// initialize combat state variables
 	combat_state->combat_parameters = &ioCharacter->characterClass->ai2_behavior.combat_parameters;
-	UUrStartupMessage("[WEAPON-DBG] %s: Combat_Enter charClass=%p combat_params=%p weapons[0]=%p",
+	if (oniAiTraceEnabled()) UUrStartupMessage("[WEAPON-DBG] %s: Combat_Enter charClass=%p combat_params=%p weapons[0]=%p",
 		ioCharacter->player_name,
 		(void*)ioCharacter->characterClass,
 		(void*)combat_state->combat_parameters,
@@ -504,7 +517,7 @@ void AI2rCombat_Update(ONtCharacter *ioCharacter)
 		}
 
 		if (combat_state->current_weapon != NULL) {
-			UUrStartupMessage("[WEAPON-DBG] %s: max_range deref, weapon_params=%p cur_weapon=%p",
+			if (oniAiTraceEnabled()) UUrStartupMessage("[WEAPON-DBG] %s: max_range deref, weapon_params=%p cur_weapon=%p",
 				ioCharacter->player_name,
 				(void*)combat_state->targeting.weapon_parameters,
 				(void*)combat_state->current_weapon);
@@ -589,7 +602,7 @@ void AI2rCombat_Update(ONtCharacter *ioCharacter)
 
 			} else {
 				// we are too close to fire our gun. perhaps do something else.
-				UUrStartupMessage("[WEAPON-DBG] %s: sending TooClose, weapon_params=%p too_close=%f",
+				if (oniAiTraceEnabled()) UUrStartupMessage("[WEAPON-DBG] %s: sending TooClose, weapon_params=%p too_close=%f",
 					ioCharacter->player_name,
 					(void*)combat_state->targeting.weapon_parameters,
 					too_close_weight);
@@ -846,13 +859,13 @@ static void AI2rCombat_CheckTargetingWeapon(ONtCharacter *ioCharacter, AI2tComba
 		if (ioCharacter->inventory.weapons[0] == NULL) {
 			weapon_params = NULL;
 			weapon_matrix = NULL;
-			UUrStartupMessage("[WEAPON-DBG] %s: weapon=NULL, weapon_params=NULL",
+			if (oniAiTraceEnabled()) UUrStartupMessage("[WEAPON-DBG] %s: weapon=NULL, weapon_params=NULL",
 				ioCharacter->player_name);
 		} else {
 			weapon_class = WPrGetClass(ioCharacter->inventory.weapons[0]);
 			weapon_params = ioCombatState->alternate_fire ? &weapon_class->ai_parameters_alt : &weapon_class->ai_parameters;
 			weapon_matrix = ONrCharacter_GetMatrix(ioCharacter, ONcWeapon_Index);
-			UUrStartupMessage("[WEAPON-DBG] %s: weapon=%p weaponClass=%p ai_params=%p ai_params_alt=%p chosen=%p sizeof_WPC=%zu",
+			if (oniAiTraceEnabled()) UUrStartupMessage("[WEAPON-DBG] %s: weapon=%p weaponClass=%p ai_params=%p ai_params_alt=%p chosen=%p sizeof_WPC=%zu",
 				ioCharacter->player_name,
 				(void*)ioCharacter->inventory.weapons[0],
 				(void*)weapon_class,
@@ -3983,7 +3996,7 @@ UUtUns32 AI2rBehavior_Default(ONtCharacter *ioCharacter, AI2tCombatState *ioComb
 		// determine whether we want to fight the target instead of backing away
 		engage_in_melee = AI2iCheckFightBack(ioCharacter, ioCombatState, ioCharacter->ai2State.combatSettings.melee_when);
 
-		UUrStartupMessage("[WEAPON-DBG] %s: TooClose handler, weapon_params=%p too_close=%f engage_melee=%d",
+		if (oniAiTraceEnabled()) UUrStartupMessage("[WEAPON-DBG] %s: TooClose handler, weapon_params=%p too_close=%f engage_melee=%d",
 			ioCharacter->player_name,
 			(void*)ioCombatState->targeting.weapon_parameters,
 			too_close, (int)engage_in_melee);

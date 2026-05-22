@@ -134,6 +134,19 @@ static void	AI2iKnowledge_CheckVisible(ONtCharacter *inCharacter, ONtActiveChara
 static UUtBool AI2iKnowledge_IsVisible(ONtCharacter *inCharacter, ONtCharacter *inTarget);
 static UUtBool AI2iKnowledge_RespondToAlarm(ONtCharacter *inCharacter, UUtUns8 inAlarmID);
 
+/* Gate the [KNOWLEDGE-DBG] tracers (see Oni_AI2_Targeting.c for rationale).
+   Set ONI_AI_TRACE=1 to re-enable. */
+static UUtBool oniAiTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_AI_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 // contact list management
 static AI2tKnowledgeEntry *AI2iKnowledge_NewEntry(ONtCharacter *inOwner, AI2tKnowledgeState *ioKnowledgeState);
 static void AI2iKnowledge_RemoveEntry(AI2tKnowledgeEntry *ioEntry, UUtBool inEraseReferences);
@@ -644,14 +657,14 @@ void AI2rKnowledge_Sound(AI2tContactType inImportance, M3tPoint3D *inLocation, f
 		// causing characters' location **NOT** the location of the sound. This is
 		// so things like warning shouts work.
 		if (!ignore_target1) {
-			UUrStartupMessage("[KNOWLEDGE-DBG] PostContact (sound t1) char=%s tgt1=%p tgt2=%p (passing tgt2 as user_data)",
+			if (oniAiTraceEnabled()) UUrStartupMessage("[KNOWLEDGE-DBG] PostContact (sound t1) char=%s tgt1=%p tgt2=%p (passing tgt2 as user_data)",
 				character->player_name, (void*)inTarget1, (void*)inTarget2);
 			AI2iKnowledge_PostContact(character, inImportance, contact_strength, (inTarget1 == NULL) ? inLocation : &target1_pt,
 										inTarget1, (uintptr_t) inTarget2, UUcFalse, UUcFalse);
 		}
 		if (!ignore_target2) {
 			UUmAssert(inTarget2 != NULL);
-			UUrStartupMessage("[KNOWLEDGE-DBG] PostContact (sound t2) char=%s tgt2=%p tgt1=%p (passing tgt1 as user_data)",
+			if (oniAiTraceEnabled()) UUrStartupMessage("[KNOWLEDGE-DBG] PostContact (sound t2) char=%s tgt2=%p tgt1=%p (passing tgt1 as user_data)",
 				character->player_name, (void*)inTarget2, (void*)inTarget1);
 			AI2iKnowledge_PostContact(character, inImportance, AI2cContactStrength_Strong, &target2_pt, inTarget2, (uintptr_t) inTarget1, UUcFalse, UUcFalse);
 		}
@@ -1206,7 +1219,7 @@ static void AI2iKnowledge_AddContact(ONtCharacter *inCharacter, AI2tContactType 
 	entry->last_location = *inLocation;
 	entry->last_type = inType;
 	entry->last_user_data = inAIUserData;
-	UUrStartupMessage("[KNOWLEDGE-DBG] AddContact STORE owner=%s enemy=%s type=%d user_data=0x%lx",
+	if (oniAiTraceEnabled()) UUrStartupMessage("[KNOWLEDGE-DBG] AddContact STORE owner=%s enemy=%s type=%d user_data=0x%lx",
 		inCharacter->player_name,
 		(entry->enemy ? entry->enemy->player_name : "(none)"),
 		(int)inType, (unsigned long)inAIUserData);
@@ -1266,7 +1279,7 @@ static void AI2iKnowledge_AddContact(ONtCharacter *inCharacter, AI2tContactType 
 	} else if ((inType == AI2cContactType_Sound_Melee) || (inType == AI2cContactType_Sound_Gunshot)) {
 		// determine whether someone is attacking or shooting a friend of ours
 		ONtCharacter *target_character = (ONtCharacter *) inAIUserData;
-		UUrStartupMessage("[KNOWLEDGE-DBG] AddContact READ-AS-PTR user_data=0x%lx target_character=%p",
+		if (oniAiTraceEnabled()) UUrStartupMessage("[KNOWLEDGE-DBG] AddContact READ-AS-PTR user_data=0x%lx target_character=%p",
 			(unsigned long)inAIUserData, (void*)target_character);
 
 		if ((entry->enemy != NULL) && (target_character != NULL)) {

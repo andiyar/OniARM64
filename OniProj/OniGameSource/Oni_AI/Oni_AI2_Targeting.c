@@ -69,6 +69,24 @@ static UUtBool AI2iTargeting_Fire(AI2tTargetingState *ioTargetingState);
 static void AI2iTargeting_UpdateTargeting(AI2tTargetingState *ioTargetingState, UUtBool inPointWeapon);
 static void AI2iTargeting_DoDelay(AI2tTargetingState *ioTargetingState);
 
+/* Gate the per-frame [WEAPON-DBG] tracers added during prior debug
+   sessions. Each UUrStartupMessage in the AI hot path costs one
+   synchronous fflush — with 5 armed AIs in combat the per-frame
+   tracer alone was ~300 disk syncs/sec, stalling the main thread
+   and triggering CoreAudio overload. Kept in tree per
+   feedback_keep_diagnostics; gated for perf. Set ONI_AI_TRACE=1
+   to re-enable. (Session 27, 2026-05-21.) */
+static UUtBool oniAiTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_AI_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 
 // ------------------------------------------------------------------------------------
 // -- high-level combat manager control
@@ -127,11 +145,11 @@ void AI2rTargeting_Update(AI2tTargetingState *ioTargetingState, UUtBool inPredic
 		// work out if we are too close to the target to fire
 		*outTooCloseWeight = 0;
 		if ((params != NULL) && inPointWeapon) {
-			UUrStartupMessage("[WEAPON-DBG] Targeting_Update: weapon_params=%p target_dist=%f about_to_deref_min_safe",
+			if (oniAiTraceEnabled()) UUrStartupMessage("[WEAPON-DBG] Targeting_Update: weapon_params=%p target_dist=%f about_to_deref_min_safe",
 				(void*)params, ioTargetingState->target_distance);
 			if (ioTargetingState->target_distance < params->min_safe_distance) {
 				*outTooCloseWeight = 1.0f - (ioTargetingState->target_distance / params->min_safe_distance);
-				UUrStartupMessage("[WEAPON-DBG] Targeting_Update: too_close_weight=%f min_safe=%f",
+				if (oniAiTraceEnabled()) UUrStartupMessage("[WEAPON-DBG] Targeting_Update: too_close_weight=%f min_safe=%f",
 					*outTooCloseWeight, params->min_safe_distance);
 			}
 		}
