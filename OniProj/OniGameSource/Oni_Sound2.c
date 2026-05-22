@@ -59,6 +59,22 @@
 
 #define OScVolumeAdjust			(0.05f)
 
+/* Gate the [SS2]/[OS] tracers (OSrAmbient_Start/Stop, OSrMusic_Start, etc.).
+   These fire per-frame when position-based ambients re-trigger as the player
+   moves, and per-frame during Daodan mode (ap_wiz cycling). UUrStartupMessage
+   does fprintf+fflush per call (same mechanism that caused HALC overloads in
+   pass 1). Set ONI_SOUND_TRACE=1 to re-enable. */
+static UUtBool oniSoundTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_SOUND_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 // ======================================================================
 // enums
 // ======================================================================
@@ -822,7 +838,7 @@ OSrAmbient_BuildHashTable(
 
 	// add the ambient sounds to the table
 	num_ambients = SSrAmbient_GetNumAmbientSounds();
-	UUrStartupMessage("[SS2] OSrAmbient_BuildHashTable num_ambients=%u", num_ambients);
+	if (oniSoundTraceEnabled()) UUrStartupMessage("[SS2] OSrAmbient_BuildHashTable num_ambients=%u", num_ambients);
 	UUtUns32 added = 0;
 	UUtUns32 first_few_logged = 0;
 	for (i = 0; i < num_ambients; i++)
@@ -839,14 +855,14 @@ OSrAmbient_BuildHashTable(
 		AUrHashTable_Add(OSgAmbientTable, &hash_elem);
 		added++;
 		if (first_few_logged < 5) {
-			UUrStartupMessage("[SS2]   ambient[%u] name='%s' ptr=%p", i, ambient->ambient_name, (void*)ambient);
+			if (oniSoundTraceEnabled()) UUrStartupMessage("[SS2]   ambient[%u] name='%s' ptr=%p", i, ambient->ambient_name, (void*)ambient);
 			first_few_logged++;
 		}
 		if (UUmString_IsEqual(ambient->ambient_name, "main_menu_win")) {
-			UUrStartupMessage("[SS2]   ** FOUND main_menu_win at idx=%u ptr=%p", i, (void*)ambient);
+			if (oniSoundTraceEnabled()) UUrStartupMessage("[SS2]   ** FOUND main_menu_win at idx=%u ptr=%p", i, (void*)ambient);
 		}
 	}
-	UUrStartupMessage("[SS2] OSrAmbient_BuildHashTable done added=%u", added);
+	if (oniSoundTraceEnabled()) UUrStartupMessage("[SS2] OSrAmbient_BuildHashTable done added=%u", added);
 
 	return UUcError_None;
 }
@@ -959,7 +975,7 @@ OSiAmbient_Load(
 	UUmAssert(inIdentifier);
 	UUmAssert(ioBinaryData);
 
-	UUrStartupMessage("[OS] OSiAmbient_Load id=%s", inIdentifier);
+	if (oniSoundTraceEnabled()) UUrStartupMessage("[OS] OSiAmbient_Load id=%s", inIdentifier);
 
 	// ------------------------------
 	// create a new ambient sound
@@ -1203,7 +1219,7 @@ OSrAmbient_Start(
 
 	OStPlayingAmbient			*playing_ambient;
 
-	UUrStartupMessage("[SS2] OSrAmbient_Start name='%s' pos=%p scriptOnly=%d", inAmbient ? inAmbient->ambient_name : "(null)", (void*)inPosition, OSgScriptOnly);
+	if (oniSoundTraceEnabled()) UUrStartupMessage("[SS2] OSrAmbient_Start name='%s' pos=%p scriptOnly=%d", inAmbient ? inAmbient->ambient_name : "(null)", (void*)inPosition, OSgScriptOnly);
 
 	// set the min and max volume distances
 	if (inMaxVolDistance == NULL)
@@ -1362,21 +1378,21 @@ OSrAmbient_Stop(
 	OStPlayingAmbient			*playing_ambient;
 
 	if (inAmbientID == SScInvalidID) {
-		UUrStartupMessage("[SS2] OSrAmbient_Stop CALLED inID=INVALID (no-op)");
+		if (oniSoundTraceEnabled()) UUrStartupMessage("[SS2] OSrAmbient_Stop CALLED inID=INVALID (no-op)");
 		return;
 	}
 
 	// go through and find the ambient to stop
 	playing_ambient = OSiPlayingAmbient_GetByID(inAmbientID);
 	if (playing_ambient == NULL) {
-		UUrStartupMessage("[SS2] OSrAmbient_Stop CALLED inID=%u (no matching playing_ambient — no-op)",
+		if (oniSoundTraceEnabled()) UUrStartupMessage("[SS2] OSrAmbient_Stop CALLED inID=%u (no matching playing_ambient — no-op)",
 			(UUtUns32)inAmbientID);
 		return;
 	}
 
 	if (playing_ambient->play_id != SScInvalidID)
 	{
-		UUrStartupMessage("[SS2] OSrAmbient_Stop name='%s' inID=%u play_id=%u",
+		if (oniSoundTraceEnabled()) UUrStartupMessage("[SS2] OSrAmbient_Stop name='%s' inID=%u play_id=%u",
 			playing_ambient->ambient ? playing_ambient->ambient->ambient_name : "(null)",
 			(UUtUns32)inAmbientID, (UUtUns32)playing_ambient->play_id);
 		SSrAmbient_Stop(playing_ambient->play_id);
@@ -1385,7 +1401,7 @@ OSrAmbient_Stop(
 	}
 	else
 	{
-		UUrStartupMessage("[SS2] OSrAmbient_Stop name='%s' inID=%u play_id=INVALID (already stopped)",
+		if (oniSoundTraceEnabled()) UUrStartupMessage("[SS2] OSrAmbient_Stop name='%s' inID=%u play_id=INVALID (already stopped)",
 			playing_ambient->ambient ? playing_ambient->ambient->ambient_name : "(null)",
 			(UUtUns32)inAmbientID);
 	}
@@ -3156,12 +3172,12 @@ OSrMusic_Start(
 	SStAmbient				*ambient;
 	float					volume;
 
-	UUrStartupMessage("[SS2] OSrMusic_Start name='%s' vol=%.2f", inMusicName ? inMusicName : "(null)", inVolume);
+	if (oniSoundTraceEnabled()) UUrStartupMessage("[SS2] OSrMusic_Start name='%s' vol=%.2f", inMusicName ? inMusicName : "(null)", inVolume);
 
 	if ((inMusicName == NULL) /*|| (OSgMusic_PlayID != SScInvalidID)*/) { return; }
 
 	ambient = OSrAmbient_GetByName(inMusicName);
-	UUrStartupMessage("[SS2] OSrMusic_Start ambient_lookup '%s' -> %p", inMusicName, (void*)ambient);
+	if (oniSoundTraceEnabled()) UUrStartupMessage("[SS2] OSrMusic_Start ambient_lookup '%s' -> %p", inMusicName, (void*)ambient);
 	if (ambient == NULL) { return; }
 
 	// music is always highest priority
