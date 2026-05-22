@@ -118,5 +118,17 @@ for dylib in "$FRAMEWORKS"/*.dylib; do
     rewrite_refs "$dylib"
 done
 
+# 4d. Re-sign phase: install_name_tool invalidates code signatures on Apple
+#     Silicon, and dyld refuses to load Mach-Os with stale signatures
+#     (SIGKILL: Code Signature Invalid). Re-apply an ad-hoc signature
+#     (`--sign -`) to the binary and every bundled dylib so dyld accepts them.
+#     Ad-hoc = no team identity, just a self-signature; matches what Homebrew
+#     dylibs themselves ship with.
+codesign --force --sign - "$BINARY_IN_BUNDLE"
+for dylib in "$FRAMEWORKS"/*.dylib; do
+    [ -f "$dylib" ] || continue
+    codesign --force --sign - "$dylib"
+done
+
 bundled_count=$(find "$FRAMEWORKS" -name '*.dylib' | wc -l | tr -d ' ')
-echo "build-bundle.sh: $APP assembled ($bundled_count dylibs bundled)."
+echo "build-bundle.sh: $APP assembled ($bundled_count dylibs bundled, ad-hoc signed)."
