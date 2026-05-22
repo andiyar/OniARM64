@@ -1742,6 +1742,19 @@ static UUtBool ASiCollisionTest(AStPath *inAstar, UUtBool inStartTest, AStGridPo
 	return AI2rManeuver_TrySphereTreeCollision(tree, &movement);
 }
 
+/* Gate the [GRID-DBG] DetEnd-FAIL tracer (see Oni_AI2_MovementState.c for rationale).
+   Set ONI_AI_TRACE=1 to re-enable. */
+static UUtBool oniAiTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_AI_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 // determine whereabouts in the grid we can actually get to that's near the destination
 static UUtBool ASiDetermineEndPoint(AStPath *inAstar)
 {
@@ -1784,7 +1797,7 @@ static UUtBool ASiDetermineEndPoint(AStPath *inAstar)
 		}
 	}
 
-	UUrStartupMessage("[GRID-DBG] DetEnd-FAIL char=%s start=(%d,%d) end=(%d,%d) gridXY=(%dx%d) maxRadius=%d",
+	if (oniAiTraceEnabled()) UUrStartupMessage("[GRID-DBG] DetEnd-FAIL char=%s start=(%d,%d) end=(%d,%d) gridXY=(%dx%d) maxRadius=%d",
 		(inAstar->owner ? inAstar->owner->player_name : "(null)"),
 		(int)inAstar->start.x, (int)inAstar->start.y,
 		(int)inAstar->end.x, (int)inAstar->end.y,
