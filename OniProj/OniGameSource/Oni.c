@@ -60,6 +60,8 @@
 #include "Oni_Bink.h"
 #include "gl_engine.h"
 
+#include "ONi_BundlePath.h"
+
 #if DEBUGGING
 #define BRENTS_CHEESY_GAME_PERF	1
 #endif
@@ -175,18 +177,7 @@ ONiInitializeAll(
 
 	UUrStartupMessage("looking for the game data folder");
 
-	error = BFrFileRef_Search(ONcGameDataFolder1, &ONgGameDataFolder);
-
-	if(error != UUcError_None) {
-		UUrStartupMessage("Unable to find game data folder at %s", ONcGameDataFolder1);
-
-		error =	BFrFileRef_Search(ONcGameDataFolder2, &ONgGameDataFolder);
-	}
-
-	if (UUcError_None != error) {
-		UUrStartupMessage("Unable to find game data folder at %s", ONcGameDataFolder2);
-		error = ONcError_NoDataFolder;
-	}
+	error = ONiBundlePath_ResolveGameDataFolder(&ONgGameDataFolder);
 
 	UUmError_ReturnOnErrorMsg(error, "Could not find game data folder");
 

@@ -418,6 +418,8 @@ set(SOURCE_FILES
 
         ../../OniGameSource/Oni.c
         ../../OniGameSource/Oni.h
+        ../../OniGameSource/ONi_BundlePath.c
+        ../../OniGameSource/ONi_BundlePath.h
         ../../OniGameSource/Oni_Aiming.c
         ../../OniGameSource/Oni_Aiming.h
         ../../OniGameSource/Oni_Bink.c
