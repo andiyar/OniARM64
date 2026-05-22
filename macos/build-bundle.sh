@@ -41,44 +41,82 @@ cp "$SOURCE_DIR/macos/assets/Oni.icns"  "$RESOURCES/Oni.icns"
 cp "$SOURCE_DIR/macos/assets/intro.mov" "$RESOURCES/intro.mov"
 cp "$SOURCE_DIR/macos/assets/outro.mov" "$RESOURCES/outro.mov"
 
-# 4. Bundle Homebrew dylibs into Contents/Frameworks/, rewrite load paths.
-#    System frameworks (OpenGL, OpenAL) are NOT bundled — they're macOS-provided.
+# 4. Bundle Homebrew dylibs (direct + transitive) into Contents/Frameworks/.
+#    BFS walk: start from the binary, follow every /opt/homebrew/ LC_LOAD_DYLIB
+#    entry to fixed point, bundle each discovered dylib, then rewrite all refs
+#    (binary + bundled dylibs) so nothing points at /opt/homebrew/ anymore.
+#    Result: a self-contained bundle that runs on machines without Homebrew.
+#
+#    System frameworks (/System/Library/..., /usr/lib/libSystem.B.dylib,
+#    /usr/lib/libiconv.2.dylib, /usr/lib/libz.1.dylib) stay as absolute refs —
+#    macOS guarantees them on every install.
 BINARY_IN_BUNDLE="$MACOS_DIR/Oni"
 
-# Discover the dylibs the binary links from Homebrew.
-HOMEBREW_LIBS=$(otool -L "$BINARY_IN_BUNDLE" | awk '/\/opt\/homebrew\// {print $1}')
+# Print one /opt/homebrew/ dylib path per line.
+# `NR>1` skips otool's first line (the file's own path, which itself contains
+# /opt/homebrew/ when the input is a Homebrew dylib).
+homebrew_deps_of() {
+    otool -L "$1" | awk 'NR>1 && /\/opt\/homebrew\// {print $1}'
+}
 
-for src_lib in $HOMEBREW_LIBS; do
-    if [ ! -f "$src_lib" ]; then
-        echo "build-bundle.sh: WARNING: dylib not found at $src_lib, skipping" >&2
+# 4a. Discover phase: BFS for every transitively-linked /opt/homebrew/ dylib.
+#     Newline-separated strings as set/queue (bash 3.2 compatible).
+seen=""
+worklist=$(homebrew_deps_of "$BINARY_IN_BUNDLE")
+
+while [ -n "$worklist" ]; do
+    current=$(printf '%s\n' "$worklist" | head -n 1)
+    worklist=$(printf '%s\n' "$worklist" | tail -n +2)
+
+    [ -z "$current" ] && continue
+    if printf '%s\n' "$seen" | grep -Fxq -- "$current"; then
         continue
     fi
+    seen=$(printf '%s\n%s' "$seen" "$current")
+
+    if [ ! -f "$current" ]; then
+        echo "build-bundle.sh: WARNING: $current not found, skipping" >&2
+        continue
+    fi
+
+    new_deps=$(homebrew_deps_of "$current")
+    if [ -n "$new_deps" ]; then
+        worklist=$(printf '%s\n%s' "$worklist" "$new_deps")
+    fi
+done
+
+# 4b. Copy phase: copy each discovered dylib into Frameworks/ and set its own
+#     LC_ID_DYLIB to the bundled path.
+printf '%s\n' "$seen" | while IFS= read -r src_lib; do
+    [ -z "$src_lib" ] && continue
+    [ -f "$src_lib" ] || continue
     lib_basename=$(basename "$src_lib")
     dst_lib="$FRAMEWORKS/$lib_basename"
 
     cp "$src_lib" "$dst_lib"
-    # Some Homebrew dylibs are read-only; make them writable so install_name_tool succeeds.
+    # Homebrew dylibs ship read-only; make writable so install_name_tool succeeds.
     chmod u+w "$dst_lib"
-
-    # Rewrite the dylib's OWN install name so it identifies itself by the bundled path.
     install_name_tool -id "@executable_path/../Frameworks/$lib_basename" "$dst_lib"
-
-    # Rewrite the binary's reference to this dylib.
-    install_name_tool -change "$src_lib" "@executable_path/../Frameworks/$lib_basename" "$BINARY_IN_BUNDLE"
 done
 
-# Second pass: dylibs themselves may link other Homebrew dylibs (e.g. libavcodec → libavutil).
-# Rewrite those references too.
-for dylib in "$FRAMEWORKS"/*.dylib; do
-    [ -f "$dylib" ] || continue
-    DEPS=$(otool -L "$dylib" | awk '/\/opt\/homebrew\// {print $1}')
-    for dep in $DEPS; do
-        dep_basename=$(basename "$dep")
-        # Only rewrite if we have a bundled copy.
-        if [ -f "$FRAMEWORKS/$dep_basename" ]; then
-            install_name_tool -change "$dep" "@executable_path/../Frameworks/$dep_basename" "$dylib"
+# 4c. Rewrite phase: walk binary + every bundled dylib, rewrite every
+#     /opt/homebrew/ LC_LOAD_DYLIB entry whose basename has a bundled copy.
+rewrite_refs() {
+    target="$1"
+    homebrew_deps_of "$target" | while IFS= read -r ref; do
+        [ -z "$ref" ] && continue
+        ref_basename=$(basename "$ref")
+        if [ -f "$FRAMEWORKS/$ref_basename" ]; then
+            install_name_tool -change "$ref" "@executable_path/../Frameworks/$ref_basename" "$target"
         fi
     done
+}
+
+rewrite_refs "$BINARY_IN_BUNDLE"
+for dylib in "$FRAMEWORKS"/*.dylib; do
+    [ -f "$dylib" ] || continue
+    rewrite_refs "$dylib"
 done
 
-echo "build-bundle.sh: $APP assembled."
+bundled_count=$(find "$FRAMEWORKS" -name '*.dylib' | wc -l | tr -d ' ')
+echo "build-bundle.sh: $APP assembled ($bundled_count dylibs bundled)."
