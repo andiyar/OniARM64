@@ -125,7 +125,7 @@ Out of scope:
 ### Phase 6 — Gameplay completion
 - [x] Konoko engages NPCs in combat end-to-end across a full encounter
 - [x] Tutorial level completable to next-level transition
-- [ ] Save / load works across runs
+- [x] Save / load works across runs
 - [ ] All 14 levels playable
 
 ### Phase 7 — Shippable artefact
