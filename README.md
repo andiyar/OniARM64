@@ -17,7 +17,11 @@ cmake .. -DPlatform_SDL=ON
 make -j8
 ```
 
-Binary lands at `build/bin/Oni`. Copy it into a directory that contains (or symlinks to) the game data and run it there:
+Binary lands at `build/bin/Oni`. From there you have two ways to run it.
+
+### Option A — bare binary
+
+Copy the binary into a directory that contains (or symlinks to) a `GameDataFolder` and run it there:
 
 ```sh
 cp build/bin/Oni /path/to/oni-data/
@@ -25,10 +29,45 @@ cd /path/to/oni-data
 SDL_VIDEO_ALLOW_SCREENSAVER=1 ONI_AUTOSTART=1 ./Oni
 ```
 
-- `SDL_VIDEO_ALLOW_SCREENSAVER=1` — belt-and-braces against leaked display-sleep assertions.
-- `ONI_AUTOSTART=1` — skips the main menu and jumps straight to level 1. Deterministic repro while the HiDPI mouse-click bug is outstanding.
+State files (`persist.dat`, `key_config.txt`) land next to the binary; `startup.txt` likewise. This is the historical dev workflow and remains the fastest inner loop.
 
-Sparse observability breadcrumbs are compiled in and write to `startup.txt` in the run directory. Crash reports land in `~/Library/Logs/DiagnosticReports/Oni-*.ips`.
+### Option B — clickable `.app` bundle
+
+```sh
+make oni_app                                                       # produces build/bin/OniARM64.app
+ln -sfn /path/to/your/Oni/GameDataFolder \
+    build/bin/OniARM64.app/Contents/Resources/gamedata             # one-time data hookup
+xattr -d com.apple.quarantine build/bin/OniARM64.app 2>/dev/null   # one-time Gatekeeper bypass
+open build/bin/OniARM64.app
+```
+
+`make oni_app` runs `macos/build-bundle.sh` which copies the binary, templates, assets, and every Homebrew dylib (direct + transitive — SDL2, ffmpeg + 12 of its deps) into the bundle, then re-signs everything ad-hoc so dyld accepts it.
+
+Binary-swap inner loop for everyday dev:
+
+```sh
+make -j8 && cp build/bin/Oni build/bin/OniARM64.app/Contents/MacOS/Oni && \
+    codesign --force --sign - build/bin/OniARM64.app/Contents/MacOS/Oni && \
+    open build/bin/OniARM64.app
+```
+
+Re-run `make oni_app` only when the binary picks up new Homebrew deps (rare).
+
+Under the `.app` workflow, files land at macOS-conventional locations:
+
+| File | Location |
+| --- | --- |
+| Game data lookup | `~/Library/Application Support/OniARM64/gamedata/` → `<bundle>/Contents/Resources/gamedata/` → legacy cwd-relative search |
+| `persist.dat`, `key_config.txt` | `~/Library/Application Support/OniARM64/` (cwd-relative if it already exists, else here) |
+| `startup.txt`, `debugger.txt` | `~/Library/Logs/OniARM64/` (cwd-relative if writable, else here) |
+| Crash reports | `~/Library/Logs/DiagnosticReports/Oni-*.ips` (macOS default) |
+
+### Common to both
+
+- `SDL_VIDEO_ALLOW_SCREENSAVER=1` — belt-and-braces against leaked display-sleep assertions.
+- `ONI_AUTOSTART=1` — skips the main menu and jumps straight to level 1.
+
+Crash reports land in `~/Library/Logs/DiagnosticReports/Oni-*.ips`.
 
 ## Scope
 
