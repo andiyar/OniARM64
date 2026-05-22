@@ -1361,26 +1361,33 @@ OSrAmbient_Stop(
 {
 	OStPlayingAmbient			*playing_ambient;
 
-	if (inAmbientID == SScInvalidID) { return; }
+	if (inAmbientID == SScInvalidID) {
+		UUrStartupMessage("[SS2] OSrAmbient_Stop CALLED inID=INVALID (no-op)");
+		return;
+	}
 
 	// go through and find the ambient to stop
 	playing_ambient = OSiPlayingAmbient_GetByID(inAmbientID);
-	if (playing_ambient == NULL) { return; }
+	if (playing_ambient == NULL) {
+		UUrStartupMessage("[SS2] OSrAmbient_Stop CALLED inID=%u (no matching playing_ambient — no-op)",
+			(UUtUns32)inAmbientID);
+		return;
+	}
 
 	if (playing_ambient->play_id != SScInvalidID)
 	{
+		UUrStartupMessage("[SS2] OSrAmbient_Stop name='%s' inID=%u play_id=%u",
+			playing_ambient->ambient ? playing_ambient->ambient->ambient_name : "(null)",
+			(UUtUns32)inAmbientID, (UUtUns32)playing_ambient->play_id);
 		SSrAmbient_Stop(playing_ambient->play_id);
 
-/*		if (SSgShowDebugInfo)
-		{
-			COrConsole_Printf(
-				"OSrAmbient_Stop %d: %s %d",
-				ONrGameState_GetGameTime(),
-				playing_ambient->ambient->ambient_name,
-				inAmbientID);
-		}*/
-
 		playing_ambient->play_id = SScInvalidID;
+	}
+	else
+	{
+		UUrStartupMessage("[SS2] OSrAmbient_Stop name='%s' inID=%u play_id=INVALID (already stopped)",
+			playing_ambient->ambient ? playing_ambient->ambient->ambient_name : "(null)",
+			(UUtUns32)inAmbientID);
 	}
 
 	OSiPlayingAmbient_FreeElement(playing_ambient);

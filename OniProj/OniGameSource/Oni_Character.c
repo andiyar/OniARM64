@@ -3687,12 +3687,26 @@ static void ONiCharacter_SuperParticle_SendEvent(ONtCharacter *ioCharacter, ONtA
 	UUtUns32 itr;
 
 	// send an event to all the super particles
+	UUrStartupMessage("[DAODAN-DBG] SuperParticle_SendEvent inEvent=%u numSuperParticles=%u",
+		(UUtUns32)inEvent, ioActiveCharacter->numSuperParticles);
 	for (itr = 0, particle = ioActiveCharacter->superParticles; itr < ioActiveCharacter->numSuperParticles; itr++, particle++) {
-		if ((particle->particle == NULL) || (particle->particle->header.self_ref != particle->particle_ref))
+		if ((particle->particle == NULL) || (particle->particle->header.self_ref != particle->particle_ref)) {
+			UUrStartupMessage("[DAODAN-DBG]   slot=%u SKIPPED: particle=%p ref_match=%d",
+				itr, (void*)particle->particle,
+				(particle->particle && particle->particle->header.self_ref == particle->particle_ref));
 			continue;
+		}
 
 		UUmAssert(particle->particle_def != NULL);
+		UUrStartupMessage("[DAODAN-DBG]   slot=%u particle=%p flags=0x%08x current_sound=%u",
+			itr, (void*)particle->particle,
+			(UUtUns32)particle->particle->header.flags,
+			(UUtUns32)particle->particle->header.current_sound);
 		P3rSendEvent(particle->particle_def->particle_class, particle->particle, inEvent, current_time);
+		UUrStartupMessage("[DAODAN-DBG]   slot=%u after-send: flags=0x%08x current_sound=%u",
+			itr,
+			(UUtUns32)particle->particle->header.flags,
+			(UUtUns32)particle->particle->header.current_sound);
 	}
 
 	if (inEvent == P3cEvent_Start) {
