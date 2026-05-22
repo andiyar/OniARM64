@@ -73,14 +73,18 @@ static UUtBool ONiBundlePath_TryApplicationSupport(BFtFileRef *outFolder)
 // ----------------------------------------------------------------------
 
 #ifdef __APPLE__
+// Scratch buffers must be at least macOS PATH_MAX (1024); realpath(3) on Darwin
+// requires it and writes UB past the end otherwise. BFcMaxPathLength is 255
+// (Mac OS 9-era limit), unsafe for these calls.
+#define ONiBundlePath_PathMax 1024
 static UUtBool ONiBundlePath_GetExecutableDir(char *outDir, size_t outDirSize)
 {
-    char raw[BFcMaxPathLength];
+    char raw[ONiBundlePath_PathMax];
     uint32_t size = (uint32_t)sizeof(raw);
     if (_NSGetExecutablePath(raw, &size) != 0) {
         return UUcFalse;
     }
-    char real[BFcMaxPathLength];
+    char real[ONiBundlePath_PathMax];
     if (realpath(raw, real) == NULL) {
         return UUcFalse;
     }
