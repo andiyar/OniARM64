@@ -44,6 +44,21 @@
 static ALCdevice* SSgDevice = NULL;
 static ALCcontext* SSgContext = NULL;
 
+/* Gate the [SS2/OAL] SetSoundData ADPCM per-call tracer (see Oni_AI2_Targeting.c
+   for rationale — UUrStartupMessage does fprintf+fflush per call; under gunfire
+   23+ sound starts cluster in ~100ms, stalling the main thread).
+   Set ONI_SOUND_TRACE=1 to re-enable. */
+static UUtBool oniSoundTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_SOUND_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 // ======================================================================
 // functions
 // ======================================================================
@@ -317,7 +332,7 @@ SS2rPlatform_SoundChannel_SetSoundData(
 		}
 		size_t samples = 0;
 		UUtBool success = SS2r_DecompressMSADPCM(inSoundChannel, inSoundData, num_channels, decoded, &samples);
-		UUrStartupMessage("[SS2/OAL] SetSoundData ADPCM src=%u chans=%u blkAlign=%u samples=%zu %s",
+		if (oniSoundTraceEnabled()) UUrStartupMessage("[SS2/OAL] SetSoundData ADPCM src=%u chans=%u blkAlign=%u samples=%zu %s",
 			inSoundChannel->pd.source, num_channels, inSoundData->f.nBlockAlign,
 			samples, success ? "OK" : "FAIL");
 		if (success)
