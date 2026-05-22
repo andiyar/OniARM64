@@ -17,6 +17,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 #include "BFW.h"
 #include "BFW_Console.h"
@@ -52,6 +54,39 @@ FILE *iDebugFile = NULL;
 
 /*---------- code */
 
+// Open a log file with cwd-first, ~/Library/Logs/OniARM64/ fallback on macOS.
+// Preserves the bare-binary workflow (OniNative/Oni writes to OniNative/startup.txt
+// unchanged) while making the .app workflow (cwd = /) write to a known location.
+// On non-Apple platforms, behaves identically to fopen(filename, mode).
+static FILE *iOpenLogFile(const char *filename, const char *mode)
+{
+	FILE *fp = fopen(filename, mode);
+	if (fp != NULL) {
+		return fp;
+	}
+
+#ifdef __APPLE__
+	const char *home = getenv("HOME");
+	if (home == NULL || home[0] == '\0') {
+		return NULL;
+	}
+	char dir[1024];
+	if (snprintf(dir, sizeof(dir), "%s/Library/Logs/OniARM64", home) >= (int)sizeof(dir)) {
+		return NULL;
+	}
+	// mkdir -p semantics: ignore EEXIST, fail on anything else only if mkdir fails to leave a usable dir.
+	if (mkdir(dir, 0755) != 0 && errno != EEXIST) {
+		return NULL;
+	}
+	char path[1024];
+	if (snprintf(path, sizeof(path), "%s/%s", dir, filename) >= (int)sizeof(path)) {
+		return NULL;
+	}
+	fp = fopen(path, mode);
+#endif
+	return fp;
+}
+
 static void iAppendDebugFileMessage(char *msg)
 {
 	if (NULL == iDebugFile)
@@ -59,7 +94,7 @@ static void iAppendDebugFileMessage(char *msg)
 #if defined(DEBUGGING) && DEBUGGING
                 iDebugFile = stderr;
 #else
-		iDebugFile = fopen("debugger.txt", "wb");
+		iDebugFile = iOpenLogFile("debugger.txt", "wb");
 #endif
 	}
 
@@ -492,7 +527,7 @@ void UUcArglist_Call UUrStartupMessage(
 	va_end(arglist);
 
 	if (NULL == stream) {
-		stream = fopen("startup.txt", "w");
+		stream = iOpenLogFile("startup.txt", "w");
 	}
 
 	if (NULL != stream) {
