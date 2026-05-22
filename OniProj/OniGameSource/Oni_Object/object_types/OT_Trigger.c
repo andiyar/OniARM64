@@ -46,6 +46,20 @@ static float OBJgTrigger_SetSpeedValue = 0.f;
 // ======================================================================
 
 UUtError OBJrTrigger_Reset( OBJtObject* inObject );
+
+/* Gate the [LASER-DBG] tracers (already throttled 1/60 inline).
+   Set ONI_LASER_TRACE=1 to re-enable. */
+static UUtBool oniLaserTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_LASER_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 static void OBJiTrigger_GetBoundingSphere( const OBJtObject *inObject, M3tBoundingSphere *outBoundingSphere);
 static UUtError OBJiTrigger_SetOSD( OBJtObject *inObject, const OBJtOSD_All *inOSD);
 static void OBJiTrigger_UpdatePosition(OBJtObject *inObject);
@@ -393,6 +407,25 @@ static void OBJiTrigger_Draw( OBJtObject *inObject, UUtUns32 inDrawFlags)
 
 				AKrEnvironment_DrawIfVisible_Point(trigger_osd->trigger_class->emitter->geometry, matrix_stack + 1);
 
+				/* [LASER-DBG] gate snapshot — throttled 1/60 and gated by ONI_LASER_TRACE */
+				if (oniLaserTraceEnabled()) {
+					static UUtUns32 sGateCount = 0;
+					if ((++sGateCount % 60) == 1) {
+						UUrStartupMessage("[LASER-DBG] gate count=%u trig_name=%s emit_idx=%u/%u flags=0x%04x active=%d laser_on=%d hidden=%d drawTriggers=%d occl=%d emit_class=%p",
+							sGateCount,
+							trigger_osd->trigger_class_name,
+							(unsigned) i,
+							(unsigned) trigger_osd->emitter_count,
+							(unsigned) trigger_osd->flags,
+							!!(trigger_osd->flags & OBJcTriggerFlag_Active),
+							(int) trigger_osd->laser_on,
+							!!(trigger_osd->flags & OBJcTriggerFlag_Hidden),
+							(int) OBJgTrigger_DrawTriggers,
+							(int) AKgDraw_Occl,
+							(void *) trigger_osd->trigger_class->emitter);
+					}
+				}
+
 				// draw the laser if active
 				if ((trigger_osd->flags & OBJcTriggerFlag_Active) && trigger_osd->laser_on)
 				{
@@ -487,6 +520,18 @@ static void OBJiTrigger_Draw( OBJtObject *inObject, UUtUns32 inDrawFlags)
 							#if defined(UUmPlatform) && (UUmPlatform == UUmPlatform_Mac)
 								color= ((color&0xFF000000)>>24)|((color& 0x00FF0000)>>8)|((color&0x0000FF00)<<8)|((color&0x000000FF)<<24);
 							#endif
+								/* [LASER-DBG] draw call — throttled 1/60 and gated by ONI_LASER_TRACE */
+								if (oniLaserTraceEnabled()) {
+									static UUtUns32 sDrawCount = 0;
+									if ((++sDrawCount % 60) == 1) {
+										UUrStartupMessage("[LASER-DBG] FXrDrawLaser-call count=%u trig=%s from=(%.1f,%.1f,%.1f) to=(%.1f,%.1f,%.1f) color=0x%08x",
+											sDrawCount,
+											trigger_osd->trigger_class_name,
+											world_points[0].x, world_points[0].y, world_points[0].z,
+											world_points[1].x, world_points[1].y, world_points[1].z,
+											color);
+									}
+								}
 								FXrDrawLaser(world_points + 0, world_points + 1, color);
 							}
 						}

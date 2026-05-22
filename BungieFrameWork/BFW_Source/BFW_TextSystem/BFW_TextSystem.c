@@ -219,6 +219,22 @@ TStFormatCharacterColor TSgColorFormattingCharacters[] =
 // ======================================================================
 // prototypes
 // ======================================================================
+/* Gate the [TEXT-DBG] per-glyph tracer added during session 26's IGSt
+   text-clip investigation (closed by commit 9821d11). Even gated to
+   i<5, the per-frame per-string per-glyph emission produced ~70K
+   fflush calls per gameplay minute. Set ONI_TEXT_TRACE=1 to re-enable.
+   Session 27, 2026-05-22. */
+static UUtBool oniTextTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_TEXT_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 static TStGlyph*
 TSiFont_GetGlyph(
 	const TStFont		*inFont,
@@ -1824,6 +1840,16 @@ TSiContext_DrawTextLine(
 			bounds.right	= bounds.left + glyph->width;
 			bounds.bottom	= bounds.top + font->ascending_height + font->descending_height;
 #endif
+
+			// [TEXT-DBG] log first 5 glyphs per line — for session-26 IGSt clip bug (closed).
+			// Gated session 27 — disk-sync overhead at ~70K calls/min.
+			if (oniTextTraceEnabled() && i < 5) {
+				UUrStartupMessage("[TEXT-DBG] i=%u/%u ch=0x%04x clip=[%d,%d..%d,%d] glyph=[%d,%d..%d,%d] kern=%d dest.x=%d",
+					(unsigned)i, (unsigned)inNumCharacters, (unsigned)character,
+					(int)inBounds->left, (int)inBounds->top, (int)inBounds->right, (int)inBounds->bottom,
+					(int)bounds.left, (int)bounds.top, (int)bounds.right, (int)bounds.bottom,
+					(int)glyph->kerning, (int)dest.x);
+			}
 
 			// draw the glyph if it is visible
 			if ((error == UUcError_None) && (WMrClipRect(inBounds, &bounds, cur_uv)))

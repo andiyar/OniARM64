@@ -42,6 +42,20 @@ UUtError FXrEffects_LevelBegin(void)
 	return UUcError_None;
 }
 
+/* Gate the [LASER-DBG] tracers (already throttled 1/60 inline, but
+   still emits via synchronous fflush). Set ONI_LASER_TRACE=1 to
+   re-enable. */
+static UUtBool oniLaserTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_LASER_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 void FXrDrawLaserDot(M3tPoint3D *inPoint)
 {
 	UUtError error;
@@ -83,6 +97,19 @@ void FXrDrawLaser( M3tPoint3D *inFrom, M3tPoint3D *inTo, UUtUns32 inColor )
 	UUtUns16				alpha;
 	M3tMatrix4x3*			stack_matrix;
 	M3tMatrix4x3			matrix;
+
+	/* [LASER-DBG] entry — throttled 1/60 and gated by ONI_LASER_TRACE */
+	if (oniLaserTraceEnabled()) {
+		static UUtUns32 sEntryCount = 0;
+		if ((++sEntryCount % 60) == 1) {
+			UUrStartupMessage("[LASER-DBG] FXrDrawLaser-entry count=%u from=(%.1f,%.1f,%.1f) to=(%.1f,%.1f,%.1f) color=0x%08x tex=%p",
+				sEntryCount,
+				inFrom->x, inFrom->y, inFrom->z,
+				inTo->x, inTo->y, inTo->z,
+				inColor,
+				(void *) FXgLaser_Texture);
+		}
+	}
 
 	M3rGeom_State_Push();
 	M3rDraw_State_SetInt(M3cDrawStateIntType_ZWrite, M3cDrawState_ZWrite_Off);

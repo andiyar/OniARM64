@@ -71,6 +71,19 @@ const char *AI2cPursuitCheckType[AI2cPursuitCheck_Max] = {"initial-contact", "po
 // -- internal function prototypes
 
 // do we need to change pursuit modes?
+/* Gate the [PURSUIT-DBG] tracer (see Oni_AI2_Targeting.c for rationale).
+   Set ONI_AI_TRACE=1 to re-enable. */
+static UUtBool oniAiTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_AI_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 static UUtBool AI2iPursuit_ChangeMode(ONtCharacter *ioCharacter, AI2tPursuitState *ioPursuitState);
 
 // begin our new mode
@@ -444,7 +457,7 @@ static void AI2iPursuit_BeginMode(ONtCharacter *ioCharacter, AI2tPursuitState *i
 			ioPursuitState->running_to_contact = ioPursuitState->pursue_danger;
 			ioPursuitState->scanning_area = UUcFalse;
 
-			UUrStartupMessage("[PURSUIT-DBG] BeginGoTo char=%s tgtloc=(%.1f,%.1f,%.1f) closedist=%.1f enemy=%p curloc=(%.1f,%.1f,%.1f) currentPathnode=%p",
+			if (oniAiTraceEnabled()) UUrStartupMessage("[PURSUIT-DBG] BeginGoTo char=%s tgtloc=(%.1f,%.1f,%.1f) closedist=%.1f enemy=%p curloc=(%.1f,%.1f,%.1f) currentPathnode=%p",
 				ioCharacter->player_name, ioPursuitState->target->last_location.x, ioPursuitState->target->last_location.y, ioPursuitState->target->last_location.z,
 				AI2cPursuit_GoToContact_CloseDist, (void*)ioPursuitState->target->enemy,
 				ioCharacter->location.x, ioCharacter->location.y, ioCharacter->location.z,

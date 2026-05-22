@@ -101,6 +101,19 @@ static ONtCharacter *AI2gMovementState_BadnessCharacter;
 // -- internal function prototypes
 
 // collision avoidance
+/* Gate the [MOVE-DBG] per-NPC per-frame tracer (see Oni_AI2_Targeting.c
+   for rationale). Set ONI_AI_TRACE=1 to re-enable. */
+static UUtBool oniAiTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_AI_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 static void AI2iMovementState_AgeCollisions(ONtCharacter *ioCharacter, AI2tMovementState *ioMovementState);
 static void AI2iMovementState_ClearCollisionFlags(ONtCharacter *ioCharacter, AI2tMovementState *ioMovementState);
 static void AI2iMovementState_ResetBadness(UUtUns32 *ioNumValues, UUtUns32 inMaxNumValues, AI2tBadnessValue *ioValues);
@@ -1663,7 +1676,7 @@ static void AI2iMovementState_Calculate_Movement(ONtCharacter *ioCharacter, AI2t
 		}
 	}
 
-	UUrStartupMessage("[MOVE-DBG] Commit char=%s actual_dir=%d move_dir=%.2f facing=%.2f mode=%d at_final=%d next_pt=%p grid_num=%d",
+	if (oniAiTraceEnabled()) UUrStartupMessage("[MOVE-DBG] Commit char=%s actual_dir=%d move_dir=%.2f facing=%.2f mode=%d at_final=%d next_pt=%p grid_num=%d",
 		ioCharacter->player_name, actual_movement_direction, ioMovementState->move_direction, facing_direction,
 		movement_mode, ioCharacter->pathState.at_finalpoint,
 		(void*)ioMovementState->next_path_point, (int)ioMovementState->grid_num_points);

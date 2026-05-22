@@ -57,6 +57,19 @@ UUtBool AI2gIgnorePathError = UUcFalse;
 // -- internal function prototypes
 
 // pathfinding
+/* Gate the [PURSUIT-DBG] tracers (see Oni_AI2_Targeting.c for rationale).
+   Set ONI_AI_TRACE=1 to re-enable. */
+static UUtBool oniAiTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_AI_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 static void AI2iPath_NewDestination(ONtCharacter *ioCharacter);
 static void AI2iPath_ClearPath(ONtCharacter *ioCharacter);
 static UUtBool AI2iPath_FindGlobalPath(ONtCharacter *ioCharacter, PHtGraph *inGraph);
@@ -449,7 +462,7 @@ static UUtBool AI2iPath_MakePath(ONtCharacter *ioCharacter, UUtBool inForce)
 		nodeEnd		= PHrAkiraNodeToGraphNode(akNodeEnd, graph);
 	}
 
-	UUrStartupMessage("[PURSUIT-DBG] MakePath char=%s nodeStart=%p nodeEnd=%p akNodeEnd=%p destType=%d endloc=(%.1f,%.1f,%.1f) at_final=%d",
+	if (oniAiTraceEnabled()) UUrStartupMessage("[PURSUIT-DBG] MakePath char=%s nodeStart=%p nodeEnd=%p akNodeEnd=%p destType=%d endloc=(%.1f,%.1f,%.1f) at_final=%d",
 		ioCharacter->player_name, (void*)nodeStart, (void*)nodeEnd, (void*)akNodeEnd,
 		ioCharacter->pathState.destinationType, locationEnd.x, locationEnd.y, locationEnd.z,
 		ioCharacter->pathState.at_finalpoint);
@@ -521,7 +534,7 @@ static UUtBool AI2iPath_MakePath(ONtCharacter *ioCharacter, UUtBool inForce)
 
 	{
 		UUtBool _newnode_ok = AI2iPath_NewNode(ioCharacter, reuse_path);
-		UUrStartupMessage("[PURSUIT-DBG] NewNode char=%s ok=%d num_nodes=%d cur=%d",
+		if (oniAiTraceEnabled()) UUrStartupMessage("[PURSUIT-DBG] NewNode char=%s ok=%d num_nodes=%d cur=%d",
 			ioCharacter->player_name, _newnode_ok,
 			(int)ioCharacter->pathState.path_num_nodes,
 			(int)ioCharacter->pathState.path_current_node);
