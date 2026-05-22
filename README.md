@@ -42,8 +42,8 @@ In scope for Anniversary Edition features:
 
 Out of scope:
 - Multiplayer / netcode
-- Modernized renderer / shaders
-- New content or gameplay changes
+- Modernized renderer / shaders **TBD**
+- New content or gameplay changes **TBD**
 - Windows / Linux build targets (handled by upstream / other forks)
 
 ## Milestones
