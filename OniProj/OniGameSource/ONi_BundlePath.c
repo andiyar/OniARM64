@@ -5,6 +5,7 @@
 #include "ONi_BundlePath.h"
 #include "Oni.h"   // ONcGameDataFolder1, ONcGameDataFolder2, ONcError_NoDataFolder
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +16,11 @@
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
+
+// Scratch buffer cap that's safe for macOS realpath(3) (PATH_MAX = 1024).
+// BFcMaxPathLength is 255 (Mac OS 9 era) — too small. Used both inside the
+// __APPLE__ block (Task 5) and by the state-file resolver below.
+#define ONiBundlePath_PathMax 1024
 
 // ----------------------------------------------------------------------
 // Helpers
@@ -27,6 +33,12 @@ static UUtBool ONiBundlePath_DirExists(const char *path)
         return UUcFalse;
     }
     return S_ISDIR(st.st_mode) ? UUcTrue : UUcFalse;
+}
+
+static UUtBool ONiBundlePath_FileExists(const char *path)
+{
+    struct stat st;
+    return (stat(path, &st) == 0) ? UUcTrue : UUcFalse;
 }
 
 // If `candidate` exists as a directory, set *outFolder to it (via the BFW
@@ -73,10 +85,6 @@ static UUtBool ONiBundlePath_TryApplicationSupport(BFtFileRef *outFolder)
 // ----------------------------------------------------------------------
 
 #ifdef __APPLE__
-// Scratch buffers must be at least macOS PATH_MAX (1024); realpath(3) on Darwin
-// requires it and writes UB past the end otherwise. BFcMaxPathLength is 255
-// (Mac OS 9-era limit), unsafe for these calls.
-#define ONiBundlePath_PathMax 1024
 static UUtBool ONiBundlePath_GetExecutableDir(char *outDir, size_t outDirSize)
 {
     char raw[ONiBundlePath_PathMax];
@@ -158,4 +166,65 @@ UUtError ONiBundlePath_ResolveGameDataFolder(BFtFileRef *outFolder)
 
     UUrStartupMessage("[BundlePath] all candidates failed; game data folder not found");
     return ONcError_NoDataFolder;
+}
+
+// ----------------------------------------------------------------------
+// State-file path resolution (persist.dat, key_config.txt, etc.)
+// ----------------------------------------------------------------------
+//
+// Two-strategy resolver mirroring the gamedata chain:
+//
+//   1. If ./<filename> already exists, return that. Preserves the bare-binary
+//      OniNative workflow — an existing persist.dat / key_config.txt next to
+//      the binary stays authoritative.
+//   2. Otherwise return $HOME/Library/Application Support/OniARM64/<filename>,
+//      creating the directory tree if needed. This is where state files land
+//      under the .app workflow (cwd = /, no writable file there).
+//
+// Apple's File System Programming Guide: ~/Library/Preferences/ is reserved
+// for plist files managed by cfprefsd via NSUserDefaults/CFPreferences. Custom
+// binary state files (Oni's persist.dat with its own version/swap-code header)
+// belong under Application Support/.
+
+UUtError ONiBundlePath_ResolveStateFile(const char *filename, char *outPath, size_t outPathSize)
+{
+    if (filename == NULL || outPath == NULL || outPathSize == 0) {
+        return UUcError_Generic;
+    }
+
+    // Strategy 1: cwd-relative if file already exists.
+    int n = snprintf(outPath, outPathSize, "./%s", filename);
+    if (n > 0 && (size_t)n < outPathSize && ONiBundlePath_FileExists(outPath)) {
+        UUrStartupMessage("[BundlePath] state file '%s' using cwd-relative %s", filename, outPath);
+        return UUcError_None;
+    }
+
+    // Strategy 2: ~/Library/Application Support/OniARM64/<filename>.
+    const char *home = getenv("HOME");
+    if (home == NULL || home[0] == '\0') {
+        UUrStartupMessage("[BundlePath] HOME unset; cannot resolve state file '%s'", filename);
+        return UUcError_Generic;
+    }
+
+    char dir[ONiBundlePath_PathMax];
+    int dirN = snprintf(dir, sizeof(dir), "%s/Library/Application Support/OniARM64", home);
+    if (dirN < 0 || (size_t)dirN >= sizeof(dir)) {
+        UUrStartupMessage("[BundlePath] App Support path overflow for '%s'", filename);
+        return UUcError_Generic;
+    }
+
+    // mkdir -p semantics: tolerate EEXIST, let other failures fall through —
+    // the subsequent fopen will surface them with a more useful errno.
+    if (mkdir(dir, 0755) != 0 && errno != EEXIST) {
+        // Continue anyway; user may have a usable directory we can't introspect.
+    }
+
+    n = snprintf(outPath, outPathSize, "%s/%s", dir, filename);
+    if (n < 0 || (size_t)n >= outPathSize) {
+        UUrStartupMessage("[BundlePath] App Support path overflow building full path for '%s'", filename);
+        return UUcError_Generic;
+    }
+
+    UUrStartupMessage("[BundlePath] state file '%s' resolved to %s", filename, outPath);
+    return UUcError_None;
 }

@@ -27,6 +27,13 @@ extern "C" {
 
 UUtError ONiBundlePath_ResolveGameDataFolder(BFtFileRef *outFolder);
 
+// Resolve where a per-user state file (persist.dat, key_config.txt, ...)
+// should live. Prefers ./<filename> if it already exists (bare-binary
+// OniNative workflow), otherwise builds and ensures
+// ~/Library/Application Support/OniARM64/<filename> (the .app workflow).
+// Writes the chosen path to outPath.
+UUtError ONiBundlePath_ResolveStateFile(const char *filename, char *outPath, size_t outPathSize);
+
 #ifdef __cplusplus
 }
 #endif

@@ -22,6 +22,7 @@
 #include "Oni_Motoko.h"
 #include "Oni_Sound2.h"
 #include "Oni_Particle3.h"
+#include "ONi_BundlePath.h"
 
 enum
 {
@@ -100,7 +101,13 @@ void ONrPersistance_Initialize(void)
 	UUtError error;
 	UUtBool invalid_file;
 
-	stream = BFrFile_FOpen(ONcPersistance_FileName, "r");
+	{
+		char path[BFcMaxPathLength];
+		if (UUcError_None != ONiBundlePath_ResolveStateFile(ONcPersistance_FileName, path, sizeof(path))) {
+			UUrString_Copy(path, ONcPersistance_FileName, sizeof(path));
+		}
+		stream = BFrFile_FOpen(path, "r");
+	}
 	invalid_file = (NULL == stream);
 
 	if (!invalid_file) {
@@ -151,7 +158,11 @@ void ONrPersistance_Initialize(void)
 
 static void ONrPersist(void)
 {
-	BFtFile *stream = BFrFile_FOpen(ONcPersistance_FileName, "w");
+	char path[BFcMaxPathLength];
+	if (UUcError_None != ONiBundlePath_ResolveStateFile(ONcPersistance_FileName, path, sizeof(path))) {
+		UUrString_Copy(path, ONcPersistance_FileName, sizeof(path));
+	}
+	BFtFile *stream = BFrFile_FOpen(path, "w");
 	UUtError error;
 
 	if (NULL != stream) {

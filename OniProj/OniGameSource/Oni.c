@@ -777,10 +777,15 @@ static void KeyConfig(void)
 #endif
 
 	{
- 		FILE *key_config = fopen("key_config.txt", "r");
+		char key_config_path[BFcMaxPathLength];
+		if (UUcError_None != ONiBundlePath_ResolveStateFile("key_config.txt", key_config_path, sizeof(key_config_path))) {
+			UUrString_Copy(key_config_path, "key_config.txt", sizeof(key_config_path));
+		}
+
+ 		FILE *key_config = fopen(key_config_path, "r");
 
 		if (NULL == key_config) {
-			key_config = fopen("key_config.txt", "w");
+			key_config = fopen(key_config_path, "w");
 
 			if (NULL != key_config) {
 				const char **loop;
@@ -841,9 +846,9 @@ static void KeyConfig(void)
 		if (NULL != key_config) {
 			fclose(key_config);
 		}
-	}
 
-	RunKeyConfigFile("key_config.txt");
+		RunKeyConfigFile(key_config_path);
+	}
 
 	return;
 }
