@@ -107,6 +107,14 @@ void
 OSrAmbient_Stop(
 	SStPlayID					inAmbientID);
 
+// Stop all currently-playing ambients whose name matches inName (case-insensitive
+// exact match). Returns count stopped. Workaround for issue #2 — the Daodan
+// super-particle templates have a data design hole where ap_wiz looping ambients
+// leak past Daodan-end. Iterates OSgPlayingAmbientHandles; safe to call any time.
+UUtUns32
+OSrAmbient_StopByName(
+	const char					*inName);
+
 UUtBool
 OSrAmbient_Update(
 	SStPlayID					inAmbientID,

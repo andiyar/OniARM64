@@ -3702,6 +3702,25 @@ static void ONiCharacter_SuperParticle_SendEvent(ONtCharacter *ioCharacter, ONtA
 			itr, (void*)particle->particle,
 			(UUtUns32)particle->particle->header.flags,
 			(UUtUns32)particle->particle->header.current_sound);
+		/* Dump template shape on Stop event — investigating issue #2 (slot 0
+		   never toggles flags on Stop, hypothesis: empty eventlist[Stop] + active emitters). */
+		if (inEvent == P3cEvent_Stop) {
+			P3tParticleClass *cls = particle->particle_def->particle_class;
+			if (cls != NULL && cls->definition != NULL) {
+				UUtUns16 stop_actions = cls->definition->eventlist[P3cEvent_Stop].end_index -
+				                        cls->definition->eventlist[P3cEvent_Stop].start_index;
+				UUtUns32 em_idx;
+				UUrStartupMessage("[DAODAN-DBG]   slot=%u class='%s' stop_actions=%u num_emitters=%u",
+					itr, cls->classname,
+					(UUtUns32)stop_actions,
+					(UUtUns32)cls->definition->num_emitters);
+				for (em_idx = 0; em_idx < cls->definition->num_emitters; em_idx++) {
+					P3tParticleClass *emitted = cls->definition->emitter[em_idx].emittedclass;
+					UUrStartupMessage("[DAODAN-DBG]     slot=%u emitter[%u].emittedclass='%s'",
+						itr, em_idx, (emitted != NULL) ? emitted->classname : "(null)");
+				}
+			}
+		}
 		P3rSendEvent(particle->particle_def->particle_class, particle->particle, inEvent, current_time);
 		UUrStartupMessage("[DAODAN-DBG]   slot=%u after-send: flags=0x%08x current_sound=%u",
 			itr,
@@ -3713,6 +3732,20 @@ static void ONiCharacter_SuperParticle_SendEvent(ONtCharacter *ioCharacter, ONtA
 		ioActiveCharacter->superParticlesActive = UUcTrue;
 	} else if (inEvent == P3cEvent_Stop) {
 		ioActiveCharacter->superParticlesActive = UUcFalse;
+		/* [Issue #2] Backstop for ap_wiz leak. The super-particle templates
+		   emit children that play ap_wiz looping; some descendant in the chain
+		   doesn't reliably reach the EndAmbientSound action on Daodan-end, so
+		   instances accumulate "until level change" (user-observed).
+		   Force-stop them by name here. Cuts NPC-played ap_wiz instances in
+		   flight too, but NPC cycles re-fire immediately on next event, and
+		   Daodan-end is a rare per-cycle transition. */
+		{
+			UUtUns32 stopped = OSrAmbient_StopByName("ap_wiz");
+			if (stopped > 0) {
+				UUrStartupMessage("[DAODAN-DBG] Daodan-stop backstop: %u ap_wiz instances force-stopped",
+					stopped);
+			}
+		}
 	}
 }
 
