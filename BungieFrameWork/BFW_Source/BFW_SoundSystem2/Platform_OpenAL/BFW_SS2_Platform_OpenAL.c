@@ -60,6 +60,95 @@ static UUtBool oniSoundTraceEnabled(void)
 }
 
 // ======================================================================
+// buffer cache (issue #9 — alBufferData → usleep is the gunfire lag root)
+// ======================================================================
+// Profiling (2026-05-23, /tmp/oni-sample-20260523-{113844,114424}.txt) showed
+// alBufferData on Apple's OpenAL impl internally calls usleep → __semwait_signal,
+// blocking the main thread ~1ms per call. Under gunfire+strafe+Daodan stress
+// 4951 main-thread samples (8.3% of wall clock) sat in this syscall path.
+//
+// Mitigation: cache one ALuint buffer per unique SStSoundData* on first play
+// (eats the usleep once); subsequent plays just attach the cached buffer via
+// alSourcei(source, AL_BUFFER, cached_id) — no PCM upload, no usleep.
+//
+// SStSoundData* identity is stable for the lifetime of the loaded template
+// data (rawBase persists for the process), so pointer keys are safe.
+
+#define SS2cBufferCacheBuckets 4096  /* power of 2; 50% max load => ~2048 cached sounds */
+
+typedef struct SS2tBufferCacheEntry {
+	SStSoundData *key;        /* NULL = empty slot */
+	ALuint        buffer;
+} SS2tBufferCacheEntry;
+
+static SS2tBufferCacheEntry SS2gBufferCache[SS2cBufferCacheBuckets];
+static UUtUns32 SS2gBufferCacheCount = 0;
+static UUtUns32 SS2gBufferCacheHits = 0;
+static UUtUns32 SS2gBufferCacheMisses = 0;
+
+/* Cache is ON by default. Set ONI_AUDIO_CACHE=0 to bypass — restores the
+   legacy per-call alBufferData path as an escape hatch. */
+static UUtBool SS2iBufferCacheEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcTrue;
+	if (!initialized) {
+		const char *v = getenv("ONI_AUDIO_CACHE");
+		if (v && (v[0] == '0' || v[0] == 'n' || v[0] == 'N')) enabled = UUcFalse;
+		initialized = 1;
+	}
+	return enabled;
+}
+
+static UUtUns32 SS2iHashSoundData(SStSoundData *p)
+{
+	/* Fibonacci hash: mix high and low bits of a 64-bit pointer down to a bucket. */
+	uintptr_t x = (uintptr_t)p;
+	x ^= (x >> 16);
+	x *= 0x9e3779b1u;
+	return (UUtUns32)(x & (SS2cBufferCacheBuckets - 1));
+}
+
+static ALuint SS2iBufferCache_Lookup(SStSoundData *inSoundData)
+{
+	UUtUns32 h = SS2iHashSoundData(inSoundData);
+	for (UUtUns32 i = 0; i < SS2cBufferCacheBuckets; ++i) {
+		UUtUns32 idx = (h + i) & (SS2cBufferCacheBuckets - 1);
+		if (SS2gBufferCache[idx].key == NULL) return 0;
+		if (SS2gBufferCache[idx].key == inSoundData) return SS2gBufferCache[idx].buffer;
+	}
+	return 0;
+}
+
+static void SS2iBufferCache_Insert(SStSoundData *inSoundData, ALuint inBuffer)
+{
+	/* 50% load max — newer sounds beyond capacity fall back to per-call upload. */
+	if (SS2gBufferCacheCount * 2 >= SS2cBufferCacheBuckets) return;
+	UUtUns32 h = SS2iHashSoundData(inSoundData);
+	for (UUtUns32 i = 0; i < SS2cBufferCacheBuckets; ++i) {
+		UUtUns32 idx = (h + i) & (SS2cBufferCacheBuckets - 1);
+		if (SS2gBufferCache[idx].key == NULL) {
+			SS2gBufferCache[idx].key = inSoundData;
+			SS2gBufferCache[idx].buffer = inBuffer;
+			SS2gBufferCacheCount++;
+			return;
+		}
+	}
+}
+
+static void SS2iBufferCache_FreeAll(void)
+{
+	for (UUtUns32 i = 0; i < SS2cBufferCacheBuckets; ++i) {
+		if (SS2gBufferCache[i].key != NULL && SS2gBufferCache[i].buffer != 0) {
+			alDeleteBuffers(1, &SS2gBufferCache[i].buffer);
+			SS2gBufferCache[i].key = NULL;
+			SS2gBufferCache[i].buffer = 0;
+		}
+	}
+	SS2gBufferCacheCount = 0;
+}
+
+// ======================================================================
 // functions
 // ======================================================================
 // ----------------------------------------------------------------------
@@ -324,6 +413,20 @@ SS2rPlatform_SoundChannel_SetSoundData(
 	else
 		format = AL_FORMAT_STEREO16;
 
+	/* Fast path: cache hit. Skip decode + alBufferData entirely — the latter
+	   blocks the main thread in usleep on Apple's OpenAL impl (issue #9). */
+	UUtBool cache_enabled = SS2iBufferCacheEnabled();
+	if (cache_enabled) {
+		ALuint cached = SS2iBufferCache_Lookup(inSoundData);
+		if (cached != 0) {
+			alSourcei(inSoundChannel->pd.source, AL_BUFFER, cached);
+			CHECK_AL_ERROR();
+			SS2gBufferCacheHits++;
+			return UUcTrue;
+		}
+		SS2gBufferCacheMisses++;
+	}
+
 	if (inSoundData->f.wFormatTag == 2)
 	{
 		UUtUns16 *decoded = UUrMemory_Block_New(inSoundData->num_bytes * 4);
@@ -337,11 +440,23 @@ SS2rPlatform_SoundChannel_SetSoundData(
 			samples, success ? "OK" : "FAIL");
 		if (success)
 		{
+			/* When cache is on, allocate a new buffer per unique SStSoundData* and
+			   cache it. Channel's pd.buffer becomes the fallback for alGenBuffers
+			   failure (and the legacy path when cache is disabled). */
+			ALuint target_buffer = inSoundChannel->pd.buffer;
+			if (cache_enabled) {
+				ALuint new_buf = 0;
+				alGenBuffers(1, &new_buf);
+				if (new_buf != 0) target_buffer = new_buf;
+			}
 			alSourcei(inSoundChannel->pd.source, AL_BUFFER, 0);
-			alBufferData(inSoundChannel->pd.buffer, format, decoded, samples * sizeof(*decoded), inSoundData->f.nSamplesPerSec);
+			alBufferData(target_buffer, format, decoded, samples * sizeof(*decoded), inSoundData->f.nSamplesPerSec);
 			CHECK_AL_ERROR();
-			alSourcei(inSoundChannel->pd.source, AL_BUFFER, inSoundChannel->pd.buffer);
+			alSourcei(inSoundChannel->pd.source, AL_BUFFER, target_buffer);
 			CHECK_AL_ERROR();
+			if (cache_enabled && target_buffer != inSoundChannel->pd.buffer) {
+				SS2iBufferCache_Insert(inSoundData, target_buffer);
+			}
 		}
 		UUrMemory_Block_Delete(decoded);
 		return success;
@@ -360,11 +475,20 @@ SS2rPlatform_SoundChannel_SetSoundData(
 
 		SSrIMA_DecompressSoundData(inSoundData, pcm, num_packets, 0);
 
+		ALuint target_buffer = inSoundChannel->pd.buffer;
+		if (cache_enabled) {
+			ALuint new_buf = 0;
+			alGenBuffers(1, &new_buf);
+			if (new_buf != 0) target_buffer = new_buf;
+		}
 		alSourcei(inSoundChannel->pd.source, AL_BUFFER, 0);
-		alBufferData(inSoundChannel->pd.buffer, format, pcm, pcm_bytes, SScSamplesPerSecond);
+		alBufferData(target_buffer, format, pcm, pcm_bytes, SScSamplesPerSecond);
 		CHECK_AL_ERROR();
-		alSourcei(inSoundChannel->pd.source, AL_BUFFER, inSoundChannel->pd.buffer);
+		alSourcei(inSoundChannel->pd.source, AL_BUFFER, target_buffer);
 		CHECK_AL_ERROR();
+		if (cache_enabled && target_buffer != inSoundChannel->pd.buffer) {
+			SS2iBufferCache_Insert(inSoundData, target_buffer);
+		}
 
 		UUrMemory_Block_Delete(pcm);
 		return UUcTrue;
@@ -507,6 +631,8 @@ SS2rPlatform_Initialize(
 		"[SS2/OAL] Init OK: device=%p context=%p numChannels=%u (numMono=%d numStereo=%d)",
 		(void*)SSgDevice, (void*)SSgContext,
 		*outNumChannels, numMono, numStereo);
+	UUrStartupMessage("[SS2/OAL] Buffer cache: %s (set ONI_AUDIO_CACHE=0 to disable)",
+		SS2iBufferCacheEnabled() ? "ON" : "OFF");
 
 	return UUcError_None;
 }
@@ -531,6 +657,15 @@ void
 SS2rPlatform_Terminate(
 	void)
 {
+	if (SS2iBufferCacheEnabled()) {
+		UUrStartupMessage("[SS2/OAL] Buffer cache stats: %u entries, %u hits, %u misses (hit ratio %.1f%%)",
+			SS2gBufferCacheCount, SS2gBufferCacheHits, SS2gBufferCacheMisses,
+			(SS2gBufferCacheHits + SS2gBufferCacheMisses) > 0
+				? (100.0 * SS2gBufferCacheHits) / (SS2gBufferCacheHits + SS2gBufferCacheMisses)
+				: 0.0);
+		SS2iBufferCache_FreeAll();
+	}
+
 	alcMakeContextCurrent(NULL);
 	CHECK_AL_ERROR();
 	if (SSgContext)
