@@ -7,7 +7,7 @@ Native ARM64 / Apple Silicon port of [Oni](https://en.wikipedia.org/wiki/Oni_(vi
 - Apple Silicon Mac (M-series)
 - macOS 13+ (Ventura / Sonoma / Sequoia)
 - Homebrew with `cmake` and `sdl2`
-- A legitimate copy of Oni. This repo contains **no game assets** — you'll need the original `.dat` / `.raw` / `.sep` data files from your own install (Anniversary Edition, a Windows CrossOver / Wine prefix, or the retail CD).
+- A legitimate copy of Oni. This repo contains **no game assets** — you'll need the original `.dat` / `.raw` / `.sep` data files from your own install.
 
 ## Build
 
