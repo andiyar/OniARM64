@@ -97,7 +97,7 @@ Levels 1 (tutorial) and 2 (warehouse) playable end-to-end — combat, AI, weapon
 - [ ] All 14 levels playable
 
 ### Phase 7 — Shippable artefact
-- [ ] `.app` bundle + code signing
+- [x] `.app` bundle + code signing
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs)
 
 </details>
