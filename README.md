@@ -19,10 +19,10 @@
 
 ### Download a build
 
-1. Grab the latest `OniARM64.app.zip` from [Releases](https://github.com/andiyar/OniARM64/releases).
-2. Unzip and drop the .app in `/Applications` (or wherever).
-3. First launch: **right-click → Open** to bypass Gatekeeper (ad-hoc signed; Developer-ID builds coming).
-4. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/gamedata/` (or symlink it).
+1. Grab the latest `OniARM64.dmg` from [Releases](https://github.com/andiyar/OniARM64/releases).
+2. Open the DMG and drag `OniARM64.app` onto the `Applications` shortcut.
+3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/gamedata/` (or symlink it).
+4. Double-click `OniARM64.app` to launch. Signed + notarized with Apple — no Gatekeeper warnings, no right-click workaround needed.
 
 ### Build from source
 
