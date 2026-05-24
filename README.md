@@ -189,10 +189,11 @@ Issues welcome. No roadmap.
 ## Credits
 
 - **Bungie** — original game (2001), source release, asset formats. Shipped the original Mac PPC build alongside Windows.
-- **The Omni Group** — 2001–2007 PowerPC OS X port (Oni 1.0 v1.36, Ken Case et al.)
-- **[Feral Interactive](https://www.feralinteractive.com/)** — 2008–2015 Intel macOS port (Oni 1.1 Intel → 1.2 → 1.2.1). Their `Oni.icns`, intro/outro QuickTime cinematics, and `Info.plist` template are reused in this build.
+- **The Omni Group** — 2001–2007 PowerPC OS X port (Oni 1.0 v1.36, Ken Case et al.). Designed the "O" Mac app icon used by every Mac build since.
+- **[Feral Interactive](https://www.feralinteractive.com/)** — 2008–2015 Intel macOS port (Oni 1.1 Intel → 1.2 → 1.2.1). The `Oni.icns` packaging, intro/outro QuickTime cinematics, and `Info.plist` template lifted into this build are from their 1.2.1 binary.
 - **[hogsy/OniFoxed](https://github.com/hogsy/OniFoxed)** — upstream fork this branched from; kept the 2001 source release building on modern systems.
-- **[oni2.net community](https://oni2.net/)** — OniSplit / OUP / Daodan reverse engineering.
+- **[Iritscen](https://iritscen.oni2.net/)** — Anniversary Edition project, [Oni Mod Depot](https://mods.oni2.net/), and a lot of the community tooling and documentation we leaned on.
+- **[oni2.net community](https://oni2.net/)** — OniSplit / OUP / Daodan reverse engineering. `wiki.oni2.net` / `oni.bungie.org` forums are the canonical Oni-modding reference.
 
 ---
 
