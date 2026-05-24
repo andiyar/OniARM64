@@ -112,7 +112,7 @@ Out of scope:
 - [x] Menu / cutscene / dialogue audio plays
 - [x] Footstep impact sounds play
 - [ ] Particle classes load without size-class overflow
-- [ ] Security-laser tripwire beams render in the tutorial level
+- [x] Security-laser tripwire beams render in the tutorial level
 
 ### Phase 5 — AI behaviour ✅
 - [x] NPCs detect the player via sight and sound (Knowledge layer)

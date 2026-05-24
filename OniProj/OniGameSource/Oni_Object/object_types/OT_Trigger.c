@@ -536,7 +536,17 @@ static void OBJiTrigger_Draw( OBJtObject *inObject, UUtUns32 inDrawFlags)
 							{
 								UUtUns32 color= trigger_osd->color;
 
-							#if defined(UUmPlatform) && (UUmPlatform == UUmPlatform_Mac)
+							/* Bungie original gated this byte-reversal on UUmPlatform_Mac.
+							   That made sense in 2001 when Mac == Classic Mac == PowerPC
+							   big-endian: the swap converted big-endian-laid-out ARGB to
+							   the byte order the Classic Mac contrail renderer expected.
+							   On modern macOS (Intel + ARM64), Mac is little-endian like
+							   Win32, and the swap is actively harmful: it turns the
+							   opaque-red 0xFFFF0000 trigger color into 0x0000FFFF, which
+							   FXrDrawLaser then interprets as alpha=0 (fully transparent
+							   — invisible beam) + cyan RGB. Gate on UUmEndian_Big so
+							   the swap only fires on actually-big-endian targets. */
+							#if UUmEndian == UUmEndian_Big
 								color= ((color&0xFF000000)>>24)|((color& 0x00FF0000)>>8)|((color&0x0000FF00)<<8)|((color&0x000000FF)<<24);
 							#endif
 								/* [LASER-DBG] draw call — throttled 1/60 and gated by ONI_LASER_TRACE */
