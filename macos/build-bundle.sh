@@ -12,6 +12,10 @@ set -euo pipefail
 
 SOURCE_DIR="${1:?source dir required}"
 BINARY_DIR="${2:?binary dir required}"
+# Third arg: codesign identity. "-" = ad-hoc (default, fast dev loop).
+# Pass a full "Developer ID Application: Name (TEAMID)" string for release
+# builds, which switches the script into hardened-runtime + timestamp mode.
+SIGN_IDENTITY="${3:--}"
 
 APP="$BINARY_DIR/bin/OniARM64.app"
 CONTENTS="$APP/Contents"
@@ -120,15 +124,35 @@ done
 
 # 4d. Re-sign phase: install_name_tool invalidates code signatures on Apple
 #     Silicon, and dyld refuses to load Mach-Os with stale signatures
-#     (SIGKILL: Code Signature Invalid). Re-apply an ad-hoc signature
-#     (`--sign -`) to the binary and every bundled dylib so dyld accepts them.
-#     Ad-hoc = no team identity, just a self-signature; matches what Homebrew
-#     dylibs themselves ship with.
-codesign --force --sign - "$BINARY_IN_BUNDLE"
+#     (SIGKILL: Code Signature Invalid). Re-sign every Mach-O so dyld accepts
+#     it, then seal the bundle.
+#
+#     Order matters: dylibs first, main binary second, .app bundle third.
+#     (Inside-out — required for hardened-runtime Developer ID signing;
+#      harmless for ad-hoc.) Hardened-runtime + timestamp flags are added
+#     when SIGN_IDENTITY != "-"; entitlements applied to the main binary only.
+ENTITLEMENTS="$SOURCE_DIR/macos/entitlements.plist"
+SIGN_ARGS=(--force --sign "$SIGN_IDENTITY")
+if [ "$SIGN_IDENTITY" != "-" ]; then
+    SIGN_ARGS+=(--options runtime --timestamp)
+fi
+
+# Dylibs first
 for dylib in "$FRAMEWORKS"/*.dylib; do
     [ -f "$dylib" ] || continue
-    codesign --force --sign - "$dylib"
+    codesign "${SIGN_ARGS[@]}" "$dylib"
 done
+
+# Main binary second (with entitlements only when using a real identity;
+# ad-hoc + entitlements is a noisy no-op that some tools flag).
+BINARY_SIGN_ARGS=("${SIGN_ARGS[@]}")
+if [ "$SIGN_IDENTITY" != "-" ]; then
+    BINARY_SIGN_ARGS+=(--entitlements "$ENTITLEMENTS")
+fi
+codesign "${BINARY_SIGN_ARGS[@]}" "$BINARY_IN_BUNDLE"
+
+# Bundle itself third — seals Contents/_CodeSignature/CodeResources.
+codesign "${SIGN_ARGS[@]}" "$APP"
 
 bundled_count=$(find "$FRAMEWORKS" -name '*.dylib' | wc -l | tr -d ' ')
 echo "build-bundle.sh: $APP assembled ($bundled_count dylibs bundled, ad-hoc signed)."
