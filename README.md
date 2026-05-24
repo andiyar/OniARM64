@@ -150,4 +150,27 @@ Issues welcome. No roadmap.
 
 ---
 
+## Bundled third-party software
+
+The downloadable `.app` ships with these libraries (Homebrew dylibs copied into `Contents/Frameworks/` and re-signed):
+
+| Component | License | Project |
+| --- | --- | --- |
+| SDL2 | zlib | [libsdl.org](https://libsdl.org) |
+| FFmpeg (`libavcodec` / `libavutil` / `libswresample`) | LGPL-2.1-or-later | [ffmpeg.org](https://ffmpeg.org) |
+| LAME (`libmp3lame`) | LGPL-2.0-or-later | [LAME](https://lame.sourceforge.io/) |
+| Opus (`libopus`) | BSD-3-Clause | [opus-codec.org](https://opus-codec.org/) |
+| libvpx | BSD-3-Clause | [WebM Project](https://www.webmproject.org/code/) |
+| dav1d (`libdav1d`) | BSD-2-Clause | [VideoLAN](https://www.videolan.org/projects/dav1d.html) |
+| SVT-AV1 (`libSvtAv1Enc`) | BSD-3-Clause-Clear + AV1 patent terms | [Alliance for Open Media](https://aomedia.org/) |
+| OpenSSL 3 (`libcrypto` / `libssl`) | Apache-2.0 | [openssl.org](https://www.openssl.org) |
+| x264 ⚠️ | GPL-2.0-or-later | [VideoLAN](https://www.videolan.org/developers/x264.html) |
+| x265 ⚠️ | GPL-2.0-or-later | [x265.org](http://x265.org/) |
+
+⚠️ The bundle currently includes **x264** and **x265** (transitive deps of Homebrew's GPL-enabled ffmpeg build). Oni doesn't *use* them — it only decodes the intro/outro `.mov` files, no H.264/H.265 encoding — but their presence in the redistributed binary makes the combined work subject to GPL terms. Tracking the strip / move-to-AVFoundation cleanup in [#19](https://github.com/andiyar/OniARM64/issues/19).
+
+Source for each library is at the upstream project links above. The build-from-source path uses your own Homebrew installs; nothing is bundled there.
+
+---
+
 <sub><em>Oni © 2001 Bungie / Take-Two Interactive. Fan port of the 2001 source release. Not affiliated with Bungie or Take-Two.</em></sub>
