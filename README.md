@@ -132,6 +132,51 @@ Common env vars:
 
 ---
 
+## Building a release
+
+For producing the signed + notarized + stapled `OniARM64.dmg` that ships to [Releases](https://github.com/andiyar/OniARM64/releases). Maintainer workflow — most contributors will never need this.
+
+<details>
+<summary><strong>Setup + per-release commands</strong></summary>
+
+Extra dep:
+
+```sh
+brew install create-dmg
+```
+
+One-time keychain setup (notarization credentials). App-specific password from https://appleid.apple.com/account/manage → Sign-In and Security → App-Specific Passwords:
+
+```sh
+xcrun notarytool store-credentials oniarm64-notarize \
+    --apple-id "<your-apple-id>" \
+    --team-id "<your-team-id>" \
+    --password "<app-specific-password>"
+```
+
+One-time CMake configure (signing identity). Discover yours with `security find-identity -v -p codesigning`:
+
+```sh
+cmake .. -DPlatform_SDL=ON \
+    -DONI_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+```
+
+Per-release build:
+
+```sh
+make oni_app_release
+# Produces build/OniARM64.dmg — signed, notarized, stapled, drag-to-Applications.
+# Takes ~7 min total (two Apple notary round-trips: ~3min for the .app, ~2min for the DMG).
+```
+
+**Recovery:** if `notarytool submit` returns `Invalid`, fetch the rejection log with `xcrun notarytool log <submission-id> --keychain-profile oniarm64-notarize`.
+
+**Known flake:** `create-dmg` occasionally errors on first run with cryptic `hdiutil` warnings — it wraps `hdiutil` + AppleScript and Finder state matters. Re-run `make oni_app_release`; usually succeeds the second time.
+
+</details>
+
+---
+
 ## Contributing
 
 Issues welcome. No roadmap.
