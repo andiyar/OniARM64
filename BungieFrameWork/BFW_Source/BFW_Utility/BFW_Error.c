@@ -19,6 +19,7 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include "BFW.h"
 #include "BFW_Console.h"
@@ -87,6 +88,20 @@ static FILE *iOpenLogFile(const char *filename, const char *mode)
 	return fp;
 }
 
+// Issue #17 — append a "===== session start <timestamp> =====" banner so consecutive
+// sessions in append-mode log files are visually delimited and greppable.
+static void iWriteSessionBanner(FILE *stream)
+{
+	if (stream == NULL) return;
+	time_t now = time(NULL);
+	struct tm *lt = localtime(&now);
+	if (lt == NULL) return;
+	fprintf(stream, "\n===== session start %04d-%02d-%02d %02d:%02d:%02d =====\n",
+		lt->tm_year + 1900, lt->tm_mon + 1, lt->tm_mday,
+		lt->tm_hour, lt->tm_min, lt->tm_sec);
+	fflush(stream);
+}
+
 static void iAppendDebugFileMessage(char *msg)
 {
 	if (NULL == iDebugFile)
@@ -94,7 +109,9 @@ static void iAppendDebugFileMessage(char *msg)
 #if defined(DEBUGGING) && DEBUGGING
                 iDebugFile = stderr;
 #else
-		iDebugFile = iOpenLogFile("debugger.txt", "wb");
+		// Issue #17 — append mode preserves prior sessions across launches.
+		iDebugFile = iOpenLogFile("debugger.txt", "ab");
+		iWriteSessionBanner(iDebugFile);
 #endif
 	}
 
@@ -527,7 +544,9 @@ void UUcArglist_Call UUrStartupMessage(
 	va_end(arglist);
 
 	if (NULL == stream) {
-		stream = iOpenLogFile("startup.txt", "w");
+		// Issue #17 — append mode preserves prior sessions across launches.
+		stream = iOpenLogFile("startup.txt", "a");
+		iWriteSessionBanner(stream);
 	}
 
 	if (NULL != stream) {

@@ -6,6 +6,11 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-05-24 — Session 33: Logs persist across launches (#17 — append mode + session banner)
+
+- **`fix(logging): startup.txt + debugger.txt persist across launches`** ([BFW_Error.c](BungieFrameWork/BFW_Source/BFW_Utility/BFW_Error.c)). `fopen("startup.txt", "w")` → `"a"` and `fopen("debugger.txt", "wb")` → `"ab"`, plus a new `iWriteSessionBanner()` helper that writes `===== session start YYYY-MM-DD HH:MM:SS =====` on each open. `grep -n "===== session start" startup.txt | tail` jumps straight to the latest run; old sessions are archived in the same file. Closes the workflow tax where users (and Claude) had to remember to SIGKILL the process before reading the log, because the *next* launch's `fopen("w")` would truncate it. Issue [#17](https://github.com/andiyar/OniARM64/issues/17), `fixes #17` pending user verification of the banner format.
+- **Mechanism correction**: prior memory and CLAUDE.md framing claimed Oni "unlinks startup.txt at startup; survives SIGKILL, vanishes on graceful exit." That was wrong — no `unlink` ever existed in the tree. The actual mechanism was `fopen("w")` truncating at process startup. The SIGKILL folklore worked by accident: killing left the file intact and the user typically read it before relaunching, which is also true post-graceful-exit. Memory body had been corrected session 27 but the index entry stayed stale, so the wrong framing kept getting re-cited. Index updated this session.
+
 ### 2026-05-24 — Session 32: Laser-beam investigation (#6) — bridge hypothesis refuted, diagnostic coverage expanded
 
 - **Phase 1 evidence: the bridge hypothesis from #6 is unlikely.** TRGE (`OBJtTriggerEmitterClass` at `Oni_Object.h:487`) is `M3tPoint3D + M3tVector3D + geometry* + u32` — no embed-struct-with-inner-pointer pattern. TRIG (`OBJtTriggerClass` at `Oni_Object.h:497`) is flat u32/u16/float/pointer/char[32]. Walker handles each field natively. No `[bridge] SIZE MISMATCH` lines for these or any template in the latest startup.txt. Also: the issue's third suspect `ONWCLaserSight` doesn't exist as a template — session-27 audit conflated it with `ONiDrawLaserSight` (function at `Oni_Character.c:6297`), which draws *character weapon* laser sights (sniper rifle), not the tutorial security tripwires.
