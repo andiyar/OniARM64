@@ -381,6 +381,25 @@ static void OBJiTrigger_Draw( OBJtObject *inObject, UUtUns32 inDrawFlags)
 
 	emitter = trigger_osd->trigger_class->emitter;
 
+	/* [LASER-DBG] entry — throttled 1/60 and gated by ONI_LASER_TRACE.
+	   Confirms whether OBJiTrigger_Draw is actually being reached for each
+	   trigger object. The existing 'gate' tracer fires only inside the
+	   non-Hidden else branch; this fires unconditionally so we can tell
+	   whether Hidden state, emitter_count==0, or some other gate further
+	   down is what suppresses the laser. */
+	if (oniLaserTraceEnabled()) {
+		static UUtUns32 sEntryCount = 0;
+		if ((++sEntryCount % 60) == 1) {
+			UUrStartupMessage("[LASER-DBG] Draw-entry count=%u trig=%s emit_count=%u flags=0x%04x color=0x%08x laser_on=%d",
+				sEntryCount,
+				trigger_osd->trigger_class_name,
+				(unsigned) trigger_osd->emitter_count,
+				(unsigned) trigger_osd->flags,
+				(unsigned) trigger_osd->color,
+				(int) trigger_osd->laser_on);
+		}
+	}
+
 
 	MUrMatrix_BuildTranslate(inObject->position.x, inObject->position.y, inObject->position.z, matrix_stack + 0);
 	MUrMatrixStack_Matrix(matrix_stack + 0, &trigger_osd->rotation_matrix);
@@ -1108,6 +1127,22 @@ UUtError OBJrTrigger_Reset(OBJtObject* inObject)
 		trigger_osd->change_time = trigger_osd->time_on;
 	else
 		trigger_osd->change_time = 0;
+
+	/* [LASER-DBG] one-shot per Reset (per trigger, per level load) gated by
+	   ONI_LASER_TRACE. Captures the data values that gate the beam draw:
+	   color (alpha-0 = invisible), time_on/off (the on/off cycle),
+	   emitter_count (>0 required to enter the per-emitter for-loop in Draw),
+	   and the initial flag word (Active / InitialActive / Hidden bits). */
+	if (oniLaserTraceEnabled()) {
+		UUrStartupMessage("[LASER-DBG] Reset trig=%s emit_count=%u color=0x%08x time_on=%u time_off=%u flags=0x%04x laser_on=%d",
+			trigger_osd->trigger_class_name,
+			(unsigned) trigger_osd->emitter_count,
+			(unsigned) trigger_osd->color,
+			(unsigned) trigger_osd->time_on,
+			(unsigned) trigger_osd->time_off,
+			(unsigned) trigger_osd->flags,
+			(int) trigger_osd->laser_on);
+	}
 
 	// reset the animation
 	if( trigger_osd->trigger_class->animation )

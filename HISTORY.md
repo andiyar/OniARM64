@@ -6,6 +6,16 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-05-24 — Session 32: Laser-beam investigation (#6) — bridge hypothesis refuted, diagnostic coverage expanded
+
+- **Phase 1 evidence: the bridge hypothesis from #6 is unlikely.** TRGE (`OBJtTriggerEmitterClass` at `Oni_Object.h:487`) is `M3tPoint3D + M3tVector3D + geometry* + u32` — no embed-struct-with-inner-pointer pattern. TRIG (`OBJtTriggerClass` at `Oni_Object.h:497`) is flat u32/u16/float/pointer/char[32]. Walker handles each field natively. No `[bridge] SIZE MISMATCH` lines for these or any template in the latest startup.txt. Also: the issue's third suspect `ONWCLaserSight` doesn't exist as a template — session-27 audit conflated it with `ONiDrawLaserSight` (function at `Oni_Character.c:6297`), which draws *character weapon* laser sights (sniper rifle), not the tutorial security tripwires.
+- **Three new `[LASER-DBG]` tracers added**, all gated by the existing `ONI_LASER_TRACE` env var (no perf cost when unset). Sized to discriminate four alternative hypotheses in a single playthrough:
+  - **`Reset`** in `OBJrTrigger_Reset` (one-shot per trigger per level load) — logs `emit_count, color, time_on/off, flags, laser_on`. Captures load-time data values: trigger loaded? with what color/timing/initial state?
+  - **`FX-init`** in `FXrEffects_LevelBegin` (one-shot per level begin) — logs `FXgLaser_Texture, alpha, width`. If `tex=0x0`, the `laser_contrail` template lookup failed at startup and every later `FXrDrawLaser` call asserts in TOOL_VERSION or passes NULL to the renderer in release.
+  - **`Draw-entry`** in `OBJiTrigger_Draw` (throttled 1/60, fires unconditionally before the Hidden gate) — logs `emit_count, flags, color, laser_on`. Closes the gap left by the existing per-emitter `gate` tracer, which only fires in the non-Hidden else-branch and so can't distinguish Hidden flag vs emitter_count==0 vs Draw not reached.
+- **Coverage now**: 6 `[LASER-DBG]` tracers total (3 existing from session 27 + 3 new). One playthrough through the tutorial security-laser room with `ONI_LASER_TRACE=1` discriminates: (A) trigger Hidden, (B) emit_count==0, (C) color alpha=0, (D) texture==NULL, (E) all gates pass but contrail renderer fails. Diagnostics retained per `feedback_keep_diagnostics`.
+- **No fix shipped this session** — Phase 1 evidence-gathering only. Real run pending at user's next desk session. Carries `addresses #6`.
+
 ### 2026-05-24 — Session 31: Embed-struct bridge audit (issue #4) — 3 new HIGH-confidence candidates identified
 
 - **Audit dispatched overnight at user's request.** Six parallel Opus subagents partitioned by subsystem (Akira/Path, Motoko/Render, Text/UI/Sound BFW, Totoro public, Oni game-logic, Oni AI). Two follow-up agents closed gaps: one auditing `BFW_Source/BFW_Totoro/BFW_Totoro_Private.h` (TRAM's home, out of the original Totoro agent's scope) and one reading `BFW_TM_Bridge.c` to disambiguate whether vararray/fixedarray element stride uses C `sizeof` (safe) or sum-of-swap-codes (broken). ~95 `tm_struct` + ~70 `tm_template` definitions examined; no code changed. Full inventory + per-candidate analysis posted on [issue #4](https://github.com/andiyar/OniARM64/issues/4).

@@ -39,6 +39,16 @@ UUtError FXrEffects_LevelBegin(void)
 		FXgLaser_Texture->flags			|= M3cTextureFlags_Blend_Additive;
 	}
 
+	/* One-shot per level begin — confirms whether the contrail texture loaded.
+	   If FXgLaser_Texture is NULL here, every FXrDrawLaser call later will
+	   assert in TOOL_VERSION builds and pass NULL to the renderer in release. */
+	if (getenv("ONI_LASER_TRACE") != NULL) {
+		UUrStartupMessage("[LASER-DBG] FX-init FXgLaser_Texture=%p alpha=%d width=%.3f",
+			(void *) FXgLaser_Texture,
+			(int) FXgLaser_UseAlpha,
+			FXgLaser_Width);
+	}
+
 	return UUcError_None;
 }
 
