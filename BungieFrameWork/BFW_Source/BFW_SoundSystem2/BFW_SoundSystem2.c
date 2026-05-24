@@ -2065,6 +2065,12 @@ SSiSoundChannel_SetLooping(
 	{
 		inSoundChannel->status &= ~SScSCStatus_Looping;
 	}
+
+	/* Issue #2 — propagate the shadow bit to the platform layer immediately.
+	   On OpenAL the source's AL_LOOPING attribute is otherwise only set at
+	   Play() time, so an in-flight SetLooping(false) (used by the graceful
+	   stop path in SSrAmbient_Stop) would never take effect. */
+	SS2rPlatform_SoundChannel_SetLooping(inSoundChannel, inLooping);
 }
 
 // ----------------------------------------------------------------------
@@ -5442,8 +5448,12 @@ SSrAmbient_Stop(
 	SStPlayingAmbient			*playing_ambient_array;
 	UUtUns32					i;
 	UUtUns32					num_playing_ambients;
+	UUtBool						found = UUcFalse;  /* [SS2-STOP-DBG] issue #2 */
 
-	if (SSgUsable == UUcFalse) { return; }
+	if (SSgUsable == UUcFalse) {
+		UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u SKIP: SSgUsable=false", (UUtUns32)inPlayID);
+		return;
+	}
 
 	SSrWaitGuard(SSgGuardAll);
 
@@ -5454,16 +5464,29 @@ SSrAmbient_Stop(
 	{
 		if (playing_ambient_array[i].id != inPlayID) { continue; }
 
+		found = UUcTrue;  /* [SS2-STOP-DBG] */
+
 		if ((playing_ambient_array[i].stage == SScPAStage_None) ||
 			((playing_ambient_array[i].stage >= SScPAStage_BodyStopping) &&
 			(playing_ambient_array[i].stage <= SScPAStage_OutSoundPlaying)))
 		{
+			UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u name='%s' SKIP: stage=%u (already stopping/done)",
+				(UUtUns32)inPlayID,
+				playing_ambient_array[i].ambient ? playing_ambient_array[i].ambient->ambient_name : "(null)",
+				(UUtUns32)playing_ambient_array[i].stage);
 			break;
 		}
 
 
 		if ((playing_ambient_array[i].ambient->flags & SScAmbientFlag_InterruptOnStop) != 0)
 		{
+			UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u name='%s' stage=%u flags=0x%x BRANCH=interrupt ch1=%p ch2=%p",
+				(UUtUns32)inPlayID,
+				playing_ambient_array[i].ambient->ambient_name,
+				(UUtUns32)playing_ambient_array[i].stage,
+				(UUtUns32)playing_ambient_array[i].ambient->flags,
+				(void*)playing_ambient_array[i].channel1,
+				(void*)playing_ambient_array[i].channel2);
 			// stop channel 1
 			if (playing_ambient_array[i].channel1 != NULL)
 			{
@@ -5478,9 +5501,18 @@ SSrAmbient_Stop(
 		}
 		else
 		{
+			UUtBool ch2_playing = (playing_ambient_array[i].channel2 != NULL) &&
+				(SSiSoundChannel_IsPlaying(playing_ambient_array[i].channel2) == UUcTrue);
+			UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u name='%s' stage=%u flags=0x%x BRANCH=graceful ch1=%p ch2=%p ch2_playing=%d",
+				(UUtUns32)inPlayID,
+				playing_ambient_array[i].ambient->ambient_name,
+				(UUtUns32)playing_ambient_array[i].stage,
+				(UUtUns32)playing_ambient_array[i].ambient->flags,
+				(void*)playing_ambient_array[i].channel1,
+				(void*)playing_ambient_array[i].channel2,
+				(int)ch2_playing);
 			// make sure channel 2 isn't looping
-			if ((playing_ambient_array[i].channel2 != NULL) &&
-				(SSiSoundChannel_IsPlaying(playing_ambient_array[i].channel2) == UUcTrue))
+			if (ch2_playing)
 			{
 				SSiSoundChannel_SetLooping(playing_ambient_array[i].channel2, UUcFalse);
 				break;
@@ -5507,6 +5539,11 @@ SSrAmbient_Stop(
 		}*/
 
 		break;
+	}
+
+	if (!found) {
+		UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u NOT FOUND in SSgPlayingAmbient[0..%u)",
+			(UUtUns32)inPlayID, (UUtUns32)num_playing_ambients);
 	}
 
 	SSrReleaseGuard(SSgGuardAll);

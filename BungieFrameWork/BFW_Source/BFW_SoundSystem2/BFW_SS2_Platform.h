@@ -72,6 +72,16 @@ void
 SS2rPlatform_SoundChannel_Stop(
 	SStSoundChannel				*inSoundChannel);
 
+/* Propagate the channel's loop flag (SScSCStatus_Looping) to the platform
+   immediately. Without this, SSiSoundChannel_SetLooping only updates the
+   shadow bit; on OpenAL the source's AL_LOOPING is only set inside
+   SS2rPlatform_SoundChannel_Play(), so a later SetLooping(false) wouldn't
+   take effect and looping ambients (e.g. health_over) would loop forever. */
+void
+SS2rPlatform_SoundChannel_SetLooping(
+	SStSoundChannel				*inSoundChannel,
+	UUtBool						inLooping);
+
 void
 SS2rPlatform_SoundChannel_Terminate(
 	SStSoundChannel				*inSoundChannel);

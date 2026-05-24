@@ -4112,6 +4112,21 @@ static void ONrGameState_UpdateConditionSounds(void)
 		ONrGameState_ConditionSound_Stop(ONcConditionSound_HealthLow);
 	}
 
+	/* [HEALTH-OVER-DBG] issue #2 — log branch transitions to distinguish
+	   "Stop branch never hit" (hitPoints stays > maxHitPoints) from "Stop is
+	   called but SSrAmbient_Stop is a no-op". Fires twice per Daodan cycle
+	   (entry into START, entry into STOP). */
+	{
+		static int ho_last_branch = -1;  /* -1=unknown, 0=stop, 1=start */
+		int ho_this_branch = (player->hitPoints > player->maxHitPoints) ? 1 : 0;
+		if (ho_this_branch != ho_last_branch) {
+			UUrStartupMessage("[HEALTH-OVER-DBG] branch=%s hitPoints=%d maxHitPoints=%d",
+				ho_this_branch ? "START" : "STOP",
+				(int)player->hitPoints,
+				(int)player->maxHitPoints);
+			ho_last_branch = ho_this_branch;
+		}
+	}
 	if (player->hitPoints > player->maxHitPoints) {
 		// determine the amount of boosted health
 		volume = (player->hitPoints - player->maxHitPoints) /
@@ -6864,6 +6879,12 @@ void ONrGameState_ConditionSound_Start(UUtUns32 inCondition, float inVolume)
 		if (ONgGameSettingsRuntime.condition_sound[inCondition] != NULL) {
 			ONgGameState->condition_playid[inCondition] =
 						SSrAmbient_Start_Simple(ONgGameSettingsRuntime.condition_sound[inCondition], &inVolume);
+			/* [HEALTH-OVER-DBG] issue #2 — log playid stored after first start */
+			if (inCondition == ONcConditionSound_HealthOver) {
+				UUrStartupMessage("[HEALTH-OVER-DBG] Start: SSrAmbient_Start_Simple returned playid=%u (SScInvalidID=%u)",
+					(UUtUns32)ONgGameState->condition_playid[inCondition],
+					(UUtUns32)SScInvalidID);
+			}
 		}
 //		COrConsole_Printf("condition %s start %f", ONcConditionSoundName[inCondition], inVolume);
 
@@ -6880,14 +6901,30 @@ void ONrGameState_ConditionSound_Stop(UUtUns32 inCondition)
 
 	UUmAssert((inCondition >= 0) && (inCondition < ONcEventSound_Max));
 
+	/* [HEALTH-OVER-DBG] issue #2 — log Stop entry conditions for HealthOver */
+	if (inCondition == ONcConditionSound_HealthOver) {
+		UUrStartupMessage("[HEALTH-OVER-DBG] Stop ENTRY active=0x%x mask=0x%x playid=%u",
+			(UUtUns32)ONgGameState->condition_active,
+			(UUtUns32)mask,
+			(UUtUns32)ONgGameState->condition_playid[inCondition]);
+	}
+
 	if (ONgGameState->condition_active & mask) {
 		ONgGameState->condition_active &= ~mask;
 
 		if (ONgGameState->condition_playid[inCondition] != SScInvalidID) {
+			if (inCondition == ONcConditionSound_HealthOver) {
+				UUrStartupMessage("[HEALTH-OVER-DBG] Stop CALL SSrAmbient_Stop(playid=%u)",
+					(UUtUns32)ONgGameState->condition_playid[inCondition]);
+			}
 			SSrAmbient_Stop(ONgGameState->condition_playid[inCondition]);
 			ONgGameState->condition_playid[inCondition] = SScInvalidID;
+		} else if (inCondition == ONcConditionSound_HealthOver) {
+			UUrStartupMessage("[HEALTH-OVER-DBG] Stop SKIP: playid invalid (active was set, playid was not)");
 		}
 //		COrConsole_Printf("condition %s stop", ONcConditionSoundName[inCondition]);
+	} else if (inCondition == ONcConditionSound_HealthOver) {
+		UUrStartupMessage("[HEALTH-OVER-DBG] Stop SKIP: active mask not set");
 	}
 }
 

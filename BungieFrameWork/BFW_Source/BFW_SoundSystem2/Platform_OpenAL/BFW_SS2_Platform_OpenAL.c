@@ -253,6 +253,20 @@ SS2rPlatform_SoundChannel_Play(
 }
 
 // ----------------------------------------------------------------------
+// Issue #2 — propagate the shadow looping bit to the OpenAL source on every
+// SetLooping call, not only at Play() time. Without this, SetLooping(false)
+// on a currently-playing source has no effect: the source keeps looping in
+// OpenAL until something explicitly calls alSourceStop.
+void
+SS2rPlatform_SoundChannel_SetLooping(
+	SStSoundChannel				*inSoundChannel,
+	UUtBool						inLooping)
+{
+	alSourcei(inSoundChannel->pd.source, AL_LOOPING, (inLooping == UUcTrue) ? AL_TRUE : AL_FALSE);
+	CHECK_AL_ERROR();
+}
+
+// ----------------------------------------------------------------------
 void
 SS2rPlatform_SoundChannel_Resume(
 	SStSoundChannel				*inSoundChannel)
