@@ -267,7 +267,7 @@ M3rDraw_State_Push(
 	UUrMemory_MoveFast(
 		M3gDrawStatePtr,
 		M3gDrawStatePtrStack[M3gDrawStateTOS],
-		sizeof(UUtUns32) * M3cDrawStatePtrType_NumTypes);
+		sizeof(void*) * M3cDrawStatePtrType_NumTypes);
 
 	M3gDrawStatePtr = M3gDrawStatePtrStack[M3gDrawStateTOS];
 	M3gDrawStateInt = M3gDrawStateIntStack[M3gDrawStateTOS];
