@@ -36,5 +36,7 @@
     <string>NSApplication</string>
     <key>NSSupportsAutomaticGraphicsSwitching</key>
     <true/>
+    <key>NSHumanReadableCopyright</key>
+    <string>Oni copyright 2000-2001 Take-Two Interactive &amp; Bungie. PowerPC OS X port copyright 2001-2007 The Omni Group. Intel macOS port copyright 2008-2015 Feral Interactive. ARM64 macOS port copyright 2026 OniARM64 contributors. Fan port; not affiliated with Bungie or Take-Two.</string>
 </dict>
 </plist>
