@@ -39,3 +39,6 @@
 /OniProj/OniCMakeProjs/TEVCProj/templatechangelog.txt
 /OniProj/OniCMakeProjs/TEVCProj/templatechecksum.c
 
+
+# scripts/build-ffmpeg.sh output (custom minimal ffmpeg, GPL-free)
+/extern/

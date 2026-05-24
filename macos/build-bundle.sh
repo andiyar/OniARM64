@@ -61,11 +61,16 @@ cp "$SOURCE_DIR/THIRD_PARTY_LICENSES.md" "$RESOURCES/THIRD_PARTY_LICENSES.txt"
 #    macOS guarantees them on every install.
 BINARY_IN_BUNDLE="$MACOS_DIR/Oni"
 
-# Print one /opt/homebrew/ dylib path per line.
+# Print one bundlable-dylib path per line. "Bundlable" = anything outside
+# /usr/lib/ and /System/. We match two roots specifically:
+#   - /opt/homebrew/  (Homebrew dylibs: SDL2 and friends)
+#   - $SOURCE_DIR/extern/  (our custom-built minimal ffmpeg; see #19)
 # `NR>1` skips otool's first line (the file's own path, which itself contains
-# /opt/homebrew/ when the input is a Homebrew dylib).
+# the match prefix when the input is one of these dylibs).
+EXTERN_PREFIX="$SOURCE_DIR/extern/"
 homebrew_deps_of() {
-    otool -L "$1" | awk 'NR>1 && /\/opt\/homebrew\// {print $1}'
+    otool -L "$1" | awk -v ext="$EXTERN_PREFIX" \
+        'NR>1 && ($1 ~ /\/opt\/homebrew\// || index($1, ext) == 1) {print $1}'
 }
 
 # 4a. Discover phase: BFS for every transitively-linked /opt/homebrew/ dylib.

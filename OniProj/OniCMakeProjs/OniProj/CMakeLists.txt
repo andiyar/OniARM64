@@ -485,6 +485,18 @@ set(SOURCE_FILES
 if(Platform_SDL)
     find_package(PkgConfig)
     if(PKG_CONFIG_FOUND)
+        # Prefer the repo-local minimal ffmpeg built by scripts/build-ffmpeg.sh
+        # (LGPL-only, ~1 MB vs Homebrew's ~10 MB GPL-tainted bottle — see #19).
+        # Fall back to Homebrew's ffmpeg if extern/ffmpeg/ doesn't exist yet.
+        set(_oni_extern_ffmpeg "${CMAKE_SOURCE_DIR}/extern/ffmpeg")
+        if(EXISTS "${_oni_extern_ffmpeg}/lib/pkgconfig/libavcodec.pc")
+            message(STATUS "OniARM64: using custom minimal ffmpeg from ${_oni_extern_ffmpeg}")
+            set(ENV{PKG_CONFIG_PATH} "${_oni_extern_ffmpeg}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+        else()
+            message(STATUS "OniARM64: extern/ffmpeg/ not found — falling back to system ffmpeg "
+                "(run scripts/build-ffmpeg.sh to build the minimal bundle-ready version).")
+        endif()
+        unset(_oni_extern_ffmpeg)
         pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET libavcodec libavutil)
         set(LIBAV PkgConfig::LIBAV)
     else()
