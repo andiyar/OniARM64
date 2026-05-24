@@ -188,10 +188,11 @@ Issues welcome. No roadmap.
 
 ## Credits
 
-- **Bungie** — original game (2001), source release, asset formats
-- **[hogsy/OniFoxed](https://github.com/hogsy/OniFoxed)** — upstream fork this branched from
-- **godgames** — 2014 Intel macOS port; canonical `Oni.icns`, QuickTime intro/outro cinematics, `Info.plist` template
-- **[oni2.net community](https://oni2.net/)** — OniSplit / OUP / Daodan reverse engineering
+- **Bungie** — original game (2001), source release, asset formats. Shipped the original Mac PPC build alongside Windows.
+- **The Omni Group** — 2001–2007 PowerPC OS X port (Oni 1.0 v1.36, Ken Case et al.)
+- **[Feral Interactive](https://www.feralinteractive.com/)** — 2008–2015 Intel macOS port (Oni 1.1 Intel → 1.2 → 1.2.1). Their `Oni.icns`, intro/outro QuickTime cinematics, and `Info.plist` template are reused in this build.
+- **[hogsy/OniFoxed](https://github.com/hogsy/OniFoxed)** — upstream fork this branched from; kept the 2001 source release building on modern systems.
+- **[oni2.net community](https://oni2.net/)** — OniSplit / OUP / Daodan reverse engineering.
 
 ---
 
