@@ -45,6 +45,11 @@ cp "$SOURCE_DIR/macos/assets/Oni.icns"  "$RESOURCES/Oni.icns"
 cp "$SOURCE_DIR/macos/assets/intro.mov" "$RESOURCES/intro.mov"
 cp "$SOURCE_DIR/macos/assets/outro.mov" "$RESOURCES/outro.mov"
 
+# 3a. Third-party license texts (compliance for redistributed bundle).
+#     Copied as .txt so Finder shows it in the bundle's Show-Package-Contents
+#     view without needing a markdown renderer.
+cp "$SOURCE_DIR/THIRD_PARTY_LICENSES.md" "$RESOURCES/THIRD_PARTY_LICENSES.txt"
+
 # 4. Bundle Homebrew dylibs (direct + transitive) into Contents/Frameworks/.
 #    BFS walk: start from the binary, follow every /opt/homebrew/ LC_LOAD_DYLIB
 #    entry to fixed point, bundle each discovered dylib, then rewrite all refs
