@@ -154,5 +154,14 @@ codesign "${BINARY_SIGN_ARGS[@]}" "$BINARY_IN_BUNDLE"
 # Bundle itself third — seals Contents/_CodeSignature/CodeResources.
 codesign "${SIGN_ARGS[@]}" "$APP"
 
+# 5. Verify the bundle is structurally valid (seal intact, all Mach-Os signed).
+#    Aborts the script on failure — better to catch sign-order or
+#    missing-dylib bugs here than at notarization time.
+codesign --verify --strict --verbose=2 "$APP"
+
 bundled_count=$(find "$FRAMEWORKS" -name '*.dylib' | wc -l | tr -d ' ')
-echo "build-bundle.sh: $APP assembled ($bundled_count dylibs bundled, ad-hoc signed)."
+if [ "$SIGN_IDENTITY" = "-" ]; then
+    echo "build-bundle.sh: $APP assembled ($bundled_count dylibs bundled, ad-hoc signed)."
+else
+    echo "build-bundle.sh: $APP assembled ($bundled_count dylibs bundled, signed as '$SIGN_IDENTITY')."
+fi
