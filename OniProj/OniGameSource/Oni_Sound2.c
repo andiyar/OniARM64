@@ -1410,52 +1410,6 @@ OSrAmbient_Stop(
 }
 
 // ----------------------------------------------------------------------
-// Stop all currently-playing ambients whose name matches inName.
-// Workaround for issue #2 (Daodan ap_wiz leak): the super-particle templates
-// emit children that play ap_wiz looping, but the template-driven cleanup chain
-// doesn't reliably fire EndAmbientSound on Daodan-end. This is a backstop —
-// it walks OSgPlayingAmbientHandles (stable index; slot becomes NULL after Stop)
-// and force-stops every match.
-//
-// Side-effect note: cuts NPC-played instances of the same name in flight, but
-// NPC ap_wiz cycles quickly (session 28: 83 paired starts/stops) so the next
-// NPC trigger re-fires immediately. Daodan-end is a rare per-cycle event.
-UUtUns32
-OSrAmbient_StopByName(
-	const char					*inName)
-{
-	UUtUns32					id;
-	UUtUns32					stopped;
-
-	if ((OSgPlayingAmbientHandles == NULL) || (inName == NULL)) {
-		return 0;
-	}
-
-	stopped = 0;
-	for (id = 0; id < OScMaxPlayingAmbientHandles; id++) {
-		OStPlayingAmbient *pa = OSgPlayingAmbientHandles[id];
-		if (pa == NULL) {
-			continue;
-		}
-		if (pa->ambient == NULL) {
-			continue;
-		}
-		if (UUrString_Compare_NoCase(pa->ambient->ambient_name, inName) != 0) {
-			continue;
-		}
-		OSrAmbient_Stop((SStPlayID)id);
-		stopped++;
-	}
-
-	if (stopped > 0) {
-		UUrStartupMessage("[SS2] OSrAmbient_StopByName '%s' stopped=%u",
-			inName, (UUtUns32)stopped);
-	}
-
-	return stopped;
-}
-
-// ----------------------------------------------------------------------
 static UUtBool
 OSiAmbient_Update(
 	SStPlayID					inAmbientID,

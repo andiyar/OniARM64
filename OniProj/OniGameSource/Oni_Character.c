@@ -3732,20 +3732,6 @@ static void ONiCharacter_SuperParticle_SendEvent(ONtCharacter *ioCharacter, ONtA
 		ioActiveCharacter->superParticlesActive = UUcTrue;
 	} else if (inEvent == P3cEvent_Stop) {
 		ioActiveCharacter->superParticlesActive = UUcFalse;
-		/* [Issue #2] Backstop for ap_wiz leak. The super-particle templates
-		   emit children that play ap_wiz looping; some descendant in the chain
-		   doesn't reliably reach the EndAmbientSound action on Daodan-end, so
-		   instances accumulate "until level change" (user-observed).
-		   Force-stop them by name here. Cuts NPC-played ap_wiz instances in
-		   flight too, but NPC cycles re-fire immediately on next event, and
-		   Daodan-end is a rare per-cycle transition. */
-		{
-			UUtUns32 stopped = OSrAmbient_StopByName("ap_wiz");
-			if (stopped > 0) {
-				UUrStartupMessage("[DAODAN-DBG] Daodan-stop backstop: %u ap_wiz instances force-stopped",
-					stopped);
-			}
-		}
 	}
 }
 
