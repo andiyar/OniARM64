@@ -173,6 +173,21 @@ make oni_app_release
 
 **Known flake:** `create-dmg` occasionally errors on first run with cryptic `hdiutil` warnings — it wraps `hdiutil` + AppleScript and Finder state matters. Re-run `make oni_app_release`; usually succeeds the second time.
 
+Publish the DMG as a GitHub Release using the notes template:
+
+```sh
+cp macos/RELEASE_NOTES_TEMPLATE.md /tmp/oni-release-notes.md
+# edit /tmp/oni-release-notes.md: fill placeholders, append a new line
+# to the Version history, refresh What works
+git tag -a v<VERSION> -m "Oni <VERSION>"
+git push origin v<VERSION>
+gh release create v<VERSION> --repo andiyar/OniARM64 \
+    --title "Oni <VERSION> — <SHORT-TAGLINE>" \
+    --notes-file /tmp/oni-release-notes.md \
+    --prerelease \
+    build/OniARM64.dmg
+```
+
 </details>
 
 ---
