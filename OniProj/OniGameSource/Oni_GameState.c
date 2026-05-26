@@ -599,12 +599,10 @@ static void splash_screen_internal(M3tTextureMap_Big *splash_screen, float inBla
 	M3rGeom_State_Commit();
 
 	if (NULL != splash_screen) {
-		UUtUns16 x_location = (M3rDraw_GetWidth() - splash_screen->width) / 2;
-		UUtUns16 y_location = (M3rDraw_GetHeight() - splash_screen->height) / 2;
 		M3tPointScreen point_screen;
 
-		point_screen.x = x_location;
-		point_screen.y = y_location;
+		point_screen.x = (float)(((int)M3rDraw_GetWidth() - (int)splash_screen->width) / 2);
+		point_screen.y = (float)(((int)M3rDraw_GetHeight() - (int)splash_screen->height) / 2);
 		point_screen.z = 0.5f;
 		point_screen.invW = 2.f;
 
