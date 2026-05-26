@@ -506,6 +506,8 @@ M3rDraw_Bitmap(
 	M3tPointScreen	screenPoints[2];
 	M3tTextureCoord	uv[4];
 
+	if (inBitmap == NULL) return;
+
 	UUmAssert(inWidth <= inBitmap->width);
 	UUmAssert(inHeight <= inBitmap->height);
 
@@ -652,7 +654,9 @@ M3rDraw_BigBitmap(
 
 			// get a pointer to the texture to be drawn
 			index = x + (y * inBigBitmap->num_x);
+			if (index >= inBigBitmap->num_textures) continue;
 			texture = inBigBitmap->textures[index];
+			if (texture == NULL) continue;
 
 			x_times_maxwidth = x * M3cTextureMap_MaxWidth;
 			y_times_maxheight = y * M3cTextureMap_MaxHeight;

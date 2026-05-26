@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-05-26 — Session 37: NULL-texture guard in BigBitmap renderer (addresses #28)
+
+- **`fix(motoko): NULL guard in M3rDraw_BigBitmap and M3rDraw_Bitmap`** — `M3rDraw_BigBitmap` ([Motoko_Utility.c:654-656](BungieFrameWork/BFW_Source/BFW_Motoko/Manager/Motoko_Utility.c#L654)) walked `textures[index]` with no bounds check on `index < num_textures` and no NULL check on the texture pointer. When HD texture mods produce TXMB instances with sub-texture references that don't resolve (OniSplit repack can create TXMBs pointing at TXMPs not present in the .dat), the template system silently writes NULL into the pointer slot (`iBridgePrepare_ResolveTemplatePtr` returns success with resolved=NULL). `M3rDraw_Bitmap` then dereferences NULL at offset 0x84 (`width` field). Added: (1) bounds check `index >= num_textures → continue` in `M3rDraw_BigBitmap` (prevents out-of-bounds read when `num_x * num_y > num_textures`), (2) NULL check `texture == NULL → continue` (skips missing tiles), (3) belt-and-suspenders `inBitmap == NULL → return` at the top of `M3rDraw_Bitmap` since it's called from multiple sites. Bungie's original code is byte-identical here — the gap predates the port but only fires with modded data. Addresses [#28](https://github.com/andiyar/OniARM64/issues/28) pending user verification.
+
 ### 2026-05-24 — Session 36: Minimal ffmpeg build strips GPL deps from bundle (fixes #19)
 
 - **13 dylibs → 3 dylibs.** Bundle's `Contents/Frameworks/` previously shipped SDL2 + 12 ffmpeg-related dylibs (libavcodec, libavutil, libswresample, libvpx, libdav1d, libmp3lame, libopus, libSvtAv1Enc, libssl, libcrypto, **libx264 (GPL-2+)**, **libx265 (GPL-2+)**) — all transitive deps of Homebrew's `--enable-gpl` ffmpeg bottle. The redistributed binary was effectively GPL-subject because of x264/x265 even though Oni never calls them at runtime. After this commit: SDL2 + a custom `libavcodec.62.dylib` (356 KB) + `libavutil.60.dylib` (720 KB), both LGPL-2.1, both linked only to Apple system frameworks. GPL exposure gone.
