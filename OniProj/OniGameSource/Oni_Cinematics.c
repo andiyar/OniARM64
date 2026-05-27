@@ -301,20 +301,21 @@ OCiCinematic_Draw(
 		uv[3].v = 1.0f;
 	}
 
-	// set the dest
+	// set the dest — scale position for widescreen, scale size uniformly
 	dest[0] = inCinematic->position;
-	dest[1] = inCinematic->position;
 
-	dest[1].x += (float)inCinematic->draw_width;
-	dest[1].y += (float)inCinematic->draw_height;
-
+	// Position uses full widescreen scaling so fly-in animations reach screen edges
 	dest[0].x = (float) MUrFloat_Round_To_Int(dest[0].x * width_scale);
 	dest[0].y = (float) MUrFloat_Round_To_Int(dest[0].y * height_scale);
-	dest[1].x = (float) MUrFloat_Round_To_Int(dest[1].x * width_scale);
-	dest[1].y = (float) MUrFloat_Round_To_Int(dest[1].y * height_scale);
 
-	draw_width = MUrFloat_Round_To_Int(dest[1].x - dest[0].x);
-	draw_height = MUrFloat_Round_To_Int(dest[1].y - dest[0].y);
+	// Sprite dimensions scale uniformly (height-based) to preserve aspect ratio.
+	// Without this, 16:9 displays stretch portraits ~33% wider than intended.
+	draw_width = MUrFloat_Round_To_Int((float)inCinematic->draw_width * height_scale);
+	draw_height = MUrFloat_Round_To_Int((float)inCinematic->draw_height * height_scale);
+
+	dest[1] = dest[0];
+	dest[1].x += (float)draw_width;
+	dest[1].y += (float)draw_height;
 
 	M3rDraw_State_Push();
 
