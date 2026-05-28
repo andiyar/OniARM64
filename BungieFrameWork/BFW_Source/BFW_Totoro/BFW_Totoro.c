@@ -2714,9 +2714,11 @@ static void TRrAnimation_Prepare(TRtAnimation *animation)
 	{
 		static int prep_diag = 0;
 		if (prep_diag < 30) {
-			fprintf(stderr, "ANIM_PREP: %s sndName=0x%x sndFrame=%d type=%d\n",
+			const char *resolved_snd = TRrAnimation_GetSoundName(animation);
+			fprintf(stderr, "ANIM_PREP: %s sndName=%s sndFrame=%d type=%d\n",
 				animation->instanceName ? animation->instanceName : "?",
-				animation->soundName, animation->soundFrame, animation->type);
+				resolved_snd ? resolved_snd : "(none)",
+				animation->soundFrame, animation->type);
 			fflush(stderr);
 			prep_diag++;
 		}
@@ -2816,6 +2818,12 @@ void TRrAnimation_GetPosition(const TRtAnimation *inAnimation, TRtAnimTime inTim
 	return;
 }
 
+#if UUmPlatform_PointerSize == 8
+#define TRcSoundNameTableSize 8192
+static const char* gTRSoundNameTable[TRcSoundNameTableSize];
+static UUtUns32    gTRSoundNameCount = 0;
+#endif
+
 UUtBool TRrAnimation_IsSoundFrame(const TRtAnimation *inAnimation, TRtAnimTime inTime)
 {
 	UUtUns16 frameNum = TRmAnimationTimeToFrame(inAnimation, inTime);
@@ -2827,7 +2835,7 @@ UUtBool TRrAnimation_IsSoundFrame(const TRtAnimation *inAnimation, TRtAnimTime i
 	UUmAssert(inTime < inAnimation->duration);
 
 	if (isFrame) {
-		if (NULL == (char*)inAnimation->soundName) {
+		if (inAnimation->soundName == 0) {
 			if (0 == frameNum) {
 				result = UUcTrue;
 			}
@@ -2843,7 +2851,17 @@ UUtBool TRrAnimation_IsSoundFrame(const TRtAnimation *inAnimation, TRtAnimTime i
 const char* TRrAnimation_GetSoundName(const TRtAnimation *inAnimation)
 {
 	UUmAssertReadPtr(inAnimation, sizeof(*inAnimation));
+
+#if UUmPlatform_PointerSize == 8
+	if (inAnimation->soundName == 0) return NULL;
+	{
+		UUtUns32 idx = inAnimation->soundName - 1;
+		if (idx >= gTRSoundNameCount) return NULL;
+		return gTRSoundNameTable[idx];
+	}
+#else
 	return (const char*)inAnimation->soundName;
+#endif
 }
 
 const char* TRrAnimation_GetNewSoundForFrame(const TRtAnimation *inAnimation, TRtAnimTime inTime)
@@ -2873,7 +2891,22 @@ void TRrAnimation_SetSoundName(TRtAnimation *inAnimation, const char *inSoundNam
 {
 	UUmAssert(inAnimation);
 
+#if UUmPlatform_PointerSize == 8
+	if (inSoundName == NULL) {
+		inAnimation->soundName = 0;
+	} else {
+		UUtUns32 idx = gTRSoundNameCount++;
+		UUmAssert(idx < TRcSoundNameTableSize);
+		if (idx < TRcSoundNameTableSize) {
+			gTRSoundNameTable[idx] = inSoundName;
+			inAnimation->soundName = idx + 1;
+		} else {
+			inAnimation->soundName = 0;
+		}
+	}
+#else
 	inAnimation->soundName = (UUtUns32)inSoundName;
+#endif
 	inAnimation->soundFrame = inFrame;
 }
 
