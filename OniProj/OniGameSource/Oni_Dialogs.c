@@ -166,8 +166,8 @@ ONiLevelList_GetLevelNumber(
 		VMrView_SendMessage(
 			levels,
 			LBcMessage_GetText,
-			(UUtUns32)(-1),
-			(UUtUns32)(&level_name));
+			(uintptr_t)(-1),
+			(uintptr_t)(&level_name));
 
 		// find the level number
 		for (i = 0; i < num_descriptors; i++)
