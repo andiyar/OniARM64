@@ -528,7 +528,7 @@ static void WPiGenerateFallImpact(
 	if (tex_index < environment->textureMapArray->numMaps) {
 		// determine the material type for this texture
 		tex_material = environment->textureMapArray->maps[tex_index]->materialType;
-		if ((tex_material >= 0) || (tex_material < MArMaterials_GetNumTypes())) {
+		if (tex_material < MArMaterials_GetNumTypes()) {
 			material_type = (MAtMaterialType) tex_material;
 		}
 	}
@@ -4084,7 +4084,7 @@ ONtCharacter *WPrOwner_GetCharacter(UUtUns32 inOwner)
 
 			char_index = inOwner & WPcDamageOwner_IndexMask;
 			raw_index = char_index & ONcCharacterIndexMask_RawIndex;
-			if ((raw_index >= 0) || (raw_index < ONrGameState_GetNumCharacters())) {
+			if (raw_index < ONrGameState_GetNumCharacters()) {
 				char_list = ONrGameState_GetCharacterList();
 				character = char_list + raw_index;
 

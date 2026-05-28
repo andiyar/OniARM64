@@ -94,8 +94,16 @@ MArImpactType_GetParent(
 
 	UUmAssert((inImpactType >= 0) && (inImpactType < MAgNumImpacts));
 
+	if (inImpactType >= MAgNumImpacts) {
+		return MAcInvalidID;
+	}
+
 	impact = MAgImpactArray[inImpactType];
 	UUmAssertReadPtr(impact, sizeof(MAtImpact));
+
+	if (impact == NULL) {
+		return MAcInvalidID;
+	}
 
 	parent = impact->parent;
 	if (parent == NULL) {
@@ -172,8 +180,16 @@ MArMaterialType_GetDepth(
 
 	UUmAssert((inMaterialType >= 0) && (inMaterialType < MAgNumMaterials));
 
+	if (inMaterialType >= MAgNumMaterials) {
+		return 0;
+	}
+
 	material = MAgMaterialArray[inMaterialType];
 	UUmAssertReadPtr(material, sizeof(MAtMaterial));
+
+	if (material == NULL) {
+		return 0;
+	}
 
 	return material->depth;
 }
@@ -187,8 +203,16 @@ MArMaterialType_GetParent(
 
 	UUmAssert((inMaterialType >= 0) && (inMaterialType < MAgNumMaterials));
 
+	if (inMaterialType >= MAgNumMaterials) {
+		return MAcInvalidID;
+	}
+
 	material = MAgMaterialArray[inMaterialType];
 	UUmAssertReadPtr(material, sizeof(MAtMaterial));
+
+	if (material == NULL) {
+		return MAcInvalidID;
+	}
 
 	parent = material->parent;
 	if (parent == NULL) {

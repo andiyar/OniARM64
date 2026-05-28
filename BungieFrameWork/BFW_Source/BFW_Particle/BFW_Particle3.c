@@ -13543,7 +13543,7 @@ UUtBool P3iAction_ImpactEffect(P3tParticleClass *inClass, P3tParticle *inParticl
 			if (tex_index < environment->textureMapArray->numMaps) {
 				// determine the material type for this texture
 				tex_material = environment->textureMapArray->maps[tex_index]->materialType;
-				if ((tex_material >= 0) || (tex_material < MArMaterials_GetNumTypes())) {
+				if (tex_material < MArMaterials_GetNumTypes()) {
 					material_type = (MAtMaterialType) tex_material;
 				}
 			}
