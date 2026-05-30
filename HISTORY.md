@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-05-31 — Session 40: Release 1.3.0r1 — refreshed public DMG (levels 1–4)
+
+- **`release: bump version to 1.3.0r1`** ([Info.plist](macos/Info.plist)). Cut the second public artifact, the first that plays past the opening levels. The published `1.3.0a1` DMG (2026-05-24) predated the level 2–4 gameplay-path crash fixes — it hard-crashed on the level-2 Deadly Brain screamer. `1.3.0r1` bundles all 10 commits since: the material-bounds fix (#32), TRAM `soundName` indirection (#33), `M3rDraw_BigBitmap` NULL guard (#28), New Game dialog truncation (#34), and the widescreen-portrait / splash-centering render fixes. Built clean via `make oni_app_release` (session-40 cinematic diagnostics stashed during the build so the public binary ships without instrumentation). Signed + notarized + stapled, published to [Releases](https://github.com/andiyar/OniARM64/releases) as a prerelease.
+
 ### 2026-05-30 — Session 40: Levels 3 & 4 playable end-to-end (playtest milestone)
 
 - **Gameplay progress**: user drove level 3 start-to-finish (session 39's TRAM `soundName` indirection-table fix for the acid/explosion death animation holds) and completed level 4 end-to-end. **Levels 1–4 now playable**; the Phase 6 "All 14 levels playable" march continues to level 5 next.
