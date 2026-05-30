@@ -50,7 +50,7 @@ You supply your own Oni data files. None ship here.
 
 ## Status
 
-Levels 1–3 playable end-to-end — combat, AI, weapons, particle effects, save/load all working. Phases 1, 2, 3, and 5 complete. Phases 4 (audio + effects) and 6 (gameplay completion) partial; levels 4–14 haven't been driven through yet.
+Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, save/load all working. Phases 1, 2, 3, and 5 complete. Phases 4 (audio + effects) and 6 (gameplay completion) partial; levels 5–14 haven't been driven through yet.
 
 <details>
 <summary><strong>Full milestone status</strong></summary>
@@ -94,7 +94,7 @@ Levels 1–3 playable end-to-end — combat, AI, weapons, particle effects, save
 - [x] Konoko engages NPCs in combat end-to-end across a full encounter
 - [x] Tutorial level completable to next-level transition
 - [x] Save / load works across runs
-- [x] Levels 2–3 playable with particle effects, combat, AI, level transitions
+- [x] Levels 2–4 playable with particle effects, combat, AI, level transitions
 - [ ] All 14 levels playable
 
 ### Phase 7 — Shippable artefact

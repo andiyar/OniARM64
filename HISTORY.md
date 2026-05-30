@@ -6,6 +6,12 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-05-30 — Session 40: Levels 3 & 4 playable end-to-end (playtest milestone)
+
+- **Gameplay progress**: user drove level 3 start-to-finish (session 39's TRAM `soundName` indirection-table fix for the acid/explosion death animation holds) and completed level 4 end-to-end. **Levels 1–4 now playable**; the Phase 6 "All 14 levels playable" march continues to level 5 next.
+- **In flight, not landed**: #3 level-2 opening-cinematic investigation. Live `[CINE-CAM]`/`[CM-INTERP]`/`[ENV-SHOW]`/`[DISP-CAM]` diagnostics are in the tree (uncommitted). Current evidence reframes the bug away from "camera-position / TRAM" toward the `env_show` wall-hide path: a clean `autostart=2` trace shows the camera obeys the script (`cm_interpolate Camout01` → a valid in-level coordinate) and `env_show 561 0` flags 58 wall quads, matching the intended sequence in the original `manplant_cutscene.bsl` (community-svn). Suspect is now `env_show` → `AKcGQ_Flag_BrokenGlass` → GQ-visibility in `BFW_Akira_Render.c`, i.e. the near wall not actually being hidden. See [#3](https://github.com/andiyar/OniARM64/issues/3).
+- **No code changes** — docs only (diagnostics remain uncommitted).
+
 ### 2026-05-28 — Session 39: Two gameplay crashes fixed — levels 2 and 3 now playable (fixes #32, addresses #33)
 
 - **`fix(64bit): uintptr_t cast in New Game dialog level-list message`** — `ONiLevelList_GetLevelNumber` in `Oni_Dialogs.c:170` passed `(UUtUns32)(&level_name)` to `VMrView_SendMessage` (which accepts `uintptr_t`), truncating the stack address on 64-bit ARM64. Found via codebase-wide audit; not yet triggered in gameplay because level selection was done via cheats. Addresses [#34](https://github.com/andiyar/OniARM64/issues/34).
