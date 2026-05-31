@@ -17,7 +17,7 @@
 
 ## Why this exists
 
-One of my favourite games from university, *Oni* is the action-brawler from Bungie/Take-Two in 2001 — third-person hand-to-hand and gunplay, Syndicate versus the TCTF and a intriguing story with amazing music. Spun off from Bungie as they were bought by Microsoft for Halo, the mac builds (I've always been a Mac player!) was OS9 only, then had several ports done first by the amazing OMNI group for PPC, and then again by Feral Interactive for Intel. These were all 32-bit only, and when Apple deprecated 32 bit with Catalina, they stopped working.
+One of my favourite games from university, *Oni* is the action-brawler from Bungie/Take-Two in 2001 — third-person hand-to-hand and gunplay, Syndicate versus the TCTF and an intriguing story with amazing music. Spun off from Bungie as they were bought by Microsoft for Halo, the mac build (I've always been a Mac player!) was OS9 only, with MacOSX ports eventually from the amazing Omni group for PPC, and then by Feral Interactive for Intel. These were all 32-bit only, and when Apple deprecated 32 bit with Catalina, they stopped working.
 
 Fast forward until recently and I discovered both the magic of Claude Code, and that there was, floating around on GitHub, forks of the Oni source code for windows from 2021. Two months later, lots of fiddling - I'm definitely not a programmer! - this is OniARM64, my attempt to create a vanilla Oni experience running on Apple Silicon. No Rosetta, 64 bit, no WINE required. No particular roadmap, things added as they are thought of and done.
 
@@ -61,7 +61,7 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audi
 - [x] Looping ambient sounds stop correctly (Daodan health / super ambients no longer leak)
 - [x] Particle effects render — screamers, explosions, acid, environmental FX across levels 1–4
 - [x] Security-laser tripwire beams render and trip.
-- [ ] `w10_sni_p01` sniper particle fits its size class (non-blocking — class is dropped, game continues; see [#10](https://github.com/andiyar/OniARM64/issues/10))
+- [ ] `w10_sni_p01` sniper particle fits its size class (non-blocking — class is dropped, game continues; see [#10](https://github.com/andiyar/OniARM64/issues/10)). WIP.
 
 ### Phase 5 — AI behaviour ✅
 - [x] NPCs detect the player via sight and sound (Knowledge layer)
@@ -125,7 +125,7 @@ No Oni game data is included in the source or the app bundle. BYO game :).
 
 ## Contributing
 
-Issues welcome, please upload crash reports or logs or relevant screenshots. Logs can be found xxxxx.
+Issues welcome, please upload crash reports or logs or relevant screenshots. Logs can be found in ~/Library/Logs/OniARM64/.
 
 - [Open issues](https://github.com/andiyar/OniARM64/issues)
 - [Development history (HISTORY.md)](HISTORY.md)
@@ -159,4 +159,4 @@ The `Build from source` path picks up the same minimal ffmpeg from `extern/ffmpe
 
 ---
 
-<sub><em>Oni © 2001 Bungie / Take-Two Interactive. Fan port of the 2001 source release. Not affiliated with Bungie or Take-Two.</em></sub>
+<sub><em>Oni © 2001 Bungie / Take-Two Interactive. Not affiliated with Bungie or Take-Two.</em></sub>
