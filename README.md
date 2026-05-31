@@ -53,7 +53,7 @@ No Oni game data is included in the source or the app bundle. BYO.
 
 ## Status
 
-Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, save/load all working. Phases 1, 2, 3, and 5 complete. Phases 4 (audio + effects) and 6 (gameplay completion) partial; levels 5–14 haven't been driven through yet.
+Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audio, save/load all working. Phases 1–5 complete. Phase 6 (all-14-levels) in progress — levels 5–14 haven't been driven through yet — and Phase 7 ships a signed + notarized `.app`/DMG with Anniversary-Edition extras still to come.
 
 <details>
 <summary><strong>Full milestone status</strong></summary>
@@ -79,11 +79,14 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, save
 - [x] AI state machines run without crashing
 - [x] Resolution / window-size persists across launches
 
-### Phase 4 — Audio & effects
+### Phase 4 — Audio & effects ✅
 - [x] Menu / cutscene / dialogue audio plays
 - [x] Footstep impact sounds play
-- [ ] Particle classes load without size-class overflow
+- [x] Combat audio (gunfire, melee, weapon reloads) plays without lag — OpenAL buffer cache
+- [x] Looping ambient sounds stop correctly (Daodan health / super ambients no longer leak)
+- [x] Particle effects render — screamers, explosions, acid, environmental FX across levels 1–4
 - [x] Security-laser tripwire beams render in the tutorial level
+- [ ] `w10_sni_p01` sniper particle fits its size class (non-blocking — class is dropped, game continues; see [#10](https://github.com/andiyar/OniARM64/issues/10))
 
 ### Phase 5 — AI behaviour ✅
 - [x] NPCs detect the player via sight and sound (Knowledge layer)
@@ -101,7 +104,8 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, save
 - [ ] All 14 levels playable
 
 ### Phase 7 — Shippable artefact
-- [x] `.app` bundle + code signing
+- [x] `.app` bundle + Developer-ID code signing
+- [x] Notarized + stapled DMG, Gatekeeper-clean, published to Releases
 - [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs)
 
 </details>
