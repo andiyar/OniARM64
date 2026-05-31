@@ -40,12 +40,12 @@ No Oni game data is included in the source or the app bundle. BYO.
 
 <table>
 <tr>
-<td align="center"><img src="docs/assets/screenshots/gameplay-corridor.png" width="400" alt="Konoko advancing on a TCTF striker in a warehouse corridor, third-person with HUD" /><br/><sub><b>Third-person gameplay</b> — levels 1–4 play start to finish</sub></td>
-<td align="center"><img src="docs/assets/screenshots/combat-syndicate.png" width="400" alt="Two red-armoured Syndicate soldiers firing rifles, muzzle flashes lit" /><br/><sub><b>Combat</b> — AI, weapons, particle effects</sub></td>
+<td align="center"><img src="docs/assets/screenshots/gameplay-corridor.png" width="400" alt="Third-person gameplay: Konoko in a corridor facing an enemy, HUD visible" /></td>
+<td align="center"><img src="docs/assets/screenshots/combat-syndicate.png" width="400" alt="Combat: two soldiers firing rifles" /></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/assets/screenshots/main-menu.png" width="400" alt="Oni main menu: Konoko splash art, ONI logo, New Game / Load Game / Options / Quit" /><br/><sub><b>Main menu</b> — running natively on Apple Silicon</sub></td>
-<td align="center"><img src="docs/assets/screenshots/level-select.png" width="400" alt="Load Game dialog listing TCTF Training, Syndicate Warehouse, Manufacturing Plant, Bio-Research Lab, Airport Assault" /><br/><sub><b>Save / load</b> across the playable levels</sub></td>
+<td align="center"><img src="docs/assets/screenshots/main-menu.png" width="400" alt="Oni main menu" /></td>
+<td align="center"><img src="docs/assets/screenshots/level-select.png" width="400" alt="Load Game level-select dialog" /></td>
 </tr>
 </table>
 
