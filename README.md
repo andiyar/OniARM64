@@ -108,7 +108,7 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audi
 
 1. Grab the latest `OniARM64.dmg` from [Releases](https://github.com/andiyar/OniARM64/releases).
 2. Open the DMG and drag `OniARM64.app` onto the `Applications` shortcut.
-3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/gamedata/`).
+3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/gamedata/`). CURRENTLY requires windows game data*
 4. Double-click `OniARM64.app` to launch (the build is signed and notarised).
 
 ### Build from source
@@ -119,7 +119,8 @@ ln -sfn /path/to/your/Oni/GameDataFolder ~/Library/Application\ Support/OniARM64
 open build/bin/OniARM64.app
 ```
 
-No Oni game data is included in the source or the app bundle. BYO game :).
+No Oni game data is included in the source or the app bundle. BYO game :). 
+*At the moment the binary loads from the windows billed (endian-ness issues) but working on loading MacOS data as well (fingers crossed).
 
 ---
 
