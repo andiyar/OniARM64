@@ -138,7 +138,7 @@ Issues welcome, please upload crash reports or logs or relevant screenshots. Log
 - **The Omni Group** — 2001–2007 PowerPC OS X port
 - **[Feral Interactive](https://www.feralinteractive.com/)** — 2008–2015 Intel macOS port (Oni 1.1 Intel → 1.2 → 1.2.1).
 - **[hogsy/OniFoxed](https://github.com/hogsy/OniFoxed)** — upstream fork.
-- **[Iritscen](https://iritscen.oni2.net/)** for the icns file and and mai— Anniversary Edition project,
+- **[Iritscen](https://iritscen.oni2.net/)** for the icns file and work on the Anniversary Edition project,
 - **[Oni Mod Depot](https://mods.oni2.net/)** for textures, mods, ideas
 - **[oni2.net community](https://oni2.net/)** — OniSplit / OUP / Daodan reverse engineering. `wiki.oni2.net` / `oni.bungie.org` forums and the anniversary edition work / Team Chrysalis :)
 
