@@ -107,8 +107,8 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audi
 
 1. Grab the latest `OniARM64.dmg` from [Releases](https://github.com/andiyar/OniARM64/releases).
 2. Open the DMG and drag `OniARM64.app` onto the `Applications` shortcut.
-3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/gamedata/` (or symlink it).
-4. Double-click `OniARM64.app` to launch. Signed + notarized with Apple — no Gatekeeper warnings, no right-click workaround needed.
+3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/gamedata/`).
+4. Double-click `OniARM64.app` to launch (the build is signed and notarised).
 
 ### Build from source
 
@@ -118,91 +118,13 @@ ln -sfn /path/to/your/Oni/GameDataFolder ~/Library/Application\ Support/OniARM64
 open build/bin/OniARM64.app
 ```
 
-No Oni game data is included in the source or the app bundle. BYO.
-
----
-
-## Build details
-
-| File | Location |
-| --- | --- |
-| Game data lookup | `~/Library/Application Support/OniARM64/gamedata/` → `<bundle>/Contents/Resources/gamedata/` → legacy cwd-relative search |
-| `persist.dat`, `key_config.txt` | `~/Library/Application Support/OniARM64/` (cwd-relative if it already exists, else here) |
-| `startup.txt`, `debugger.txt` | `~/Library/Logs/OniARM64/` (cwd-relative if writable, else here) |
-| Crash reports | `~/Library/Logs/DiagnosticReports/Oni-*.ips` (macOS default) |
-
-Common env vars:
-
-- `SDL_VIDEO_ALLOW_SCREENSAVER=1` — belt-and-braces against leaked display-sleep assertions.
-- `ONI_AUTOSTART=1` — skips the main menu and jumps straight to level 1.
-
-> **Bare-binary workflow** (faster inner loop for hacking): drop `build/bin/Oni` into a directory containing a `GameDataFolder` symlink and run there. State files land next to the binary. Still works; the `.app` workflow above is the default.
-
----
-
-## Building a release
-
-For producing the signed + notarized + stapled `OniARM64.dmg` that ships to [Releases](https://github.com/andiyar/OniARM64/releases). Maintainer workflow — most contributors will never need this.
-
-<details>
-<summary><strong>Setup + per-release commands</strong></summary>
-
-Extra dep:
-
-```sh
-brew install create-dmg
-```
-
-One-time keychain setup (notarization credentials). App-specific password from https://appleid.apple.com/account/manage → Sign-In and Security → App-Specific Passwords:
-
-```sh
-xcrun notarytool store-credentials oniarm64-notarize \
-    --apple-id "<your-apple-id>" \
-    --team-id "<your-team-id>" \
-    --password "<app-specific-password>"
-```
-
-One-time CMake configure (signing identity). Discover yours with `security find-identity -v -p codesigning`:
-
-```sh
-cmake .. -DPlatform_SDL=ON \
-    -DONI_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
-```
-
-Per-release build:
-
-```sh
-make oni_app_release
-# Produces build/OniARM64.dmg — signed, notarized, stapled, drag-to-Applications.
-# Takes ~7 min total (two Apple notary round-trips: ~3min for the .app, ~2min for the DMG).
-```
-
-**Recovery:** if `notarytool submit` returns `Invalid`, fetch the rejection log with `xcrun notarytool log <submission-id> --keychain-profile oniarm64-notarize`.
-
-**Known flake:** `create-dmg` occasionally errors on first run with cryptic `hdiutil` warnings — it wraps `hdiutil` + AppleScript and Finder state matters. Re-run `make oni_app_release`; usually succeeds the second time.
-
-Publish the DMG as a GitHub Release using the notes template:
-
-```sh
-cp macos/RELEASE_NOTES_TEMPLATE.md /tmp/oni-release-notes.md
-# edit /tmp/oni-release-notes.md: fill placeholders, append a new line
-# to the Version history, refresh What works
-git tag -a v<VERSION> -m "Oni <VERSION>"
-git push origin v<VERSION>
-gh release create v<VERSION> --repo andiyar/OniARM64 \
-    --title "Oni <VERSION> — <SHORT-TAGLINE>" \
-    --notes-file /tmp/oni-release-notes.md \
-    --prerelease \
-    build/OniARM64.dmg
-```
-
-</details>
+No Oni game data is included in the source or the app bundle. BYO game :).
 
 ---
 
 ## Contributing
 
-Issues welcome. No roadmap.
+Issues welcome, please upload crash reports or logs or relevant screenshots. Logs can be found xxxxx.
 
 - [Open issues](https://github.com/andiyar/OniARM64/issues)
 - [Development history (HISTORY.md)](HISTORY.md)
@@ -211,12 +133,13 @@ Issues welcome. No roadmap.
 
 ## Credits
 
-- **Bungie** — original game (2001), source release, asset formats. Shipped the original Mac PPC build alongside Windows.
-- **The Omni Group** — 2001–2007 PowerPC OS X port (Oni 1.0 v1.36, Ken Case et al.). Designed the "O" Mac app icon used by every Mac build since.
-- **[Feral Interactive](https://www.feralinteractive.com/)** — 2008–2015 Intel macOS port (Oni 1.1 Intel → 1.2 → 1.2.1). The `Oni.icns` packaging, intro/outro QuickTime cinematics, and `Info.plist` template lifted into this build are from their 1.2.1 binary.
-- **[hogsy/OniFoxed](https://github.com/hogsy/OniFoxed)** — upstream fork this branched from; kept the 2001 source release building on modern systems.
-- **[Iritscen](https://iritscen.oni2.net/)** — Anniversary Edition project, [Oni Mod Depot](https://mods.oni2.net/), and a lot of the community tooling and documentation we leaned on.
-- **[oni2.net community](https://oni2.net/)** — OniSplit / OUP / Daodan reverse engineering. `wiki.oni2.net` / `oni.bungie.org` forums are the canonical Oni-modding reference.
+- **Bungie** — original game (2001)
+- **The Omni Group** — 2001–2007 PowerPC OS X port
+- **[Feral Interactive](https://www.feralinteractive.com/)** — 2008–2015 Intel macOS port (Oni 1.1 Intel → 1.2 → 1.2.1).
+- **[hogsy/OniFoxed](https://github.com/hogsy/OniFoxed)** — upstream fork.
+- **[Iritscen](https://iritscen.oni2.net/)** for the icns file and and mai— Anniversary Edition project,
+- **[Oni Mod Depot](https://mods.oni2.net/)** for textures, mods, ideas
+- **[oni2.net community](https://oni2.net/)** — OniSplit / OUP / Daodan reverse engineering. `wiki.oni2.net` / `oni.bungie.org` forums and the anniversary edition work / Team Chrysalis :)
 
 ---
 
