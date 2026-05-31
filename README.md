@@ -8,7 +8,7 @@
 
 ![macOS](https://img.shields.io/badge/macOS-15%2B%20Sequoia-blue) &nbsp;
 ![arch](https://img.shields.io/badge/arch-ARM64-blue) &nbsp;
-![status](https://img.shields.io/badge/status-playable-green) &nbsp;
+![status](https://img.shields.io/badge/status-playable--ish-green) &nbsp;
 ![type](https://img.shields.io/badge/type-fan%20port-orange)
 
 </div>
