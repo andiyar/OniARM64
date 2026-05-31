@@ -32,7 +32,7 @@ ln -sfn /path/to/your/Oni/GameDataFolder ~/Library/Application\ Support/OniARM64
 open build/bin/OniARM64.app
 ```
 
-You supply your own Oni data files. None ship here.
+No Oni game data is included in the source or the app bundle. BYO.
 
 ---
 
