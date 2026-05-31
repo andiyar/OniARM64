@@ -17,17 +17,17 @@
 
 ## Why this exists
 
-*Oni* is the action-brawler Bungie shipped in January 2001 — third-person hand-to-hand and gunplay, an anime-inflected sci-fi police state, a story by Hideyuki Tanaka. It was Bungie's last solo release before Microsoft acquired them for Halo. The Windows and Mac builds shipped together; the Mac build stopped working when Apple killed 32-bit apps in macOS Catalina (2019).
+One of my favourite games from university, *Oni* is the action-brawler from Bungie/Take-Two in 2001 — third-person hand-to-hand and gunplay, Syndicate versus the TCTF and a intriguing story with amazing music. Spun off from Bungie as they were bought by Microsoft for Halo, the mac builds (I've always been a Mac player!) was OS9 only, then had several ports done first by the amazing OMNI group for PPC, and then again by Feral Interactive for Intel. These were all 32-bit only, and when Apple deprecated 32 bit with Catalina, they stopped working.
 
-This is the Apple Silicon branch. It picks up from Bungie's 2001 source release (via the [hogsy/OniFoxed](https://github.com/hogsy/OniFoxed) fork that kept it building) and gets Oni running natively on M-series Macs — same game, no Wine, no virtualisation, no Rosetta. Significant divergence from upstream: rewritten window-manager message API, template-manager bridge layer, memory allocator, OpenAL init, and dozens of 32→64 pointer sites.
+Fast forward until recently and I discovered both the magic of Claude Code, and that there was, floating around on GitHub, forks of the Oni source code for windows from 2021. Two months later, lots of fiddling - I'm definitely not a programmer! - this is OniARM64, my attempt to create a vanilla Oni experience running on Apple Silicon. No Rosetta, 64 bit, no WINE required. No particular roadmap, things added as they are thought of and done.
 
-Personal project. I'm porting it because I want to play Oni on my own Mac. Issues welcome; no roadmap.
+Currently it's playable (I've run through the first 4 levels... too many times) and I figure, time to share! This is a personal project, as I love Oni, have played it too many times, and I want to keep playing it, so if you find bugs/issues please do advise, though time to fix/etc will be as life allows.
 
 ---
 
 ## Status
 
-Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audio, save/load all working. Phases 1–5 complete. Phase 6 (all-14-levels) in progress — levels 5–14 haven't been driven through yet — and Phase 7 ships a signed + notarized `.app`/DMG with Anniversary-Edition extras still to come.
+Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audio, save/load all working. Downloadable and notarized .app in a DMG. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude.
 
 <details>
 <summary><strong>Full milestone status</strong></summary>
@@ -59,7 +59,7 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audi
 - [x] Combat audio (gunfire, melee, weapon reloads) plays without lag — OpenAL buffer cache
 - [x] Looping ambient sounds stop correctly (Daodan health / super ambients no longer leak)
 - [x] Particle effects render — screamers, explosions, acid, environmental FX across levels 1–4
-- [x] Security-laser tripwire beams render in the tutorial level
+- [x] Security-laser tripwire beams render and trip.
 - [ ] `w10_sni_p01` sniper particle fits its size class (non-blocking — class is dropped, game continues; see [#10](https://github.com/andiyar/OniARM64/issues/10))
 
 ### Phase 5 — AI behaviour ✅
@@ -75,12 +75,12 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audi
 - [x] Tutorial level completable to next-level transition
 - [x] Save / load works across runs
 - [x] Levels 2–4 playable with particle effects, combat, AI, level transitions
-- [ ] All 14 levels playable
+- [ ] All 14 levels playable - yet to test
 
 ### Phase 7 — Shippable artefact
 - [x] `.app` bundle + Developer-ID code signing
 - [x] Notarized + stapled DMG, Gatekeeper-clean, published to Releases
-- [ ] Anniversary Edition fixes (dev mode, widescreen, FPS smoothing, texture packs)
+- [ ] Anniversary Edition stuff - HD compatibility (works but not well) and other ideas... very much TBD.
 
 </details>
 
