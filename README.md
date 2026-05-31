@@ -55,6 +55,7 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audi
 
 ### Phase 4 — Audio & effects ✅
 - [x] Menu / cutscene / dialogue audio plays
+- [x] Intro / outro cinematics play (native AVFoundation, replacing the dead Bink FMV path)
 - [x] Footstep impact sounds play
 - [x] Combat audio (gunfire, melee, weapon reloads) plays without lag — OpenAL buffer cache
 - [x] Looping ambient sounds stop correctly (Daodan health / super ambients no longer leak)

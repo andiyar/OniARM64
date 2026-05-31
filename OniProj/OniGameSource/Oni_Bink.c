@@ -14,6 +14,10 @@
 #include "Oni_Bink.h"
 #include "Oni_Platform.h"
 
+#if defined(__APPLE__) && UUmSDL
+#include "Oni_Cinematic_macOS.h"
+#endif
+
 // ======================================================================
 // functions
 // ======================================================================
@@ -23,6 +27,25 @@ ONrMovie_Play(
 	char						*inMovieName,
 	BKtScale					inScale)
 {
+#if defined(__APPLE__) && UUmSDL
+	// macOS: native AVFoundation playback replaces the (dead) Bink path (#31).
+	// "intro.bik" -> play "intro.mov" from the app bundle Resources/.
+	// A missing asset is a graceful no-op so it never blocks startup.
+	char						base[BFcMaxFileNameLength];
+	char						*dot;
+
+	UUrString_Copy(base, inMovieName, BFcMaxFileNameLength);
+	dot = strrchr(base, '.');
+	if (dot != NULL)
+	{
+		*dot = '\0';
+	}
+
+	ONrCinematic_PlayNative(base, (void *)ONgPlatformData.gameWindow);
+
+	(void)inScale;
+	return UUcError_None;
+#else
 	UUtError					error;
 	UUtWindow					window;
 	BFtFileRef					*dir_ref;
@@ -50,6 +73,7 @@ ONrMovie_Play(
 	movie_ref = NULL;
 
 	return UUcError_None;
+#endif
 }
 
 UUtError BKrMovie_Play_OpenGL(

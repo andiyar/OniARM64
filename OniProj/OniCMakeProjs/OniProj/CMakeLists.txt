@@ -546,6 +546,32 @@ if(Platform_SDL)
             ${OPENAL_LIBRARY}
             ${LIBAV}
     )
+
+    # macOS native cinematic playback (AVFoundation) — replaces the dead Bink
+    # path on ARM64 (see issue #31). Gated APPLE because Platform_SDL is also
+    # used for Linux. Obj-C++ (.mm); the C master-header PCH is skipped for it.
+    if(APPLE)
+        enable_language(OBJCXX)
+        target_sources(Oni PRIVATE
+                ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.mm
+                ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.h)
+        set_source_files_properties(
+                ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.mm
+                PROPERTIES
+                        COMPILE_OPTIONS "-fobjc-arc;-Wno-deprecated-declarations"
+                        SKIP_PRECOMPILE_HEADERS ON)
+        find_library(AVFOUNDATION_FRAMEWORK AVFoundation REQUIRED)
+        find_library(COREMEDIA_FRAMEWORK CoreMedia REQUIRED)
+        find_library(COREVIDEO_FRAMEWORK CoreVideo REQUIRED)
+        find_library(QUARTZCORE_FRAMEWORK QuartzCore REQUIRED)
+        find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
+        target_link_libraries(Oni PRIVATE
+                ${AVFOUNDATION_FRAMEWORK}
+                ${COREMEDIA_FRAMEWORK}
+                ${COREVIDEO_FRAMEWORK}
+                ${QUARTZCORE_FRAMEWORK}
+                ${COCOA_FRAMEWORK})
+    endif()
 elseif(WIN32)
     add_executable(Oni WIN32
             ${SOURCE_FILES}
