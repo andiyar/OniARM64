@@ -6,6 +6,11 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-05-31 — Session 41: Pre-announce polish — README screenshots + macOS-15 claim alignment
+
+- **`docs(readme): add gameplay screenshots, drop placeholders`** — wired four user-captured screenshots (third-person corridor gameplay, Syndicate combat, main menu, level-select / save-load) into the README Screenshots section as a 2×2 grid; downscaled 5120×2880 → 1600px wide (2.5 MB total for all four) and removed the three placeholder stubs. README-only by request — not added to the GitHub release asset or the (forthcoming) r/Oni announcement post.
+- **`fix(release): align macOS minimum claim to 15 (Sequoia)`** — the shipped 1.3.0r1 binary + bundled SDL2 are stamped `LC_BUILD_VERSION minos 15.0` (CMake defaulted the deployment target to the build host's Sequoia 15.7.7), while the README badge, `macos/Info.plist` `LSMinimumSystemVersion`, and the published release notes all claimed macOS 13+ — an untested claim the binary contradicts. Corrected the README badge (13+ → 15+ Sequoia), `Info.plist` (13.0 → 15.0, forward-looking — the already-shipped DMG still embeds 13.0), and the published release notes' "You need" line. Lowering the target to actually support 13/14 is tracked for later. Addresses [#35](https://github.com/andiyar/OniARM64/issues/35).
+
 ### 2026-05-31 — Session 40: Release 1.3.0r1 — refreshed public DMG (levels 1–4)
 
 - **`release: bump version to 1.3.0r1`** ([Info.plist](macos/Info.plist)). Cut the second public artifact, the first that plays past the opening levels. The published `1.3.0a1` DMG (2026-05-24) predated the level 2–4 gameplay-path crash fixes — it hard-crashed on the level-2 Deadly Brain screamer. `1.3.0r1` bundles all 10 commits since: the material-bounds fix (#32), TRAM `soundName` indirection (#33), `M3rDraw_BigBitmap` NULL guard (#28), New Game dialog truncation (#34), and the widescreen-portrait / splash-centering render fixes. Built clean via `make oni_app_release` (session-40 cinematic diagnostics stashed during the build so the public binary ships without instrumentation). Signed + notarized + stapled, published to [Releases](https://github.com/andiyar/OniARM64/releases) as a prerelease.

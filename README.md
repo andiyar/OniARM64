@@ -6,7 +6,7 @@
 
 *A native Apple Silicon port of Bungie's Oni (2001).*
 
-![macOS](https://img.shields.io/badge/macOS-13%2B-blue) &nbsp;
+![macOS](https://img.shields.io/badge/macOS-15%2B%20Sequoia-blue) &nbsp;
 ![arch](https://img.shields.io/badge/arch-ARM64-blue) &nbsp;
 ![status](https://img.shields.io/badge/status-playable-green) &nbsp;
 ![type](https://img.shields.io/badge/type-fan%20port-orange)
@@ -40,9 +40,12 @@ No Oni game data is included in the source or the app bundle. BYO.
 
 <table>
 <tr>
-<td><img src="docs/assets/screenshots/placeholder-1.png" width="280" alt="Placeholder — screenshot coming" /></td>
-<td><img src="docs/assets/screenshots/placeholder-2.png" width="280" alt="Placeholder — screenshot coming" /></td>
-<td><img src="docs/assets/screenshots/placeholder-3.png" width="280" alt="Placeholder — screenshot coming" /></td>
+<td align="center"><img src="docs/assets/screenshots/gameplay-corridor.png" width="400" alt="Konoko advancing on a TCTF striker in a warehouse corridor, third-person with HUD" /><br/><sub><b>Third-person gameplay</b> — levels 1–4 play start to finish</sub></td>
+<td align="center"><img src="docs/assets/screenshots/combat-syndicate.png" width="400" alt="Two red-armoured Syndicate soldiers firing rifles, muzzle flashes lit" /><br/><sub><b>Combat</b> — AI, weapons, particle effects</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/assets/screenshots/main-menu.png" width="400" alt="Oni main menu: Konoko splash art, ONI logo, New Game / Load Game / Options / Quit" /><br/><sub><b>Main menu</b> — running natively on Apple Silicon</sub></td>
+<td align="center"><img src="docs/assets/screenshots/level-select.png" width="400" alt="Load Game dialog listing TCTF Training, Syndicate Warehouse, Manufacturing Plant, Bio-Research Lab, Airport Assault" /><br/><sub><b>Save / load</b> across the playable levels</sub></td>
 </tr>
 </table>
 
