@@ -42,3 +42,23 @@
 
 # scripts/build-ffmpeg.sh output (custom minimal ffmpeg, GPL-free)
 /extern/
+
+#############################################
+# macOS / editor cruft
+.DS_Store
+**/.DS_Store
+
+#############################################
+# CMake build tree (generated; not the source CMakeLists under OniProj/)
+/build/
+
+#############################################
+# cwd-relative runtime logs (game writes these next to the binary)
+startup.txt
+debugger.txt
+**/startup.txt
+**/debugger.txt
+
+#############################################
+# superpowers skill working dirs (brainstorm scratch, etc.)
+/.superpowers/
