@@ -15,39 +15,13 @@
 
 ---
 
-## Get it running
+## Why this exists
 
-### Download a build
+*Oni* is the action-brawler Bungie shipped in January 2001 — third-person hand-to-hand and gunplay, an anime-inflected sci-fi police state, a story by Hideyuki Tanaka. It was Bungie's last solo release before Microsoft acquired them for Halo. The Windows and Mac builds shipped together; the Mac build stopped working when Apple killed 32-bit apps in macOS Catalina (2019).
 
-1. Grab the latest `OniARM64.dmg` from [Releases](https://github.com/andiyar/OniARM64/releases).
-2. Open the DMG and drag `OniARM64.app` onto the `Applications` shortcut.
-3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/gamedata/` (or symlink it).
-4. Double-click `OniARM64.app` to launch. Signed + notarized with Apple — no Gatekeeper warnings, no right-click workaround needed.
+This is the Apple Silicon branch. It picks up from Bungie's 2001 source release (via the [hogsy/OniFoxed](https://github.com/hogsy/OniFoxed) fork that kept it building) and gets Oni running natively on M-series Macs — same game, no Wine, no virtualisation, no Rosetta. Significant divergence from upstream: rewritten window-manager message API, template-manager bridge layer, memory allocator, OpenAL init, and dozens of 32→64 pointer sites.
 
-### Build from source
-
-```sh
-cd build && cmake .. -DPlatform_SDL=ON && make -j8 oni_app
-ln -sfn /path/to/your/Oni/GameDataFolder ~/Library/Application\ Support/OniARM64/gamedata
-open build/bin/OniARM64.app
-```
-
-No Oni game data is included in the source or the app bundle. BYO.
-
----
-
-## Screenshots
-
-<table>
-<tr>
-<td align="center"><img src="docs/assets/screenshots/gameplay-corridor.png" width="400" alt="Third-person gameplay: Konoko in a corridor facing an enemy, HUD visible" /></td>
-<td align="center"><img src="docs/assets/screenshots/combat-syndicate.png" width="400" alt="Combat: two soldiers firing rifles" /></td>
-</tr>
-<tr>
-<td align="center"><img src="docs/assets/screenshots/main-menu.png" width="400" alt="Oni main menu" /></td>
-<td align="center"><img src="docs/assets/screenshots/level-select.png" width="400" alt="Load Game level-select dialog" /></td>
-</tr>
-</table>
+Personal project. I'm porting it because I want to play Oni on my own Mac. Issues welcome; no roadmap.
 
 ---
 
@@ -112,13 +86,39 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audi
 
 ---
 
-## Why this exists
+## Screenshots
 
-*Oni* is the action-brawler Bungie shipped in January 2001 — third-person hand-to-hand and gunplay, an anime-inflected sci-fi police state, a story by Hideyuki Tanaka. It was Bungie's last solo release before Microsoft acquired them for Halo. The Windows and Mac builds shipped together; the Mac build stopped working when Apple killed 32-bit apps in macOS Catalina (2019).
+<table>
+<tr>
+<td align="center"><img src="docs/assets/screenshots/gameplay-corridor.png" width="400" alt="Third-person gameplay: Konoko in a corridor facing an enemy, HUD visible" /></td>
+<td align="center"><img src="docs/assets/screenshots/combat-syndicate.png" width="400" alt="Combat: two soldiers firing rifles" /></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/assets/screenshots/main-menu.png" width="400" alt="Oni main menu" /></td>
+<td align="center"><img src="docs/assets/screenshots/level-select.png" width="400" alt="Load Game level-select dialog" /></td>
+</tr>
+</table>
 
-This is the Apple Silicon branch. It picks up from Bungie's 2001 source release (via the [hogsy/OniFoxed](https://github.com/hogsy/OniFoxed) fork that kept it building) and gets Oni running natively on M-series Macs — same game, no Wine, no virtualisation, no Rosetta. Significant divergence from upstream: rewritten window-manager message API, template-manager bridge layer, memory allocator, OpenAL init, and dozens of 32→64 pointer sites.
+---
 
-Personal project. I'm porting it because I want to play Oni on my own Mac. Issues welcome; no roadmap.
+## Get it running
+
+### Download a build
+
+1. Grab the latest `OniARM64.dmg` from [Releases](https://github.com/andiyar/OniARM64/releases).
+2. Open the DMG and drag `OniARM64.app` onto the `Applications` shortcut.
+3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/gamedata/` (or symlink it).
+4. Double-click `OniARM64.app` to launch. Signed + notarized with Apple — no Gatekeeper warnings, no right-click workaround needed.
+
+### Build from source
+
+```sh
+cd build && cmake .. -DPlatform_SDL=ON && make -j8 oni_app
+ln -sfn /path/to/your/Oni/GameDataFolder ~/Library/Application\ Support/OniARM64/gamedata
+open build/bin/OniARM64.app
+```
+
+No Oni game data is included in the source or the app bundle. BYO.
 
 ---
 
