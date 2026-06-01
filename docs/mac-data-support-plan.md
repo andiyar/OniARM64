@@ -14,7 +14,9 @@
 
 **Stage 1 (SNDD) — DONE, user-verified.** Mac level 1 loads + plays clean (menu music + in-level gunfire), no SIGSEGV; PC/CX regression-checked unchanged. Landed in HISTORY session 43.
 
-The **IMA4 byte-order** work (originally Stage 4) got pulled into Stage 1: stopping the crash immediately exposed uniform static, root-caused to the big-endian packet state word (commit `5ca88b2` had removed the swap for PC). Fixed via a per-sound `SScSoundDataFlag_MacIMA4` gated swap — so Stage 4's by-ear question is now answered (Mac IMA4 **is** big-endian; PC stays unswapped, zero regression). Remaining: **Stage 2 (OSBD/BINA)** + **Stage 3 (TXMP, needs visual verify)**.
+The **IMA4 byte-order** work (originally Stage 4) got pulled into Stage 1: stopping the crash immediately exposed uniform static, root-caused to the big-endian packet state word (commit `5ca88b2` had removed the swap for PC). Fixed via a per-sound `SScSoundDataFlag_MacIMA4` gated swap — so Stage 4's by-ear question is now answered (Mac IMA4 **is** big-endian; PC stays unswapped, zero regression).
+
+**Stages 2–3 (OSBD/BINA, TXMP) — DE-SCOPED by evidence (2026-06-01).** Playtest on Mac data (cloak, Daodan, explosions/particles, combat, textures) + a clean log scan show they already work through the shared layout — they resolve bulk data via the already-wired `.sep` separate-file path, which is layout-agnostic. The spec's "4 templates differ" (§3) was re-derived by the playtest as **SNDD-only at runtime**. Not implementing Mac translates for them (YAGNI — would add complexity + regression risk for zero benefit). #37 closed as drop-and-play; reopen only if a specific Mac asset turns up broken in an untested level.
 
 ---
 
