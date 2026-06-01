@@ -10,6 +10,14 @@
 
 ---
 
+## Status (2026-06-01)
+
+**Stage 1 (SNDD) — DONE, user-verified.** Mac level 1 loads + plays clean (menu music + in-level gunfire), no SIGSEGV; PC/CX regression-checked unchanged. Landed in HISTORY session 43.
+
+The **IMA4 byte-order** work (originally Stage 4) got pulled into Stage 1: stopping the crash immediately exposed uniform static, root-caused to the big-endian packet state word (commit `5ca88b2` had removed the swap for PC). Fixed via a per-sound `SScSoundDataFlag_MacIMA4` gated swap — so Stage 4's by-ear question is now answered (Mac IMA4 **is** big-endian; PC stays unswapped, zero regression). Remaining: **Stage 2 (OSBD/BINA)** + **Stage 3 (TXMP, needs visual verify)**.
+
+---
+
 ## Conventions for this plan (read first)
 
 - **Spec:** [`docs/mac-data-support-spec.md`](mac-data-support-spec.md) is the design of record (§5 resolved, §5a verified code map). This plan implements it.

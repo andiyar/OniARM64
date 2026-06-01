@@ -82,6 +82,7 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audi
 - [x] `.app` bundle + Developer-ID code signing
 - [x] Notarized + stapled DMG, Gatekeeper-clean, published to Releases
 - [ ] Anniversary Edition stuff - HD compatibility (works but not well) and other ideas... very much TBD.
+- [ ] Mac retail `GameDataFolder` drop-and-play (original 2001 Mac disc) — audio/SNDD loads + plays native (Apple IMA4); textures (TXMP) + binary data (OSBD/BINA) still WIP ([#37](https://github.com/andiyar/OniARM64/issues/37))
 
 </details>
 
@@ -120,7 +121,7 @@ open build/bin/OniARM64.app
 ```
 
 No Oni game data is included in the source or the app bundle. BYO game :). 
-*At the moment the binary loads from the windows billed (endian-ness issues) but working on loading MacOS data as well (fingers crossed).
+*Mac retail disc data now loads natively for **audio** — the original 2001 Mac `GameDataFolder` boots and its sound plays (engine-native Apple IMA4, with the big-endian state-word handling the Mac format needs). Full Mac drop-and-play (textures + binary game-data) is still in progress, so PC/AE data is the recommended path for now. (See [#37](https://github.com/andiyar/OniARM64/issues/37).)
 
 ---
 

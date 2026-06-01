@@ -61,6 +61,7 @@ enum
 	SScSoundDataFlag_None			= 0x0000,
 	SScSoundDataFlag_Compressed		= 0x0001,		// this sound is compressed
 	SScSoundDataFlag_Stereo			= 0x0002,
+	SScSoundDataFlag_MacIMA4		= 0x0004,		/* Mac retail IMA4: packet state words are big-endian; the decoder swaps them */
 
 	SScSoundDataFlag_DynamicAlloc	= 0x8000		/* SStSoundData was dynamically allocated */
 

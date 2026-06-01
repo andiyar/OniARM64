@@ -22,6 +22,7 @@
 #include "BFW_TM_Private.h"
 #include "BFW_TM_Construction.h"
 #include "BFW_TM_Bridge.h"
+#include "BFW_TM_MacLayout.h"
 #include "BFW_Timer.h"
 
 
@@ -185,6 +186,7 @@ void TMrAKOT_TripwireCheck(const char* where)
 
 		UUtBool						final;
 		UUtBool						preparedForMemory;
+		UUtBool						isMac;					/* Mac retail data: select Mac on-disk layout for SNDD/OSBD/BINA/TXMP */
 
 		UUtUns32					dynamicBytesUsed;		// used for dynamic instances
 		UUtMemory_Pool*				dynamicPool;
@@ -1584,6 +1586,7 @@ TMiGame_InstanceFile_Dynamic_New(
 	newInstanceFile->nameBlock = NULL;
 	newInstanceFile->final = UUcFalse;
 	newInstanceFile->preparedForMemory = UUcTrue;
+	newInstanceFile->isMac = UUcFalse;					/* dynamic instance files are never Mac retail data */
 	newInstanceFile->dynamicBytesUsed = 0;
 	newInstanceFile->dynamicPool = UUrMemory_Pool_New(inMemoryPool_Size, UUcPool_Fixed);
 	UUmError_ReturnOnNull(newInstanceFile->dynamicPool);
@@ -1694,6 +1697,13 @@ TMiGame_InstanceFile_New_FromFileRef(
 
 	fileHeader = (TMtInstanceFile_Header *) mappingPtr;
 	error = TMiGame_InstanceFile_LoadHeaderFromMemory(fileHeader, &needsSwapping);
+
+	/* Mac retail data detector: retain whether this file carries the Mac
+	   template-checksum family so the bridge translate site can select the
+	   Mac on-disk layout for the templates that differ. The checksum is
+	   host-endian here (LoadHeaderFromMemory already applied any swap). */
+	newInstanceFile->isMac =
+		(fileHeader->totalTemplateChecksum == TMcMacTemplateChecksum) ? UUcTrue : UUcFalse;
 
 	UUmAssert(totalFileLength == fileHeader->nameBlockOffset + fileHeader->nameBlockLength);
 
@@ -1914,11 +1924,19 @@ TMiGame_InstanceFile_New_FromFileRef(
 						s[16],s[17],s[18],s[19], s[20],s[21],s[22],s[23]);
 				}
 
-				TMrBridge_TranslateInstance(lyt,
-					src_data - TMcPreDataSize,
-					dst_preamble,
-					needsSwapping,
-					var_count);
+				/* Mac retail data: the 4 templates whose on-disk layout differs
+				   are remapped into the shared engine struct by the Mac-layout
+				   path; if it handles this tag, skip the PC bridge translate.
+				   PC files have isMac==UUcFalse and short-circuit unchanged. */
+				if (!(newInstanceFile->isMac &&
+					  TMrMacLayout_Translate(tag, src_data - TMcPreDataSize, dst_preamble, needsSwapping)))
+				{
+					TMrBridge_TranslateInstance(lyt,
+						src_data - TMcPreDataSize,
+						dst_preamble,
+						needsSwapping,
+						var_count);
+				}
 
 				curDesc2->dataPtr = dst_data;
 

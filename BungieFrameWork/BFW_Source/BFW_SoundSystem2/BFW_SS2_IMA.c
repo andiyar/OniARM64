@@ -542,6 +542,7 @@ SSiIMA_DecompressSoundData_Mono(
 		UUtUns16			state;
 
 		state = sample_data->state;
+		if (inSoundData->flags & SScSoundDataFlag_MacIMA4) UUmSwapBig_2Byte(&state);
 
 		SSiIMA_DecompressPacket(state, sample_data->samples, destination);
 
@@ -579,10 +580,12 @@ SSiIMA_DecompressSoundData_Stereo(
 		UUtUns16				right_samples[SScIMA_SamplesPerPacket];
 
 		state = sample_data->state;
+		if (inSoundData->flags & SScSoundDataFlag_MacIMA4) UUmSwapBig_2Byte(&state);
 		SSiIMA_DecompressPacket(state, sample_data->samples, left_samples);
 		sample_data++;
 
 		state = sample_data->state;
+		if (inSoundData->flags & SScSoundDataFlag_MacIMA4) UUmSwapBig_2Byte(&state);
 		SSiIMA_DecompressPacket(state, sample_data->samples, right_samples);
 		sample_data++;
 
