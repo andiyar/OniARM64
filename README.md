@@ -15,19 +15,17 @@
 
 ---
 
-## Why this exists
-
 One of my favourite games from university, *Oni* is the action-brawler from Bungie/Take-Two in 2001 — third-person hand-to-hand and gunplay, Syndicate versus the TCTF and an intriguing story with amazing music. Spun off from Bungie as they were bought by Microsoft for Halo, the mac build (I've always been a Mac player!) was OS9 only, with MacOSX ports eventually from the amazing Omni group for PPC, and then by Feral Interactive for Intel. These were all 32-bit only, and when Apple deprecated 32 bit with Catalina, they stopped working.
 
-Fast forward until recently and I discovered both the magic of Claude Code, and that there was, floating around on GitHub, forks of the Oni source code for windows from 2021. Two months later, lots of fiddling - I'm definitely not a programmer! - this is OniARM64, my attempt to create a vanilla Oni experience running on Apple Silicon. No Rosetta, 64 bit, no WINE required. No particular roadmap, things added as they are thought of and done.
+Fast forward until recently after I discovered the magic of Claude Code, and that there was, floating around on GitHub, forks of the Oni source code for windows from 2021. Two months later, lots of fiddling - I'm definitely not a programmer! - and this is OniARM64, my attempt to create a vanilla Oni experience running on Apple Silicon. No Rosetta, 64 bit, no WINE required. No particular roadmap, things added as they are thought of and done / bugs are encountered as I have life time on weekends when I play with it.
 
-Currently it's playable (I've run through the first 4 levels... too many times) and I figure, time to share! This is a personal project, as I love Oni, have played it too many times, and I want to keep playing it, so if you find bugs/issues please do advise, though time to fix/etc will be as life allows.
+Currently it's playable (I've run through the first 4 levels... too many times... so after that, unclear!) and I figure, maybe share! This is a personal project, as I love Oni, have played it too many times, and I want to keep playing it, so if you find bugs/issues please do advise, though time to fix/etc will be as life allows.
 
 ---
 
 ## Status
 
-Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audio, save/load all working. Loads **both** the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude.
+Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audio, save/load all working. Loads **both** the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
 
 <details>
 <summary><strong>Full milestone status</strong></summary>
@@ -81,7 +79,7 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audi
 ### Phase 7 — Shippable artefact
 - [x] `.app` bundle + Developer-ID code signing
 - [x] Notarized + stapled DMG, Gatekeeper-clean, published to Releases
-- [ ] Anniversary Edition stuff - HD compatibility (works but not well) and other ideas... very much TBD.
+- [ ] Anniversary Edition QoL improvements - HD compatibility (works but not well) and other ideas... very much TBD.
 - [x] Mac retail `GameDataFolder` drop-and-play (original 2001 Mac disc) — loads + plays natively; engine auto-detects Mac vs PC data by checksum (Apple IMA4 SNDD; OSBD/BINA/TXMP verified through the shared layout) ([#37](https://github.com/andiyar/OniARM64/issues/37))
 
 </details>
@@ -109,8 +107,8 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audi
 
 1. Grab the latest `OniARM64.dmg` from [Releases](https://github.com/andiyar/OniARM64/releases).
 2. Open the DMG and drag `OniARM64.app` onto the `Applications` shortcut.
-3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/gamedata/`). Accepts either the original **Mac retail** or **PC/Windows** game data — the engine auto-detects.*
-4. Double-click `OniARM64.app` to launch (the build is signed and notarised).
+3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/gamedata/`). Accepts either the original **Mac retail** or **Windows retail** game data — the engine auto-detects.*
+4. Double-click `OniARM64.app` to launch.
 
 ### Build from source
 
@@ -120,8 +118,7 @@ ln -sfn /path/to/your/Oni/GameDataFolder ~/Library/Application\ Support/OniARM64
 open build/bin/OniARM64.app
 ```
 
-No Oni game data is included in the source or the app bundle. BYO game :). 
-*Both the original 2001 Mac retail `GameDataFolder` and PC/Windows (incl. AE) data now load and play — the engine auto-detects which via the file's template checksum and applies the Mac-specific SNDD/IMA4 handling only to Mac data. Mac retail is drop-and-play, verified by playtest (audio, particles, combat, textures). (See [#37](https://github.com/andiyar/OniARM64/issues/37).)
+No Oni game data or assets are included in the source or the app bundle. BYO game to play :). 
 
 ---
 
