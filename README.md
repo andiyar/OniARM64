@@ -25,7 +25,7 @@ Currently it's playable (I've run through the first 4 levels... too many times..
 
 ## Status
 
-Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, save/load all working. Loads **both** the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
+Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, save/load all working. Loads **both** (or either?) the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
 
 <details>
 <summary><strong>Full milestone status</strong></summary>
