@@ -15,7 +15,7 @@
 
 ---
 
-One of my favourite games from university, *Oni* is the action-brawler from Bungie/Take-Two in 2001 — third-person hand-to-hand and gunplay, Syndicate versus the TCTF and an intriguing story with amazing music. Spun off from Bungie as they were bought by Microsoft for Halo, the mac build (I've always been a Mac player!) was OS9 only, with MacOSX ports eventually from the amazing Omni group for PPC, and then by Feral Interactive for Intel. These were all 32-bit only, and when Apple deprecated 32 bit with Catalina, they stopped working.
+One of my favourite games from university, *Oni* is the action-brawler from Bungie/Take-Two in 2001 with 3rd person hand-to-hand and gun combat, Syndicate versus the TCTF and an intriguing story with amazing music. The last product from Bungie as they were bought by Microsoft for Halo (via TakeTwo), the mac build (I've always been a Mac player!) was initially OS9 only, with MacOSX ports eventually from the amazing Omni group for PPC, and then by Feral Interactive for Intel. These were all 32-bit only, and when Apple deprecated 32 bit with Catalina, they stopped working.
 
 Fast forward until recently after I discovered the magic of Claude Code, and that there was, floating around on GitHub, forks of the Oni source code for windows from 2021. Two months later, lots of fiddling - I'm definitely not a programmer! - and this is OniARM64, my attempt to create a vanilla Oni experience running on Apple Silicon. No Rosetta, 64 bit, no WINE required. No particular roadmap, things added as they are thought of and done / bugs are encountered as I have life time on weekends when I play with it.
 
@@ -25,7 +25,7 @@ Currently it's playable (I've run through the first 4 levels... too many times..
 
 ## Status
 
-Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audio, save/load all working. Loads **both** the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
+Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, save/load all working. Loads **both** the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
 
 <details>
 <summary><strong>Full milestone status</strong></summary>
