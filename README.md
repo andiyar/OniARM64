@@ -41,6 +41,7 @@ Levels 1–4 playable end-to-end — combat, AI, weapons, particle effects, audi
 - [x] Multi-frame rendering without geometry corruption
 - [x] Characters render with correct bone transforms
 - [x] In-game UI text renders without left-edge clipping
+- [x] In-engine cutscenes frame correctly on widescreen — 4:3-authored shots hold their framing instead of pulling in side geometry ([#36](https://github.com/andiyar/OniARM64/issues/36))
 
 ### Phase 3 — Level load & gameplay primitives ✅
 - [x] Level 0 (main menu) loads and runs

@@ -73,6 +73,10 @@ extern float ONgMotoko_FieldOfView;
 #define ONcMotoko_NearPlane 2.0f
 //#define ONcMotoko_FarPlane 1000.0f
 #define ONcMotoko_AspectRatio ((float)M3rDraw_GetWidth() / (float)M3rDraw_GetHeight())
+// In-engine cutscenes were authored for a 4:3 frame. On wider displays we hold this
+// horizontal framing and trim vertical FOV instead, so side geometry the shot excluded
+// stays off-screen (issue #36 — the level-2 intro wall).
+#define ONcMotoko_CutsceneAspect (4.0f / 3.0f)
 
 extern UUtInt32 ONgMotoko_ClearColor;
 extern UUtBool ONgMotoko_ShadeVertex;

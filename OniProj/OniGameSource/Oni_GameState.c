@@ -5061,6 +5061,33 @@ ONiGameState_Display_NonReflectable(
 		TMrAKOT_TripwireCheck("NR pre Camera_GetActive");
 		M3rCamera_GetActive(&activeCamera);
 
+		// Cutscene widescreen framing (issue #36): in-engine cutscenes were authored
+		// for 4:3. On a wider window the camera inherits the window aspect, opening the
+		// horizontal FOV (57.8 deg -> 72.7 deg at 16:9) and pulling side geometry the
+		// 4:3 shot framed out into view (the level-2 intro wall). Hold the 4:3 horizontal
+		// framing during cutscenes and fill the extra width by trimming vertical FOV
+		// (fill-width / vert-crop). The same camera object drives both the visibility cull
+		// and the GL projection, so one clamp narrows them together. Sourced from the
+		// authored global FOV (never telescopes) and recomputed from the live aspect each
+		// frame; outside cutscenes it re-asserts the authored FOV, so it auto-restores.
+		{
+			float framing_aspect = ONcMotoko_AspectRatio;
+			float render_fovy    = ONgMotoko_FieldOfView;
+			float cur_near, cur_far;
+
+			M3rCamera_GetStaticData(ONgVisibilityCamera, NULL, NULL, &cur_near, &cur_far);
+
+			if ((ONgGameState->local.in_cutscene) && (framing_aspect > ONcMotoko_CutsceneAspect)) {
+				float fov_ratio = ONcMotoko_CutsceneAspect / framing_aspect;
+				render_fovy = 2.0f * MUrATan(fov_ratio * MUrTan(ONgMotoko_FieldOfView * 0.5f));
+			}
+
+			M3rCamera_SetStaticData(ONgVisibilityCamera, render_fovy, framing_aspect, cur_near, cur_far);
+			if (activeCamera != ONgVisibilityCamera) {
+				M3rCamera_SetStaticData(activeCamera, render_fovy, framing_aspect, cur_near, cur_far);
+			}
+		}
+
 		TMrAKOT_TripwireCheck("NR pre AKrEnvironment_StartFrame");
 		error = AKrEnvironment_StartFrame(ONgGameState->level->environment, ONgVisibilityCamera, &render_sky_this_frame);
 		TMrAKOT_TripwireCheck("NR post AKrEnvironment_StartFrame");
