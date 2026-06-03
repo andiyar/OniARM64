@@ -534,6 +534,8 @@ if(Platform_SDL)
             ../../../BungieFrameWork/BFW_Source/BFW_LocalInput/Platform_SDL/BFW_LI_Platform_SDL.h
 
             ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/OpenGL/gl_sdl.c
+            ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/OpenGL/gl_resolution_curate.c
+            ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/OpenGL/gl_resolution_curate.h
 
             ../../../BungieFrameWork/BFW_Source/BFW_Utility/Platform_SDL/BFW_Platform_SDL.c
 
