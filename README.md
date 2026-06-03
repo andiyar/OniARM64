@@ -108,7 +108,7 @@ Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 
 1. Grab the latest `OniARM64.dmg` from [Releases](https://github.com/andiyar/OniARM64/releases).
 2. Open the DMG and drag `OniARM64.app` onto the `Applications` shortcut.
-3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/gamedata/`. Accepts either the original **Mac retail** or **Windows retail** game data — the engine auto-detects.*
+3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/`. **'GameDataFolder' needs to be renamed 'gamedata' for the current build** Accepts either the original **Mac retail** or **Windows retail** game data — the engine auto-detects.* Renaming will be corrected very soon!
 4. Double-click `OniARM64.app` to launch.
 
 *tested but hey verify.
