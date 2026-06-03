@@ -111,7 +111,7 @@ Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 2. Open the DMG and drag `OniARM64.app` onto the `Applications` shortcut.
 3. **Double-click `OniARM64.app`.** On first run, if it can't find your game data it pops up a dialog — click **Choose**, point it at your Oni `GameDataFolder`, and it copies it into place for you (no Terminal, no renaming). Either the original **Mac retail** or **Windows retail** data works — the engine auto-detects.*
 
-   Prefer to place it yourself? Drop your `GameDataFolder` at `~/Library/Application Support/OniARM64/GameDataFolder` — the older `gamedata` name still works too.
+   Prefer to place it yourself? Drop your `GameDataFolder` into `~/Library/Application Support/OniARM64/` - you'll likely need to create the folder first.
 
 *tested but hey verify.
 
