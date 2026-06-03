@@ -82,7 +82,7 @@ Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 - [x] Notarized + stapled DMG, Gatekeeper-clean, published to Releases
 - [ ] Anniversary Edition QoL improvements - HD compatibility (works but not well) and other ideas... very much TBD.
 - [x] Mac retail `GameDataFolder` drop-and-play (original 2001 Mac disc) — loads + plays natively; engine auto-detects Mac vs PC data by checksum (Apple IMA4 SNDD; OSBD/BINA/TXMP verified through the shared layout) ([#37](https://github.com/andiyar/OniARM64/issues/37))
-- [ ] First-run guided data-setup picker — locate + install your `GameDataFolder` with no Terminal/rename; resolver content-validates and accepts both folder names ([#38](https://github.com/andiyar/OniARM64/issues/38), pending verification)
+- [x] First-run guided data-setup picker — locate + install your `GameDataFolder` with no Terminal/rename; resolver content-validates and accepts both folder names ([#38](https://github.com/andiyar/OniARM64/issues/38))
 
 </details>
 
