@@ -11,6 +11,7 @@
 #include "gl_engine.h"
 #include "Oni_Platform.h"
 #include "Oni_Persistance.h"
+#include "gl_resolution_curate.h"
 
 #include "SDL2/SDL_pixels.h"
 
@@ -328,42 +329,64 @@ void gl_matrox_display_back_buffer(
 
 // fills in an array of display modes; returns number of elements in array
 // array MUST BE AT LEAST M3cMaxDisplayModes elements in size!!!
+//
+// Enumerates the display's real modes via SDL, curates them (dedupe, drop
+// < 640x480, sort ascending, keep the largest M3cMaxDisplayModes), and emits
+// them as 32-bit modes. Falls back to a fixed list only if SDL reports none.
 int gl_enumerate_valid_display_modes(
 	M3tDisplayMode display_mode_list[M3cMaxDisplayModes])
 {
-	M3tDisplayMode desired_display_mode_list[]= {
-			{640, 480, 16, 0},
-			{800, 600, 16, 0},
-			{1024, 768, 16, 0},
-			{1152, 864,	16, 0},
-			//{1280, 1024, 16, 0},
-			{1600, 1200, 16, 0},
-			{1920, 1080, 16, 0},
-			//{1920, 1200, 16, 0},
-			{640, 480, 32, 0},
-			{800, 600, 32, 0},
-			{1024, 768, 32, 0},
-			{1152, 864, 32, 0},
-			//{1280, 1024, 32, 0},
-			{1600, 1200, 32, 0},
-			{1920, 1080, 32, 0}
-			/*{1920, 1200, 32, 0}*/};
-	int n= sizeof(desired_display_mode_list)/sizeof(desired_display_mode_list[0]);
-	int i, num_valid_display_modes= 0;
-	//SDL_DisplayMode mode;
-	//int modes= SDL_GetNumDisplayModes();
-	//SDL_GetDisplayMode(0, n, &mode);
+	static const M3tDisplayMode fallback_list[] = {
+			{640, 480, 32, 0}, {800, 600, 32, 0}, {1024, 768, 32, 0},
+			{1152, 864, 32, 0}, {1600, 1200, 32, 0}, {1920, 1080, 32, 0}};
+	const int fallback_count =
+			(int)(sizeof(fallback_list) / sizeof(fallback_list[0]));
 
-	for (i=0; i<n && i<M3cMaxDisplayModes; i++)
-	{
-		SDL_DisplayMode desired_display_mode;
+	int raw_w[128], raw_h[128];
+	int out_w[M3cMaxDisplayModes], out_h[M3cMaxDisplayModes];
+	int raw_count = 0;
+	int num_sdl_modes, i, curated, n;
+	SDL_DisplayMode mode;
 
-		//TODO: filter available modes
-		display_mode_list[num_valid_display_modes]= desired_display_mode_list[i];
-		++num_valid_display_modes;
+	// Seed with the current desktop mode so the native resolution is always
+	// offered, even if it isn't in the enumerated list for some reason.
+	if (SDL_GetDesktopDisplayMode(0, &mode) == 0 && raw_count < 128) {
+		raw_w[raw_count] = mode.w;
+		raw_h[raw_count] = mode.h;
+		raw_count++;
 	}
 
-	return num_valid_display_modes;
+	// Enumerate every mode SDL reports for display 0.
+	num_sdl_modes = SDL_GetNumDisplayModes(0);
+	for (i = 0; i < num_sdl_modes && raw_count < 128; i++) {
+		if (SDL_GetDisplayMode(0, i, &mode) == 0) {
+			raw_w[raw_count] = mode.w;
+			raw_h[raw_count] = mode.h;
+			raw_count++;
+		}
+	}
+
+	curated = gl_curate_resolutions(raw_w, raw_h, raw_count,
+									out_w, out_h, M3cMaxDisplayModes);
+
+	// Fallback: SDL gave us nothing usable -> use the fixed list.
+	if (curated <= 0) {
+		n = (fallback_count < M3cMaxDisplayModes) ? fallback_count
+												  : M3cMaxDisplayModes;
+		for (i = 0; i < n; i++) {
+			display_mode_list[i] = fallback_list[i];
+		}
+		return n;
+	}
+
+	// Emit curated modes as 32-bit M3tDisplayModes.
+	for (i = 0; i < curated; i++) {
+		display_mode_list[i].width = (UUtUns16)out_w[i];
+		display_mode_list[i].height = (UUtUns16)out_h[i];
+		display_mode_list[i].bitDepth = 32;
+		display_mode_list[i].platformData = 0;
+	}
+	return curated;
 }
 
 #endif
