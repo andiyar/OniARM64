@@ -420,7 +420,7 @@ ONiResolutions_AddToPopup(
 
 		mode = &current_draw_engine_caps->displayDevices[activeDevice].displayModes[i];
 
-		sprintf(title, "%d x %d x %d bit", mode->width, mode->height, mode->bitDepth);
+		sprintf(title, "%d x %d", mode->width, mode->height);
 		WMrPopupMenu_AppendItem_Light(inPopupMenu, i, title);
 	}
 
