@@ -96,7 +96,7 @@ extern "C" {
 
 	#define M3cExtraCoords				(60)
 
-	#define M3cMaxDisplayModes			(16)
+	#define M3cMaxDisplayModes			(32)
 	#define M3cMaxDisplayDevices		(8)
 	#define M3cMaxNumEngines			(2)
 	#define M3cMaxNameLen				(64)
