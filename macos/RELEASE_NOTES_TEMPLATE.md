@@ -3,63 +3,39 @@ RELEASE NOTES TEMPLATE — fill in <PLACEHOLDERS> and pass to `gh release create
 
 Usage:
     cp macos/RELEASE_NOTES_TEMPLATE.md /tmp/oni-release-notes.md
-    # edit /tmp/oni-release-notes.md, fill in the placeholders, append a
-    # new line to ## Version history (don't rewrite the existing entries),
-    # update ## What works for anything new
+    # edit /tmp/oni-release-notes.md: set <VERSION>, list what's new this build,
+    # update the scope note. Keep it short.
     gh release create v<VERSION> \
         --repo andiyar/OniARM64 \
-        --title "Oni v<VERSION> — <SHORT-TAGLINE>" \
+        --title "Oni <VERSION> — <SHORT-TAGLINE>" \
         --notes-file /tmp/oni-release-notes.md \
         --prerelease \
         build/OniARM64.dmg
 
-Keep the notes short. The README is the place for narrative; release notes are
-"here's what's in this build, here's what's new, here's how to get going."
+Release notes are "what's new + how to get going." The README carries the
+narrative, the full milestone list, and the credits.
 -->
 
-<NTH> public <BUILD-STAGE> build of OniARM64, an Apple Silicon native port of Oni.
+Public preview build of OniARM64, an Apple Silicon native port of Oni.
 
-### Version history
+**What's new in <VERSION>**
 
-- **1.1 PPC** (2001) — Bungie
-- **1.0 v1.36** (2003) — The Omni Group
-- **1.1 Intel → 1.2 → 1.2.1** (2011–2015) — Feral Interactive
-- **1.3.0a1** (2026) — OniARM64 (andiyar + Claude Opus)
-- **<NEW-VERSION>** (<YEAR>) — <ONE-LINE-WHAT-CHANGED>
+- <ONE LINE PER CHANGE THIS BUILD>
 
-> **Note:** This is <a/an> <BUILD-STAGE> build. <ONE-LINE-PRIMARY-GOAL-OR-SCOPE>.
+> **Note:** This is a preview build. <SCOPE — e.g. levels 1–4 play end-to-end; later levels untested.>
 
 ### You need
 
 - An Apple Silicon Mac
-- macOS <MIN-TESTED-VERSION> or newer
-- A legitimate copy of Oni to provide game data (`GameDataFolder`)
+- macOS 15 (Sequoia) or newer
+- Your own copy of Oni to provide game data (`GameDataFolder`), Mac or Windows data both work
 
 ### Install
 
 1. Download `OniARM64.dmg` below.
 2. Open the DMG and drag `OniARM64.app` onto the `Applications` shortcut.
-3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/gamedata/` (or symlink it).
-4. Double-click to launch.
-
-### What works
-
-- Native ARM64 binary, compile and boot
-- HiDPI fullscreen rendering
-- <CURRENT-PLAYABLE-LEVEL-RANGE> playthrough — combat, AI, weapons, doors, save/load
-- Audio — music, dialogue, cutscenes, sound FX
-- <ANY-NEW-CAPABILITY-THIS-RELEASE>
-
-### What doesn't work
-
-Anything untested cannot be guaranteed.
-
-<KNOWN-BLOCKING-ISSUES-IF-ANY>
+3. Double-click `OniARM64.app`. On first launch it prompts you to locate your Oni `GameDataFolder` and copies it into place for you.
 
 ### Bug reports
 
-[Open an issue](https://github.com/andiyar/OniARM64/issues). Crash reports land at `~/Library/Logs/DiagnosticReports/Oni-*.ips` — please attach the most recent.
-
-### With thanks
-
-Bungie · The Omni Group · Feral Interactive · [hogsy/OniFoxed](https://github.com/hogsy/OniFoxed) (forked from) · [Iritscen](https://iritscen.oni2.net/) and the AE team · the [oni2.net community](https://oni2.net/).
+[Open an issue](https://github.com/andiyar/OniARM64/issues). Crash reports land at `~/Library/Logs/DiagnosticReports/Oni-*.ips`; please attach the most recent.
