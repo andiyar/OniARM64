@@ -2,16 +2,20 @@
 // ONi_BundlePath.h
 // ======================================================================
 //
-// Resolves the game-data folder using a layered lookup chain:
+// Resolves the game-data folder using a layered lookup chain. At each location
+// it tries the natural retail name "GameDataFolder" first, then the legacy
+// "gamedata" (so existing installs and the dev symlink keep working):
 //
-//   1. $HOME/Library/Application Support/OniARM64/gamedata
-//   2. <executable_dir>/../Resources/gamedata   (when running from .app)
-//   3. The legacy BFrFileRef_Search("GameDataFolder") chain (current dev
-//      workflow — OniNative/Oni with a GameDataFolder symlink).
+//   1. $HOME/Library/Application Support/OniARM64/{GameDataFolder,gamedata}
+//   2. <executable_dir>/../Resources/{GameDataFolder,gamedata}  (from .app)
+//   3. The legacy BFrFileRef_Search chain (dev workflow — OniNative/Oni with a
+//      GameDataFolder symlink, resolved relative to cwd).
 //
-// First candidate that resolves to an existing directory wins. If none
-// exist, returns ONcError_NoDataFolder (the same error the legacy chain
-// would return).
+// A candidate only wins if it *validates as real Oni data* (holds the sentinel
+// level0_Final.dat, or any levelN_Final.dat) — not just that the directory
+// exists. That rejects empty / wrong / double-nested folders that would
+// otherwise resolve here and fail downstream. If nothing validates, returns
+// ONcError_NoDataFolder; on Apple+SDL the caller then runs the guided picker.
 //
 // ======================================================================
 

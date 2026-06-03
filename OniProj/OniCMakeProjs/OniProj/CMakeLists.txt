@@ -422,6 +422,8 @@ set(SOURCE_FILES
         ../../OniGameSource/Oni.h
         ../../OniGameSource/ONi_BundlePath.c
         ../../OniGameSource/ONi_BundlePath.h
+        ../../OniGameSource/ONi_GameData.c
+        ../../OniGameSource/ONi_GameData.h
         ../../OniGameSource/Oni_Aiming.c
         ../../OniGameSource/Oni_Aiming.h
         ../../OniGameSource/Oni_Bink.c
@@ -549,16 +551,20 @@ if(Platform_SDL)
             ${LIBAV}
     )
 
-    # macOS native cinematic playback (AVFoundation) — replaces the dead Bink
-    # path on ARM64 (see issue #31). Gated APPLE because Platform_SDL is also
-    # used for Linux. Obj-C++ (.mm); the C master-header PCH is skipped for it.
+    # macOS native Obj-C++ units (.mm): cinematic playback (AVFoundation, issue
+    # #31) and the first-run guided data-setup picker (Cocoa). Gated APPLE
+    # because Platform_SDL is also used for Linux. The C master-header PCH is
+    # skipped for them.
     if(APPLE)
         enable_language(OBJCXX)
         target_sources(Oni PRIVATE
                 ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.mm
-                ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.h)
+                ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.h
+                ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.mm
+                ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.h)
         set_source_files_properties(
                 ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.mm
+                ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.mm
                 PROPERTIES
                         COMPILE_OPTIONS "-fobjc-arc;-Wno-deprecated-declarations"
                         SKIP_PRECOMPILE_HEADERS ON)

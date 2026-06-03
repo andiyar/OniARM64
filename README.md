@@ -82,6 +82,7 @@ Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 - [x] Notarized + stapled DMG, Gatekeeper-clean, published to Releases
 - [ ] Anniversary Edition QoL improvements - HD compatibility (works but not well) and other ideas... very much TBD.
 - [x] Mac retail `GameDataFolder` drop-and-play (original 2001 Mac disc) — loads + plays natively; engine auto-detects Mac vs PC data by checksum (Apple IMA4 SNDD; OSBD/BINA/TXMP verified through the shared layout) ([#37](https://github.com/andiyar/OniARM64/issues/37))
+- [ ] First-run guided data-setup picker — locate + install your `GameDataFolder` with no Terminal/rename; resolver content-validates and accepts both folder names ([#38](https://github.com/andiyar/OniARM64/issues/38), pending verification)
 
 </details>
 
@@ -108,8 +109,9 @@ Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 
 1. Grab the latest `OniARM64.dmg` from [Releases](https://github.com/andiyar/OniARM64/releases).
 2. Open the DMG and drag `OniARM64.app` onto the `Applications` shortcut.
-3. Drop your Oni `GameDataFolder` at `~/Library/Application Support/OniARM64/`. **'GameDataFolder' needs to be renamed 'gamedata' for the current build** Accepts either the original **Mac retail** or **Windows retail** game data — the engine auto-detects.* Renaming will be corrected very soon!
-4. Double-click `OniARM64.app` to launch.
+3. **Double-click `OniARM64.app`.** On first run, if it can't find your game data it pops up a dialog — click **Choose**, point it at your Oni `GameDataFolder`, and it copies it into place for you (no Terminal, no renaming). Either the original **Mac retail** or **Windows retail** data works — the engine auto-detects.*
+
+   Prefer to place it yourself? Drop your `GameDataFolder` at `~/Library/Application Support/OniARM64/GameDataFolder` — the older `gamedata` name still works too.
 
 *tested but hey verify.
 
@@ -117,7 +119,7 @@ Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 
 ```sh
 cd build && cmake .. -DPlatform_SDL=ON && make -j8 oni_app
-ln -sfn /path/to/your/Oni/GameDataFolder ~/Library/Application\ Support/OniARM64/gamedata
+ln -sfn /path/to/your/Oni/GameDataFolder ~/Library/Application\ Support/OniARM64/GameDataFolder
 open build/bin/OniARM64.app
 ```
 

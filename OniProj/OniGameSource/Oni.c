@@ -62,6 +62,10 @@
 
 #include "ONi_BundlePath.h"
 
+#if defined(__APPLE__) && UUmSDL
+#include "Oni_DataSetup_macOS.h"
+#endif
+
 #if DEBUGGING
 #define BRENTS_CHEESY_GAME_PERF	1
 #endif
@@ -178,6 +182,22 @@ ONiInitializeAll(
 	UUrStartupMessage("looking for the game data folder");
 
 	error = ONiBundlePath_ResolveGameDataFolder(&ONgGameDataFolder);
+
+#if defined(__APPLE__) && UUmSDL
+	// No recognised game data anywhere. Rather than quit silently (cwd = / on a
+	// Finder double-click), run the native first-run picker: it guides the user
+	// to locate their GameDataFolder, validates it, and copies it into
+	// ~/Library/Application Support/OniARM64/GameDataFolder. On success we
+	// re-resolve and continue. If the user chose Quit/Cancel, exit cleanly here
+	// rather than surfacing the generic engine "Could not find game data" error.
+	if (error != UUcError_None) {
+		if (ONrDataSetup_RunGuidedPicker()) {
+			error = ONiBundlePath_ResolveGameDataFolder(&ONgGameDataFolder);
+		} else {
+			exit(0);
+		}
+	}
+#endif
 
 	UUmError_ReturnOnErrorMsg(error, "Could not find game data folder");
 

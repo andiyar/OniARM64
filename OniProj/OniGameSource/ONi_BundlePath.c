@@ -3,6 +3,7 @@
 // ======================================================================
 
 #include "ONi_BundlePath.h"
+#include "ONi_GameData.h"   // ONiGameData_ValidateFolder — content check
 #include "Oni.h"   // ONcGameDataFolder1, ONcGameDataFolder2, ONcError_NoDataFolder
 
 #include <errno.h>
@@ -41,11 +42,17 @@ static UUtBool ONiBundlePath_FileExists(const char *path)
     return (stat(path, &st) == 0) ? UUcTrue : UUcFalse;
 }
 
-// If `candidate` exists as a directory, set *outFolder to it (via the BFW
-// file-ref API) and return UUcTrue. Else UUcFalse.
+// If `candidate` exists as a directory AND validates as real Oni data, set
+// *outFolder to it (via the BFW file-ref API) and return UUcTrue. Else UUcFalse.
+// The content check (not bare existence) is what stops an empty, wrong, or
+// double-nested directory from resolving here and then failing downstream.
 static UUtBool ONiBundlePath_TryCandidate(const char *candidate, BFtFileRef *outFolder)
 {
     if (!ONiBundlePath_DirExists(candidate)) {
+        return UUcFalse;
+    }
+    if (!ONiGameData_ValidateFolder(candidate)) {
+        UUrStartupMessage("[BundlePath] %s exists but holds no Oni level data; skipping", candidate);
         return UUcFalse;
     }
     UUtError err = BFrFileRef_Set(outFolder, candidate);
@@ -69,15 +76,24 @@ static UUtBool ONiBundlePath_TryApplicationSupport(BFtFileRef *outFolder)
     if (home == NULL || home[0] == '\0') {
         return UUcFalse;
     }
-    char path[BFcMaxPathLength];
-    int n = snprintf(path, sizeof(path),
-                     "%s/Library/Application Support/OniARM64/gamedata",
-                     home);
-    if (n < 0 || (size_t)n >= sizeof(path)) {
-        UUrStartupMessage("[BundlePath] Application Support path overflow");
-        return UUcFalse;
+    // Prefer the natural retail folder name "GameDataFolder"; still accept the
+    // legacy "gamedata" so existing installs (and the dev symlink) keep working.
+    static const char *const names[] = { "GameDataFolder", "gamedata" };
+    unsigned i;
+    for (i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+        char path[BFcMaxPathLength];
+        int n = snprintf(path, sizeof(path),
+                         "%s/Library/Application Support/OniARM64/%s",
+                         home, names[i]);
+        if (n < 0 || (size_t)n >= sizeof(path)) {
+            UUrStartupMessage("[BundlePath] Application Support path overflow");
+            continue;
+        }
+        if (ONiBundlePath_TryCandidate(path, outFolder)) {
+            return UUcTrue;
+        }
     }
-    return ONiBundlePath_TryCandidate(path, outFolder);
+    return UUcFalse;
 }
 
 // ----------------------------------------------------------------------
@@ -113,14 +129,21 @@ static UUtBool ONiBundlePath_TryBundleResources(BFtFileRef *outFolder)
     if (!ONiBundlePath_GetExecutableDir(execDir, sizeof(execDir))) {
         return UUcFalse;
     }
-    char path[BFcMaxPathLength];
-    int n = snprintf(path, sizeof(path),
-                     "%s/../Resources/gamedata",
-                     execDir);
-    if (n < 0 || (size_t)n >= sizeof(path)) {
-        return UUcFalse;
+    static const char *const names[] = { "GameDataFolder", "gamedata" };
+    unsigned i;
+    for (i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+        char path[BFcMaxPathLength];
+        int n = snprintf(path, sizeof(path),
+                         "%s/../Resources/%s",
+                         execDir, names[i]);
+        if (n < 0 || (size_t)n >= sizeof(path)) {
+            continue;
+        }
+        if (ONiBundlePath_TryCandidate(path, outFolder)) {
+            return UUcTrue;
+        }
     }
-    return ONiBundlePath_TryCandidate(path, outFolder);
+    return UUcFalse;
 }
 #else
 static UUtBool ONiBundlePath_TryBundleResources(BFtFileRef *outFolder)
@@ -136,19 +159,25 @@ static UUtBool ONiBundlePath_TryBundleResources(BFtFileRef *outFolder)
 
 static UUtBool ONiBundlePath_TryLegacySearch(BFtFileRef *outFolder)
 {
-    UUtError err = BFrFileRef_Search(ONcGameDataFolder1, outFolder);
-    if (err == UUcError_None) {
-        UUrStartupMessage("[BundlePath] game data folder resolved via legacy search at %s", ONcGameDataFolder1);
-        return UUcTrue;
+    // The search resolves a folder relative to cwd; only accept it if it
+    // validates as real Oni data (GetFullPath returns the cwd-relative path the
+    // search just confirmed exists, so the content check runs in the same cwd).
+    static const char *const searchNames[] = { ONcGameDataFolder1, ONcGameDataFolder2 };
+    unsigned i;
+    for (i = 0; i < sizeof(searchNames) / sizeof(searchNames[0]); i++) {
+        UUtError err = BFrFileRef_Search(searchNames[i], outFolder);
+        if (err == UUcError_None) {
+            const char *resolved = BFrFileRef_GetFullPath(outFolder);
+            if (resolved != NULL && ONiGameData_ValidateFolder(resolved)) {
+                UUrStartupMessage("[BundlePath] game data folder resolved via legacy search at %s", resolved);
+                return UUcTrue;
+            }
+            UUrStartupMessage("[BundlePath] legacy search hit %s but it holds no Oni level data; skipping",
+                              (resolved != NULL) ? resolved : searchNames[i]);
+        } else {
+            UUrStartupMessage("[BundlePath] legacy search miss at %s", searchNames[i]);
+        }
     }
-    UUrStartupMessage("[BundlePath] legacy search miss at %s", ONcGameDataFolder1);
-
-    err = BFrFileRef_Search(ONcGameDataFolder2, outFolder);
-    if (err == UUcError_None) {
-        UUrStartupMessage("[BundlePath] game data folder resolved via legacy search at %s", ONcGameDataFolder2);
-        return UUcTrue;
-    }
-    UUrStartupMessage("[BundlePath] legacy search miss at %s", ONcGameDataFolder2);
     return UUcFalse;
 }
 
