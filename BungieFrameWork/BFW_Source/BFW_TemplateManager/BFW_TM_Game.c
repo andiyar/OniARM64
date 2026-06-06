@@ -3018,11 +3018,19 @@ TMrGame_SetOverlaySearchDirs(
 }
 
 // Scan one overlay directory exactly like the main GameDataFolder scan below,
-// registering each level*.dat so it wins name resolution. A duplicate file
-// index (TMiGame_InstanceFileRef_Add -> "Conflicting file indices") is logged
-// and skipped here rather than aborting init: an overlay legitimately ships the
-// same level index it is overriding, and the first (overlay) registration is
-// the one that already won.
+// registering each level*.dat BEFORE the GameDataFolder so it wins name
+// resolution (TMrInstance_GetFromName returns the first match in registration
+// order).
+//
+// CONTRACT: an overlay pack MUST use a distinct suffix (e.g. "level1_HD.dat")
+// so it hashes to a file index DISTINCT from the base game's "level1_Final.dat"
+// -- then both files register and the overlay wins purely by being registered
+// first. Overlays must NEVER reuse a base index (e.g. a "_Final" suffix): the
+// MAIN scan below aborts all of TMrGame_Initialize via UUmError_ReturnOnError
+// on a "Conflicting file indices" error, so a same-index overlay would brick
+// startup. The dup-index log-and-continue path here is purely DEFENSIVE -- it
+// tolerates two installed packs that collide on the same overlay index (first
+// wins) or a malformed pack; it is NOT the intended override mechanism.
 static void
 TMiGame_OverlayDir_Scan(
 	BFtFileRef	*inDirRef)
@@ -3077,6 +3085,11 @@ TMiGame_OverlayDir_Scan(
 		{
 			if(curFileLevelIsFinal)
 			{
+				// NOTE: a "_Final"-suffixed overlay is not a supported pack
+				// (see CONTRACT above) and would also trip the main scan's
+				// UUmAssert(TMgGame_ValidLevels[...] == UUcFalse) in DEBUGGING
+				// builds. Overlays must use a distinct non-Final suffix; this
+				// set only mirrors the main scan for the defensive case.
 				TMgGame_ValidLevels[curFileLevelNum] = UUcTrue;
 			}
 
