@@ -61,6 +61,7 @@
 #include "gl_engine.h"
 
 #include "ONi_BundlePath.h"
+#include "ONi_TexturePacks.h"
 
 #if defined(__APPLE__) && UUmSDL
 #include "Oni_DataSetup_macOS.h"
@@ -200,6 +201,60 @@ ONiInitializeAll(
 #endif
 
 	UUmError_ReturnOnErrorMsg(error, "Could not find game data folder");
+
+	// Discover installed HD texture packs and register their directories as
+	// template-manager "overlay" search dirs BEFORE TMrInitialize scans the
+	// GameDataFolder, so their level*.dat files win TMrInstance_GetFromName.
+	// The texture-pack module is libc-only and game-agnostic about BFW; BFW is
+	// game-agnostic about texture packs (it just receives directory refs). The
+	// App Support dir scanned for packs is the PARENT of the resolved
+	// GameDataFolder (its .name ends in /GameDataFolder or /gamedata).
+	{
+		char	tpAppSupportDir[ONI_TP_PATH_MAX];
+		char	tpRoots[ONI_TP_MAX_PACKS][ONI_TP_PATH_MAX];
+		BFtFileRef	tpOverlayRefs[ONI_TP_MAX_PACKS];
+		int		tpNumPacks = 0;
+		int		tpNumRefs = 0;
+		int		tpItr;
+
+		// Copy the GameDataFolder path and strip the trailing /<leaf> to get the
+		// App Support directory. If it doesn't fit our buffer or has no path
+		// separator, skip texture-pack discovery entirely (startup unchanged).
+		size_t	gdfLen = strlen(ONgGameDataFolder.name);
+		if (gdfLen > 0 && gdfLen < sizeof(tpAppSupportDir)) {
+			char	*lastSep;
+
+			memcpy(tpAppSupportDir, ONgGameDataFolder.name, gdfLen + 1);
+			lastSep = strrchr(tpAppSupportDir, BFcPathSeparator);
+			if (lastSep != NULL && lastSep != tpAppSupportDir) {
+				*lastSep = '\0';
+
+				tpNumPacks = ONi_TexturePacks_Enumerate(tpAppSupportDir, tpRoots);
+				UUrStartupMessage(
+					"[textures] %d HD texture pack(s) found under %s/TexturePacks",
+					tpNumPacks, tpAppSupportDir);
+
+				for (tpItr = 0; tpItr < tpNumPacks; tpItr++) {
+					size_t	pathLen = strlen(tpRoots[tpItr]);
+
+					// BFtFileRef.name is BFcMaxPathLength; an over-long pack path
+					// would truncate to a bogus dir, so skip it instead.
+					if (pathLen >= BFcMaxPathLength) {
+						UUrStartupMessage(
+							"[textures] pack path too long for file ref, skipping: %s",
+							tpRoots[tpItr]);
+						continue;
+					}
+					memcpy(tpOverlayRefs[tpNumRefs].name, tpRoots[tpItr], pathLen + 1);
+					tpNumRefs++;
+				}
+			}
+		}
+
+		// No-op when tpNumRefs == 0: clears any prior registry and leaves
+		// normal startup byte-for-byte unchanged.
+		TMrGame_SetOverlaySearchDirs(tpOverlayRefs, (UUtUns32)tpNumRefs);
+	}
 
 	UUrStartupMessage("initializing the template manager");
 	error = TMrInitialize(UUcTrue, &ONgGameDataFolder);

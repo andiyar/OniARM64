@@ -75,6 +75,12 @@ void TMrAKOT_TripwireCheck(const char* where)
 
 	#define TMcInstanceFileRefs_Max					(16)
 
+	// Generic overlay-search-dir registry cap. The game layer registers extra
+	// data directories (e.g. HD texture-pack folders) whose level*.dat files are
+	// scanned BEFORE the main GameDataFolder so they win name resolution. BFW
+	// stays game-agnostic: it only knows "extra dirs", not what they contain.
+	#define TMcMaxOverlaySearchDirs					(32)
+
 #if TOOL_VERSION
 	#define TMcDynamic_Instance_Perm_Max			(16)
 	#define TMcDynamic_Memory_Perm_Size				(100 * 1024)
@@ -228,6 +234,12 @@ void TMrAKOT_TripwireCheck(const char* where)
 
 	static UUtUns16				TMgGame_PrivateData_Num = 0;
 	static TMtPrivateData		TMgGame_PrivateData_List[TMcPrivateData_Max];
+
+	// Extra "overlay" data directories scanned before the GameDataFolder so
+	// their level*.dat files register first and win TMrInstance_GetFromName.
+	// Supplied by the game layer via TMrGame_SetOverlaySearchDirs().
+	static UUtUns32				TMgGame_OverlaySearchDirs_Num = 0;
+	static BFtFileRef			TMgGame_OverlaySearchDirs_List[TMcMaxOverlaySearchDirs];
 
 
 /*
@@ -2973,6 +2985,135 @@ TMiGame_InstanceFileRef_LoadLevel(
  * =========================================================================
  */
 
+// Register extra data directories to be scanned (in array order) BEFORE the
+// GameDataFolder. Generic by design: BFW does not know these are texture packs,
+// only that their level*.dat files should register first and therefore win
+// TMrInstance_GetFromName. Copies up to TMcMaxOverlaySearchDirs refs; passing
+// inCount == 0 (or never calling this) leaves normal startup byte-for-byte
+// unchanged. Must be called before TMrInitialize()/TMrGame_Initialize().
+void
+TMrGame_SetOverlaySearchDirs(
+	const BFtFileRef	*inDirs,
+	UUtUns32			inCount)
+{
+	UUtUns32	i;
+
+	TMgGame_OverlaySearchDirs_Num = 0;
+
+	if ((inDirs == NULL) || (inCount == 0)) {
+		return;
+	}
+
+	if (inCount > TMcMaxOverlaySearchDirs) {
+		UUrStartupMessage(
+			"TMrGame_SetOverlaySearchDirs: %d dirs requested, capping at %d.",
+			(int)inCount, (int)TMcMaxOverlaySearchDirs);
+		inCount = TMcMaxOverlaySearchDirs;
+	}
+
+	for (i = 0; i < inCount; i++) {
+		TMgGame_OverlaySearchDirs_List[i] = inDirs[i];
+	}
+	TMgGame_OverlaySearchDirs_Num = inCount;
+}
+
+// Scan one overlay directory exactly like the main GameDataFolder scan below,
+// registering each level*.dat so it wins name resolution. A duplicate file
+// index (TMiGame_InstanceFileRef_Add -> "Conflicting file indices") is logged
+// and skipped here rather than aborting init: an overlay legitimately ships the
+// same level index it is overriding, and the first (overlay) registration is
+// the one that already won.
+static void
+TMiGame_OverlayDir_Scan(
+	BFtFileRef	*inDirRef)
+{
+	UUtError			error;
+	BFtFileIterator*	fileIterator;
+	BFtFileRef			curDatFileRef;
+	UUtUns32			curFileLevelNum;
+	UUtBool				curFileLevelIsFinal;
+	UUtUns32			curFileIndex;
+	char				curFileSuffix[BFcMaxFileNameLength];
+	UUtUns32			numRegistered = 0;
+
+	error =
+		BFrDirectory_FileIterator_New(
+			inDirRef,
+			"level",
+			".dat",
+			&fileIterator);
+	if (error != UUcError_None)
+	{
+		UUrStartupMessage(
+			"[overlay] could not iterate overlay dir %s; skipping.",
+			BFrFileRef_GetFullPath(inDirRef));
+		return;
+	}
+
+	while(1)
+	{
+		error = BFrDirectory_FileIterator_Next(fileIterator, &curDatFileRef);
+		if(error != UUcError_None)
+		{
+			break;
+		}
+
+		error =
+			TMrUtility_LevelInfo_Get(
+				&curDatFileRef,
+				&curFileLevelNum,
+				curFileSuffix,
+				&curFileLevelIsFinal,
+				&curFileIndex);
+		if(error != UUcError_None)
+		{
+			UUrStartupMessage(
+				"[overlay] unable to get level info for %s; skipping.",
+				BFrFileRef_GetLeafName(&curDatFileRef));
+			continue;
+		}
+
+		if(TMiGame_Level_IsValid(&curDatFileRef, curFileLevelNum))
+		{
+			if(curFileLevelIsFinal)
+			{
+				TMgGame_ValidLevels[curFileLevelNum] = UUcTrue;
+			}
+
+			error =
+				TMiGame_InstanceFileRef_Add(
+					&curDatFileRef,
+					curFileIndex);
+			if(error != UUcError_None)
+			{
+				// dup index (already registered by an earlier overlay or a
+				// prior file) -> first registration wins; log and continue.
+				UUrStartupMessage(
+					"[overlay] %s file index already registered; keeping the "
+					"earlier (winning) entry.",
+					BFrFileRef_GetLeafName(&curDatFileRef));
+				continue;
+			}
+			numRegistered++;
+			UUrStartupMessage(
+				"[overlay] registered %s (wins over GameDataFolder).",
+				BFrFileRef_GetLeafName(&curDatFileRef));
+		}
+		else
+		{
+			UUrStartupMessage(
+				"[overlay] invalid level %s; skipping.",
+				BFrFileRef_GetLeafName(&curDatFileRef));
+		}
+	}
+
+	BFrDirectory_FileIterator_Delete(fileIterator);
+
+	UUrStartupMessage(
+		"[overlay] %d overlay file(s) registered from %s",
+		(int)numRegistered, BFrFileRef_GetFullPath(inDirRef));
+}
+
 UUtError
 TMrGame_Initialize(
 	void)
@@ -2987,6 +3128,20 @@ TMrGame_Initialize(
 
 	// Initialize the global variables
 		for(itr = 0; itr < TMcLevels_MaxNum; itr++) TMgGame_ValidLevels[itr] = UUcFalse;
+
+	// Scan any registered overlay directories FIRST so their level*.dat files
+	// register ahead of the GameDataFolder and win TMrInstance_GetFromName.
+	// No-op (and byte-for-byte identical to vanilla startup) when none are set.
+		if(TMgGame_OverlaySearchDirs_Num > 0)
+		{
+			UUrStartupMessage(
+				"[overlay] scanning %d overlay search dir(s) before GameDataFolder.",
+				(int)TMgGame_OverlaySearchDirs_Num);
+			for(itr = 0; itr < TMgGame_OverlaySearchDirs_Num; itr++)
+			{
+				TMiGame_OverlayDir_Scan(&TMgGame_OverlaySearchDirs_List[itr]);
+			}
+		}
 
 	// Loop through each level and check to see if it is legal
 		error =
