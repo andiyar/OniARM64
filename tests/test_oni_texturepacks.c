@@ -50,18 +50,30 @@ static void test_disabled_by_env(void)
 }
 
 // Pack subdirectories are returned sorted ascending, so load order is
-// deterministic regardless of readdir() ordering.
+// deterministic regardless of readdir() ordering. Dirs are created in
+// non-alphabetical order (B, C, A) and each result is checked for exact-tail
+// equality in position — so the test fails if qsort is removed even on a
+// filesystem whose readdir() happens to return entries already sorted.
+static void check_tail(const char *path, const char *want, const char *msg)
+{
+    size_t plen = strlen(path);
+    size_t wlen = strlen(want);
+    CHECK(plen >= wlen && strcmp(path + plen - wlen, want) == 0, msg);
+}
+
 static void test_enumerates_pack_dirs(void)
 {
     printf("ONi_TexturePacks_Enumerate (enumerates pack dirs):\n");
     system("rm -rf /tmp/oni_tp_test_root && "
-           "mkdir -p /tmp/oni_tp_test_root/TexturePacks/packA "
-           "/tmp/oni_tp_test_root/TexturePacks/packB");
+           "mkdir -p /tmp/oni_tp_test_root/TexturePacks/packB && "
+           "mkdir -p /tmp/oni_tp_test_root/TexturePacks/packC && "
+           "mkdir -p /tmp/oni_tp_test_root/TexturePacks/packA");
     char roots[ONI_TP_MAX_PACKS][ONI_TP_PATH_MAX];
     int n = ONi_TexturePacks_Enumerate("/tmp/oni_tp_test_root", roots);
-    CHECK(n == 2, "enumerates both pack directories");
-    CHECK(strstr(roots[0], "packA") != NULL, "sorted ascending: packA first");
-    CHECK(strstr(roots[1], "packB") != NULL, "sorted ascending: packB second");
+    CHECK(n == 3, "enumerates all three pack directories");
+    check_tail(roots[0], "/packA", "sorted ascending: packA first");
+    check_tail(roots[1], "/packB", "sorted ascending: packB second");
+    check_tail(roots[2], "/packC", "sorted ascending: packC third");
     system("rm -rf /tmp/oni_tp_test_root");
 }
 

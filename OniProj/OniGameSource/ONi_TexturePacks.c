@@ -28,7 +28,7 @@ static int ONiTP_CmpName(const void *a, const void *b)
 int ONi_TexturePacks_Enumerate(const char *appSupportDir,
                                char outRoots[ONI_TP_MAX_PACKS][ONI_TP_PATH_MAX])
 {
-    if (appSupportDir == NULL || outRoots == NULL) {
+    if (appSupportDir == NULL || appSupportDir[0] == '\0' || outRoots == NULL) {
         return 0;
     }
 
@@ -76,6 +76,9 @@ int ONi_TexturePacks_Enumerate(const char *appSupportDir,
     qsort(names, (size_t)n, sizeof(names[0]), ONiTP_CmpName);
 
     for (int i = 0; i < n; i++) {
+        // Cannot truncate: the identical base + "/" + name join already fit
+        // full[] (same ONI_TP_PATH_MAX size) above, so any too-long entry was
+        // skipped before being recorded in names[].
         snprintf(outRoots[i], ONI_TP_PATH_MAX, "%s/%s", base, names[i]);
     }
     return n;
