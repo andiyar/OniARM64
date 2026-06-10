@@ -16,7 +16,14 @@
 #define M3cStateStack_MaxDepth				8
 
 // CB: maximum texture size is 256 x 256, mip-mapped (+50%)
+// (Retail-era assumption — HD overlay textures exceed it; the buffer now
+// grows on demand in M3rTextureMap_TemporarilyLoad_Internal, see #45.)
 #define M3cTexture_TemporaryStorageSize		((3 * 256 * 256 * sizeof(UUtUns32)) / 2);
+
+// Upper bound for that on-demand growth (#45): covers 4096x4096 ARGB8888 +
+// a full mip chain with margin. A .sep texture claiming more than this is
+// treated as corrupt header fields and skipped.
+#define M3cTexture_TemporaryStorageMax		(128 * 1024 * 1024)
 
 typedef struct M3tManagerDrawContext
 {
