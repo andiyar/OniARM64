@@ -11,6 +11,7 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 Started the additive Metal DrawEngine backend (design spec + audited plan in `../docs/superpowers/specs|plans/2026-06-10-metal-renderer-*`): a second Motoko draw engine selectable at launch, OpenGL untouched as the default, zero Metal code compiled on non-Apple platforms.
 
 - **`feat(render): renderer-selection plumbing`** — `useMetal` on `ONtCommandLine` ([Oni.h](OniProj/OniGameSource/Oni.h)), `-metal` / `-renderer metal|opengl` arguments and `ONI_RENDERER` env resolution in `OniParseCommandLine` ([Oni.c](OniProj/OniGameSource/Oni.c)), startup-log line for the resolved choice. Inert until the Metal engine registers (next commits); OpenGL remains the default.
+- **`feat(render): Metal DrawEngine skeleton + CMake wiring`** — new backend unit [metal_engine.mm](BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.mm): registers a "Metal" draw engine (device/queue/`CAMetalLayer` via `SDL_Metal_CreateView`), clears each frame to a distinctive teal and presents via `presentDrawable`+`commit`; every geometry/texture vtable entry is a typed no-op stub (rendering lands in M1). Reuses the GL backend's pure-SDL display-mode enumerator for an identical curated resolution list. Compiled only inside the CMake `if(APPLE)` block (with `Metal.framework`) — Linux builds compile zero Metal code. Not yet referenced by any caller; behaviour unchanged.
 
 ### 2026-06-03 — Session 45: First-run guided data-setup picker + content-validating resolver (addresses #38)
 

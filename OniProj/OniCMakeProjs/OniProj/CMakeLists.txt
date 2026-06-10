@@ -563,10 +563,13 @@ if(Platform_SDL)
                 ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.h
                 ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.mm
-                ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.h)
+                ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.h
+                ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.mm
+                ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.h)
         set_source_files_properties(
                 ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.mm
+                ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.mm
                 PROPERTIES
                         COMPILE_OPTIONS "-fobjc-arc;-Wno-deprecated-declarations"
                         SKIP_PRECOMPILE_HEADERS ON)
@@ -575,12 +578,14 @@ if(Platform_SDL)
         find_library(COREVIDEO_FRAMEWORK CoreVideo REQUIRED)
         find_library(QUARTZCORE_FRAMEWORK QuartzCore REQUIRED)
         find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
+        find_library(METAL_FRAMEWORK Metal REQUIRED)
         target_link_libraries(Oni PRIVATE
                 ${AVFOUNDATION_FRAMEWORK}
                 ${COREMEDIA_FRAMEWORK}
                 ${COREVIDEO_FRAMEWORK}
                 ${QUARTZCORE_FRAMEWORK}
-                ${COCOA_FRAMEWORK})
+                ${COCOA_FRAMEWORK}
+                ${METAL_FRAMEWORK})
     endif()
 elseif(WIN32)
     add_executable(Oni WIN32
