@@ -6,6 +6,12 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-06-10 — Session 46: Metal renderer backend — M0 scaffolding (addresses #43)
+
+Started the additive Metal DrawEngine backend (design spec + audited plan in `../docs/superpowers/specs|plans/2026-06-10-metal-renderer-*`): a second Motoko draw engine selectable at launch, OpenGL untouched as the default, zero Metal code compiled on non-Apple platforms.
+
+- **`feat(render): renderer-selection plumbing`** — `useMetal` on `ONtCommandLine` ([Oni.h](OniProj/OniGameSource/Oni.h)), `-metal` / `-renderer metal|opengl` arguments and `ONI_RENDERER` env resolution in `OniParseCommandLine` ([Oni.c](OniProj/OniGameSource/Oni.c)), startup-log line for the resolved choice. Inert until the Metal engine registers (next commits); OpenGL remains the default.
+
 ### 2026-06-03 — Session 45: First-run guided data-setup picker + content-validating resolver (addresses #38)
 
 Picked up a first-run-data-setup design from another machine; checking it against the tree showed its premise was **stale** — it claimed data is found only via a cwd-relative `BFrFileRef_Search` (so Finder launches with cwd=`/` fail), but that describes pre-`1da832f` code. The current resolver is already launch-method-independent (HOME-based App Support + `_NSGetExecutablePath`-anchored bundle Resources). Re-scoped with the maintainer to the two genuinely-missing pieces — silent-quit when no data is configured, and no content validation — built non-breaking (accept both folder names) instead of the design's "clean break" rename.
