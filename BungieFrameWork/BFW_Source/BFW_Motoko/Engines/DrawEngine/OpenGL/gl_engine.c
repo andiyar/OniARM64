@@ -187,10 +187,14 @@ static UUtError gl_context_private_new(
 	{
 		if (gl->converted_data_buffer == NULL)
 		{
+			// retail-era default; grown on demand for HD-sized textures by
+			// gl_converted_buffer_ensure (gl_utility.c, #45)
 			gl->converted_data_buffer= UUrMemory_Block_New(256*256*sizeof(long));
+			gl->converted_data_buffer_size= (UUtUns32)(256*256*sizeof(long));
 		}
 		if (gl->converted_data_buffer == NULL)
 		{
+			gl->converted_data_buffer_size= 0;
 			error= _error_out_of_memory;
 		}
 
@@ -218,6 +222,7 @@ static void gl_context_private_delete(
 		{
 			UUrMemory_Block_Delete(gl->converted_data_buffer);
 			gl->converted_data_buffer= NULL;
+			gl->converted_data_buffer_size= 0;
 		}
 
 		if (gl->texture_private_data)

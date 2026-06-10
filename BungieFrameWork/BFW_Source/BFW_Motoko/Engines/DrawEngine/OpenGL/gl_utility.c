@@ -958,6 +958,52 @@ static boolean gl_texture_list_remove(
 	return success;
 }
 
+// Ensure gl->converted_data_buffer can hold one converted LOD of this
+// texture. The download procs convert each LOD into that scratch buffer
+// (worst case 4 bytes/texel, IMcPixelType_RGBA_Bytes); Bungie allocated it
+// for the retail 256x256 ceiling (gl_engine.c) and nothing ever checked the
+// size — an HD overlay texture (#45) overran it with packed texels and
+// corrupted the GL driver's heap. Grow on demand; FALSE = capacity could
+// not be ensured and the caller must skip the upload (the texture stays
+// opengl_dirty and simply doesn't render HD).
+static boolean gl_converted_buffer_ensure(
+	const M3tTextureMap *texture_map)
+{
+	UUtUns32 needed= ((UUtUns32)texture_map->width) * ((UUtUns32)texture_map->height) * 4;
+	const char *name= (texture_map->debugName[0] != '\0') ? texture_map->debugName : "(unnamed)";
+
+	if (needed <= gl->converted_data_buffer_size)
+	{
+		return TRUE;
+	}
+
+	// an absurd size means corrupt width/height fields — refuse
+	if (needed > (128 * 1024 * 1024))
+	{
+		UUrStartupMessage("[textures] %s wants a %u-byte GL conversion scratch (corrupt header?); upload skipped.",
+			name, (unsigned)needed);
+		return FALSE;
+	}
+
+	{
+		void *grown= UUrMemory_Block_New(needed);
+
+		if (grown == NULL)
+		{
+			UUrStartupMessage("[textures] cannot grow GL conversion scratch to %u bytes for %s; upload skipped.",
+				(unsigned)needed, name);
+			return FALSE;
+		}
+		UUrMemory_Block_Delete(gl->converted_data_buffer);
+		gl->converted_data_buffer= grown;
+		gl->converted_data_buffer_size= needed;
+		UUrStartupMessage("[textures] GL conversion scratch grown to %u bytes (for %s).",
+			(unsigned)needed, name);
+	}
+
+	return TRUE;
+}
+
 UUtBool gl_texture_map_create(
 	M3tTextureMap *texture_map)
 {
@@ -1044,7 +1090,10 @@ UUtBool gl_texture_map_create(
 
 		// CB: load the texture if it isn't already
 		M3rTextureMap_TemporarilyLoad(texture_map, disable_large_lods);
-		if (texture_map->pixels != NULL) {
+		// gl_converted_buffer_ensure: the download procs below convert each
+		// LOD into gl->converted_data_buffer — make sure an HD-sized texture
+		// can't overrun it (#45). On failure the upload is skipped entirely.
+		if ((texture_map->pixels != NULL) && gl_converted_buffer_ensure(texture_map)) {
 			// we have the texture, nothing from here on can fail
 			GL_FXN(glBindTexture)(GL_TEXTURE_2D, texture_map->opengl_texture_name);
 
