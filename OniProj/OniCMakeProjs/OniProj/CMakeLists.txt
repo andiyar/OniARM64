@@ -571,7 +571,11 @@ if(Platform_SDL)
                 ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.mm
                 PROPERTIES
-                        COMPILE_OPTIONS "-fobjc-arc;-Wno-deprecated-declarations"
+                        # -Werror=extern-c-compat: a C/C++ layout divergence in a
+                        # shared header (e.g. `struct {}`) is a silent ODR break for
+                        # these ObjC++ units — surfaced as exactly this warning when
+                        # it black-screened the Metal backend (#43). Never ignorable.
+                        COMPILE_OPTIONS "-fobjc-arc;-Wno-deprecated-declarations;-Werror=extern-c-compat"
                         SKIP_PRECOMPILE_HEADERS ON)
         find_library(AVFOUNDATION_FRAMEWORK AVFoundation REQUIRED)
         find_library(COREMEDIA_FRAMEWORK CoreMedia REQUIRED)

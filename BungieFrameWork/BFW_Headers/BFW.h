@@ -1693,7 +1693,11 @@ FILE *UUrFOpen(
  */
 #if UUmSDL
 
-	typedef struct {}			UUtAppInstance;
+	// void* (not an empty struct): this header is shared with ObjC++ TUs (Metal
+	// backend), and `struct {}` is 0 bytes in C but 1 byte in C++ — which silently
+	// skews the layout of every containing struct (ONtPlatformData et al.) across
+	// the language boundary. Mirrors the UUmPlatform_Mac branch below. (#43)
+	typedef void*				UUtAppInstance;
 	typedef SDL_Window*			UUtWindow;
 
 #elif UUmPlatform == UUmPlatform_Win32
