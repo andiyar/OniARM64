@@ -31,14 +31,34 @@ static id<MTLRenderCommandEncoder> gEncoder;
 
 // ---- frame bracket (the only non-stub draw entry points in M0) ----------
 // Signatures verified against Motoko_Manager.h:63-73 / gl_engine.c:29-31.
+
+// M0 boundary diagnostics (issue #43 black-window investigation): counters at
+// the game-loop → CAMetalLayer boundary, logged one-shot + periodically.
+static UUtUns32 gDiagFrameStarts, gDiagNilDrawables, gDiagPresents;
+
 static UUtError metal_frame_start(UUtUns32 inGameTime)
 {
 	(void)inGameTime;
+	gDiagFrameStarts++;
+	if (gDiagFrameStarts == 1) {
+		UUrStartupMessage("[Metal] first frame_start: layer=%p attached=%d bounds=%.0fx%.0f drawableSize=%.0fx%.0f scale=%.1f",
+			(__bridge void *)gLayer, gLayer.superlayer != nil,
+			gLayer.bounds.size.width, gLayer.bounds.size.height,
+			gLayer.drawableSize.width, gLayer.drawableSize.height,
+			gLayer.contentsScale);
+	}
 	// nextDrawable returns an autoreleased object; the main-runloop pool drain
 	// covers the normal frame loop. Add an explicit @autoreleasepool here if a
 	// future path ever pumps frames without returning to the runloop.
 	gDrawable = [gLayer nextDrawable];
-	if (gDrawable == nil) { return UUcError_None; } // skip frame; never crash
+	if (gDrawable == nil) { // skip frame; never crash
+		gDiagNilDrawables++;
+		if (gDiagNilDrawables == 1 || (gDiagNilDrawables % 300) == 0) {
+			UUrStartupMessage("[Metal] nextDrawable nil (%u of %u frame_starts)",
+				gDiagNilDrawables, gDiagFrameStarts);
+		}
+		return UUcError_None;
+	}
 
 	MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
 	rp.colorAttachments[0].texture     = gDrawable.texture;
@@ -55,7 +75,13 @@ static UUtError metal_frame_end(UUtUns32 *out_texture_bytes_downloaded)
 {
 	if (gEncoder) { [gEncoder endEncoding]; gEncoder = nil; }
 	if (gCmd) {
-		if (gDrawable) { [gCmd presentDrawable:gDrawable]; }
+		if (gDrawable) {
+			[gCmd presentDrawable:gDrawable];
+			gDiagPresents++;
+			if (gDiagPresents == 1 || (gDiagPresents % 300) == 0) {
+				UUrStartupMessage("[Metal] presented frame %u", gDiagPresents);
+			}
+		}
 		[gCmd commit];
 		gCmd = nil;
 	}
@@ -95,9 +121,21 @@ static UUtError metal_context_private_new(
 {
 	(void)in_desc; (void)in_full_screen;
 	UUrStartupMessage("creating new Metal context");
-	*out_api = M3cDrawAPI_OpenGL; // placeholder until Task 3 adds M3cDrawAPI_Metal to the enum
+	*out_api = M3cDrawAPI_Metal;
 
+	{
+		Uint32 wflags = SDL_GetWindowFlags((SDL_Window *)ONgPlatformData.gameWindow);
+		UUrStartupMessage("[Metal] window=%p flags: METAL=%d OPENGL=%d",
+			(void *)ONgPlatformData.gameWindow,
+			(wflags & SDL_WINDOW_METAL) != 0, (wflags & SDL_WINDOW_OPENGL) != 0);
+	}
 	gView  = SDL_Metal_CreateView((SDL_Window *)ONgPlatformData.gameWindow);
+	if (gView == NULL) {
+		UUrStartupMessage("[Metal] SDL_Metal_CreateView FAILED: %s", SDL_GetError());
+	}
+	if (gView != NULL && SDL_Metal_GetLayer(gView) == NULL) {
+		UUrStartupMessage("[Metal] SDL_Metal_GetLayer returned NULL: %s", SDL_GetError());
+	}
 	// __bridge (no transfer): the layer is owned by gView; we hold a borrowed ref.
 	gLayer = (__bridge CAMetalLayer *)SDL_Metal_GetLayer(gView);
 	gLayer.device      = gDevice;

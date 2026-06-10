@@ -37,6 +37,9 @@
 #include "OG_GeomEngine_Method.h"
 #else
 extern UUtBool gl_draw_engine_initialize(void); // from gl_engine.c
+#ifdef __APPLE__
+extern UUtBool metal_draw_engine_initialize(void); // from metal_engine.mm
+#endif
 #endif
 
 #include "Oni.h"
@@ -274,9 +277,26 @@ M3rInitialize(
 	#ifndef __ONADA__
 		GLrDrawEngine_Initialize();
 	#else
-		if (!gl_draw_engine_initialize())
+	#ifdef __APPLE__
+		if (ONgCommandLine.useMetal)
 		{
-			return 1;
+			if (!metal_draw_engine_initialize())
+			{
+				// Defensive only: availability was probed BEFORE the window was
+				// created (Oni.c). The window already carries SDL_WINDOW_METAL,
+				// so a GL fallback cannot work here — mirror the GL engine's own
+				// no-hardware behaviour instead (gl_engine.c:96-100).
+				AUrMessageBox(AUcMBType_OK, "Metal initialization failed; Oni will now exit.");
+				exit(0);
+			}
+		}
+		else
+	#endif
+		{
+			if (!gl_draw_engine_initialize())
+			{
+				return 1;
+			}
 		}
 	#endif
 	}
@@ -344,9 +364,18 @@ M3rTerminate(
 	M3rSort_Terminate();
 
 	{
-		extern void gl_draw_engine_terminate(void); // gl_engine.c
-
-		gl_draw_engine_terminate();
+	#ifdef __APPLE__
+		if (ONgCommandLine.useMetal)
+		{
+			extern void metal_draw_engine_terminate(void); // metal_engine.mm
+			metal_draw_engine_terminate();
+		}
+		else
+	#endif
+		{
+			extern void gl_draw_engine_terminate(void); // gl_engine.c
+			gl_draw_engine_terminate();
+		}
 	}
 
 	return;

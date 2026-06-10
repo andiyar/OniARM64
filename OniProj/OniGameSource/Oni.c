@@ -1019,6 +1019,22 @@ ONiMain(
 		return UUcError_BadCommandLine;
 	}
 
+#ifdef __APPLE__
+	// Last point where falling back to OpenGL is possible: the SDL window's
+	// renderer flag is fixed at creation (before engines register). The
+	// hold-Option chooser (Task 4) will insert between the parse above and
+	// this probe.
+	if (ONgCommandLine.useMetal)
+	{
+		extern UUtBool metal_is_available(void);
+		if (!metal_is_available())
+		{
+			UUrStartupMessage("Metal unavailable on this system; falling back to OpenGL");
+			ONgCommandLine.useMetal = UUcFalse;
+		}
+	}
+#endif
+
 	/*
 	 * Initialize the Universal Utilities. This does a base level platform init. So if
 	 * this succedes we can bring up error dialogs
