@@ -73,7 +73,16 @@ void TMrAKOT_TripwireCheck(const char* where)
 	#define TMcCacheData_Max						(16)
 
 
-	#define TMcInstanceFileRefs_Max					(16)
+	// Was 16 — exactly one slot above retail's 15 level*_Final.dat files, and
+	// TMiGame_InstanceFileRef_Add had no capacity check, so overlay packs
+	// (#16) overflowed the static array on the second overlay file (#44).
+	// 64 = 15 base + headroom for several multi-level overlay packs.
+	#define TMcInstanceFileRefs_Max					(64)
+
+	// Registry slots the overlay scan must LEAVE FREE so the GameDataFolder
+	// scan that follows it can always register the base game (15 files in
+	// retail data) no matter how many overlay packs are installed (#44).
+	#define TMcInstanceFileRefs_BaseReserve			(16)
 
 	// Generic overlay-search-dir registry cap. The game layer registers extra
 	// data directories (e.g. HD texture-pack folders) whose level*.dat files are
@@ -240,6 +249,13 @@ void TMrAKOT_TripwireCheck(const char* where)
 	// Supplied by the game layer via TMrGame_SetOverlaySearchDirs().
 	static UUtUns32				TMgGame_OverlaySearchDirs_Num = 0;
 	static BFtFileRef			TMgGame_OverlaySearchDirs_List[TMcMaxOverlaySearchDirs];
+
+	// How many registry entries the overlay phase registered (entries
+	// [0, N) of TMgGame_InstanceFileRefs_List). Lets the GameDataFolder scan
+	// tell "index collides with an installed overlay" (tolerate: overlay wins,
+	// log, skip the base file) from "base data conflicts with itself" (hard
+	// fail, vanilla behaviour). 0 when no overlays — vanilla path unchanged.
+	static UUtUns16				TMgGame_OverlayRegistered_Num = 0;
 
 
 /*
@@ -2726,6 +2742,15 @@ TMiGame_LoadedInstanceFiles_Add(
 
 	targetInstanceFileRef = TMgGame_InstanceFileRefs_List + inInstanceFileRefIndex;
 
+	// Capacity backstop (#44): same unbounded-write pattern as the registry.
+	// Loaded files ⊆ registered files so this can't fire while the caps match;
+	// keep it so a future invariant break errors instead of corrupting statics.
+	// (Checked before New_FromFileRef so the error path allocates nothing.)
+	if(TMgGame_LoadedInstanceFiles_Num >= TMcInstanceFileRefs_Max)
+	{
+		UUmError_ReturnOnErrorMsg(UUcError_Generic, "Loaded instance-file list full");
+	}
+
 	error =
 		TMiGame_InstanceFile_New_FromFileRef(
 			&targetInstanceFileRef->instanceFileRef,
@@ -2943,6 +2968,14 @@ TMiGame_InstanceFileRef_Add(
 
 	UUmAssertReadPtr(inInstanceFileRef, sizeof(void*));
 
+	// Capacity backstop (#44): the write below ran unbounded for 25 years
+	// because retail data (15 files) never reached the old cap of 16 — overlay
+	// packs (#16) can. Refuse cleanly instead of corrupting adjacent statics.
+	if(TMgGame_InstanceFileRefs_Num >= TMcInstanceFileRefs_Max)
+	{
+		UUmError_ReturnOnErrorMsg(UUcError_Generic, "Instance-file registry full");
+	}
+
 	for(itr = 0; itr < TMgGame_InstanceFileRefs_Num; itr++)
 	{
 		if(TMgGame_InstanceFileRefs_List[itr].fileIndex == inInstanceFileIndex)
@@ -3026,11 +3059,13 @@ TMrGame_SetOverlaySearchDirs(
 // so it hashes to a file index DISTINCT from the base game's "level1_Final.dat"
 // -- then both files register and the overlay wins purely by being registered
 // first. Overlays must NEVER reuse a base index (e.g. a "_Final" suffix): the
-// MAIN scan below aborts all of TMrGame_Initialize via UUmError_ReturnOnError
-// on a "Conflicting file indices" error, so a same-index overlay would brick
-// startup. The dup-index log-and-continue path here is purely DEFENSIVE -- it
-// tolerates two installed packs that collide on the same overlay index (first
-// wins) or a malformed pack; it is NOT the intended override mechanism.
+// MAIN scan tolerates the collision (#44) by SKIPPING the base file -- the
+// overlay then REPLACES that level's data wholesale instead of overlaying it
+// (almost certainly a broken level), and DEBUGGING builds assert on the
+// duplicate ValidLevels set first. The dup-index log-and-continue path here
+// is purely DEFENSIVE -- it tolerates two installed packs that collide on the
+// same overlay index (first wins) or a malformed pack; it is NOT the intended
+// override mechanism.
 static void
 TMiGame_OverlayDir_Scan(
 	BFtFileRef	*inDirRef)
@@ -3063,6 +3098,19 @@ TMiGame_OverlayDir_Scan(
 		error = BFrDirectory_FileIterator_Next(fileIterator, &curDatFileRef);
 		if(error != UUcError_None)
 		{
+			break;
+		}
+
+		// Honour the base reserve (#44): stop registering overlay files while
+		// TMcInstanceFileRefs_BaseReserve slots remain, so the GameDataFolder
+		// scan that follows can always register the base game in full no
+		// matter how many packs are installed.
+		if(TMgGame_InstanceFileRefs_Num >= (TMcInstanceFileRefs_Max - TMcInstanceFileRefs_BaseReserve))
+		{
+			UUrStartupMessage(
+				"[overlay] registry headroom exhausted at %s; skipping the rest "
+				"of this overlay dir (slots are reserved for the GameDataFolder).",
+				BFrFileRef_GetLeafName(&curDatFileRef));
 			break;
 		}
 
@@ -3156,6 +3204,12 @@ TMrGame_Initialize(
 			}
 		}
 
+	// Snapshot how much of the registry the overlay phase used: entries
+	// [0, TMgGame_OverlayRegistered_Num) are overlay files. The scan below
+	// uses this to tell overlay-vs-base index collisions (tolerated, overlay
+	// wins) from base-vs-base conflicts (hard fail, vanilla behaviour).
+		TMgGame_OverlayRegistered_Num = TMgGame_InstanceFileRefs_Num;
+
 	// Loop through each level and check to see if it is legal
 		error =
 			BFrDirectory_FileIterator_New(
@@ -3215,6 +3269,18 @@ TMrGame_Initialize(
 			}
 			UUrStartupMessage("Got Level Info for %s.", BFrFileRef_GetLeafName(&curDatFileRef));
 
+			// Capacity guard (#44): with the overlay reserve this cannot fire
+			// for retail data (15 files vs 16 reserved slots); it protects a
+			// data folder carrying an unusual number of extra .dat files.
+			// Log-and-skip beats the old unbounded write into the registry.
+			if(TMgGame_InstanceFileRefs_Num >= TMcInstanceFileRefs_Max)
+			{
+				UUrStartupMessage(
+					"instance-file registry full; skipping %s.",
+					BFrFileRef_GetLeafName(&curDatFileRef));
+				continue;
+			}
+
 			// Check to see if this is really a up to date level
 			if(TMiGame_Level_IsValid(&curDatFileRef, curFileLevelNum))
 			{
@@ -3230,7 +3296,38 @@ TMrGame_Initialize(
 					TMiGame_InstanceFileRef_Add(
 						&curDatFileRef,
 						curFileIndex);
-				UUmError_ReturnOnError(error);
+				if(error != UUcError_None)
+				{
+					// Tolerate an index collision with an installed overlay
+					// (#44): the overlay registered first and wins; losing a
+					// suffix-hash-colliding base file beats failing startup
+					// outright (removing the pack restores it). With no
+					// overlays registered this loop matches nothing and any
+					// Add failure hard-fails exactly as vanilla did.
+					UUtBool		collidesWithOverlay = UUcFalse;
+					UUtUns16	ovItr;
+
+					for(ovItr = 0; ovItr < TMgGame_OverlayRegistered_Num; ovItr++)
+					{
+						if(TMgGame_InstanceFileRefs_List[ovItr].fileIndex == curFileIndex)
+						{
+							collidesWithOverlay = UUcTrue;
+							break;
+						}
+					}
+
+					if(!collidesWithOverlay)
+					{
+						UUmError_ReturnOnError(error);
+					}
+
+					UUrStartupMessage(
+						"[overlay] base file %s shares a file index with an "
+						"installed overlay (suffix hash collision); the overlay "
+						"wins and this base file is SKIPPED. Remove the pack to "
+						"restore it.",
+						BFrFileRef_GetLeafName(&curDatFileRef));
+				}
 			}
 			else
 			{
@@ -3292,6 +3389,7 @@ TMrGame_Terminate(
 
 	TMgGame_LoadedInstanceFiles_Num = 0;
 	TMgGame_InstanceFileRefs_Num = 0;
+	TMgGame_OverlayRegistered_Num = 0;
 	TMgGame_PrivateData_Num = 0;
 }
 
