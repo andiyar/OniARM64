@@ -36,6 +36,7 @@ typedef struct
 	UUtBool						filmPlayback;
 	UUtBool						useOpenGL;
 	UUtBool						useGlide;
+	UUtBool						useMetal;
 	UUtBool						useSound;
 } ONtCommandLine;
 

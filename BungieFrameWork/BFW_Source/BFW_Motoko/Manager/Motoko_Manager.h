@@ -160,7 +160,8 @@ typedef struct M3tManager_GeomCamera
 		M3cDrawAPI_Glide			= 2,
 		M3cDrawAPI_D3D				= 3,
 		M3cDrawAPI_RAVE				= 4,
-		M3cDrawAPI_Software			= 5
+		M3cDrawAPI_Software			= 5,
+		M3cDrawAPI_Metal			= 6
 	} M3tDrawAPI;
 
 /*

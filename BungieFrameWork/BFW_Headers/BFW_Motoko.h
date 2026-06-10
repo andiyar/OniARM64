@@ -153,8 +153,10 @@ extern "C" {
 
 	#elif UUmPlatform == UUmPlatform_Linux || ((UUmPlatform == UUmPlatform_Mac) && defined(UUmSDL))
 
-		// SDL renderer - no platform-specific device needed
-		typedef struct {} M3tPlatformDevice;
+		// SDL renderer - no platform-specific device needed. void* (not an empty
+		// struct): 0 bytes in C vs 1 in C++ would skew M3tDisplayDevice's layout
+		// for ObjC++ TUs (Metal backend). Mirrors the Win32 LPVOID branch. (#43)
+		typedef void* M3tPlatformDevice;
 
 	#else
 

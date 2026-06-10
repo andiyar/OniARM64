@@ -92,6 +92,7 @@ OniParseCommandLine(
 	ONgCommandLine.filmPlayback = UUcFalse;
 	ONgCommandLine.useOpenGL = UUcFalse;
 	ONgCommandLine.useGlide = UUcFalse;
+	ONgCommandLine.useMetal = UUcFalse;
 	ONgCommandLine.useSound = UUcTrue;
 
 	for(itr = 1; itr < argc; itr++)
@@ -134,6 +135,18 @@ OniParseCommandLine(
 		{
 			ONgCommandLine.useGlide = UUcTrue;
 		}
+		else if (strcmp(current_parameter, "-metal") == 0)
+		{
+			ONgCommandLine.useMetal = UUcTrue;
+		}
+		else if (strcmp(current_parameter, "-renderer") == 0)
+		{
+			if ((itr + 1) < argc)
+			{
+				itr++;
+				ONgCommandLine.useMetal = (0 == strcmp(argv[itr], "metal"));
+			}
+		}
 		else if (strcmp(current_parameter, "-noswitch") == 0)
 		{
 			M3gResolutionSwitch = UUcFalse;
@@ -161,6 +174,19 @@ OniParseCommandLine(
 		}
 #endif
 	}
+
+	/* Renderer selection (macOS Metal backend, issue #43).
+	 * Precedence: -metal/-renderer flag (set in the loop above) > ONI_RENDERER env > default OpenGL.
+	 * The hold-Option chooser dialog (Task 4) is layered on top of this in ONiMain. */
+	if (!ONgCommandLine.useMetal)
+	{
+		const char *renderer_env = getenv("ONI_RENDERER");
+		if (renderer_env && (0 == strcmp(renderer_env, "metal")))
+		{
+			ONgCommandLine.useMetal = UUcTrue;
+		}
+	}
+	UUrStartupMessage("renderer selection: %s", ONgCommandLine.useMetal ? "Metal" : "OpenGL");
 
 	return UUcError_None;
 }
@@ -992,6 +1018,28 @@ ONiMain(
 	{
 		return UUcError_BadCommandLine;
 	}
+
+#ifdef __APPLE__
+	// Hold-Option chooser: user picks the renderer at launch. Runs after the
+	// flag/env parse (explicit flags are the default the dialog shows) and
+	// before the availability probe below, so a Metal pick is still validated.
+	{
+		extern UUtBool OniMac_ChooseRendererIfOptionHeld(UUtBool inDefaultMetal);
+		ONgCommandLine.useMetal = OniMac_ChooseRendererIfOptionHeld(ONgCommandLine.useMetal);
+		UUrStartupMessage("renderer after Option chooser: %s", ONgCommandLine.useMetal ? "Metal" : "OpenGL");
+	}
+	// Last point where falling back to OpenGL is possible: the SDL window's
+	// renderer flag is fixed at creation (before engines register).
+	if (ONgCommandLine.useMetal)
+	{
+		extern UUtBool metal_is_available(void);
+		if (!metal_is_available())
+		{
+			UUrStartupMessage("Metal unavailable on this system; falling back to OpenGL");
+			ONgCommandLine.useMetal = UUcFalse;
+		}
+	}
+#endif
 
 	/*
 	 * Initialize the Universal Utilities. This does a base level platform init. So if

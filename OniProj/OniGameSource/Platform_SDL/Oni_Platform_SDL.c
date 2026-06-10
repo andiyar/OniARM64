@@ -10,6 +10,7 @@
 #include "BFW.h"
 
 #include "Oni_Platform.h"
+#include "Oni.h" // for ONgCommandLine.useMetal
 
 #include <signal.h>
 #include <unistd.h>
@@ -52,9 +53,15 @@ ONiPlatform_CreateWindow(
 {
 	//FIXME: displayIndex
 	SDL_DisplayMode desktopMode;
+	Uint32 renderer_flag = SDL_WINDOW_OPENGL;
 	SDL_GetDesktopDisplayMode(0, &desktopMode);
+#ifdef __APPLE__
+	if (ONgCommandLine.useMetal) { renderer_flag = SDL_WINDOW_METAL; }
+	UUrStartupMessage("[Window] creating SDL window with %s flag (useMetal=%d)",
+		(renderer_flag == SDL_WINDOW_METAL) ? "METAL" : "OPENGL", ONgCommandLine.useMetal);
+#endif
 	//TODO: SDL_WINDOW_FULLSCREEN?
-	ioPlatformData->gameWindow = SDL_CreateWindow(ONcMainWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, desktopMode.w, desktopMode.h, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+	ioPlatformData->gameWindow = SDL_CreateWindow(ONcMainWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, desktopMode.w, desktopMode.h, renderer_flag | SDL_WINDOW_SHOWN);
 
 	if (!ioPlatformData->gameWindow)
 	{
