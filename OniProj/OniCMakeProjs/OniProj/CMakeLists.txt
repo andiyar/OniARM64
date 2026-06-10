@@ -564,11 +564,14 @@ if(Platform_SDL)
                 ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.h
                 ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.h
+                ../../OniGameSource/Platform_SDL/Oni_RendererSelect_macOS.mm
+                ../../OniGameSource/Platform_SDL/Oni_RendererSelect_macOS.h
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.h)
         set_source_files_properties(
                 ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.mm
+                ../../OniGameSource/Platform_SDL/Oni_RendererSelect_macOS.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.mm
                 PROPERTIES
                         # -Werror=extern-c-compat: a C/C++ layout divergence in a

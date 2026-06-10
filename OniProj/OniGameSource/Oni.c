@@ -1020,10 +1020,16 @@ ONiMain(
 	}
 
 #ifdef __APPLE__
+	// Hold-Option chooser: user picks the renderer at launch. Runs after the
+	// flag/env parse (explicit flags are the default the dialog shows) and
+	// before the availability probe below, so a Metal pick is still validated.
+	{
+		extern UUtBool OniMac_ChooseRendererIfOptionHeld(UUtBool inDefaultMetal);
+		ONgCommandLine.useMetal = OniMac_ChooseRendererIfOptionHeld(ONgCommandLine.useMetal);
+		UUrStartupMessage("renderer after Option chooser: %s", ONgCommandLine.useMetal ? "Metal" : "OpenGL");
+	}
 	// Last point where falling back to OpenGL is possible: the SDL window's
-	// renderer flag is fixed at creation (before engines register). The
-	// hold-Option chooser (Task 4) will insert between the parse above and
-	// this probe.
+	// renderer flag is fixed at creation (before engines register).
 	if (ONgCommandLine.useMetal)
 	{
 		extern UUtBool metal_is_available(void);
