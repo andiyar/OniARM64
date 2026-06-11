@@ -88,7 +88,7 @@ Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 ### Phase 8 — Native Metal renderer (experimental, opt-in) ([#43](https://github.com/andiyar/OniARM64/issues/43))
 - [x] **M0 — scaffolding**: second Motoko draw engine selectable at launch (`-metal` / `ONI_RENDERER=metal` / hold-Option chooser); device + `CAMetalLayer` + clear/present; OpenGL stays the untouched default; non-Apple builds compile zero Metal code
 - [x] **M1 — textured geometry**: runtime-compiled shader pipeline, all eight Motoko primitives, full texture-format coverage, depth + alpha/additive blending, HiDPI drawable, mouse-accurate menu — main menu and in-game world render under Metal (user-verified on level 2: combat, particles, HUD, in-game text)
-- [ ] M1 leftover: in-session resolution change under Metal (implemented, not yet user-verified)
+- [x] In-session resolution change under Metal — logical render scale switches correctly (drawable stays native-res, same desktop-fullscreen behaviour as GL)
 - [ ] M2 — fog + in-game visual parity pass (incl. engine-agnostic particle fog query)
 - [ ] M3 — env-map/multitexture combine, particle + HUD parity
 - [ ] M4 — `screenCapture`, `pointVisible`, gamma/HiDPI parity verification, pixel-format soak
