@@ -310,6 +310,28 @@ UUtBool metal_texture_map_create(M3tTextureMap *texture_map)
 		return UUcFalse;
 	}
 
+	// gConvertBuffer is sized for M3cTextureMap_MaxWidth=256 squared, which all
+	// engine-built textures respect — but modded TXMP data isn't revalidated on
+	// load, so guard the convert/expand paths that stage through the buffer.
+	// Native paths (BGRA8/RGBA8/BC1) upload straight from source and are
+	// unaffected; HD texture packs use native formats, so they pass through.
+	switch (kind) {
+		case MetalUpload_Convert_RGBA:
+		case MetalUpload_Convert_RGB:
+		case MetalUpload_Expand_A8:
+		case MetalUpload_Expand_I8:
+		case MetalUpload_Expand_A4I4:
+		case MetalUpload_Expand_16:
+			if (texture_map->width > 256 || texture_map->height > 256) {
+				UUrStartupMessage("[Metal] texture '%s' %ux%u exceeds convert buffer (256x256 max for non-native formats) — skipped",
+					texture_map->debugName, texture_map->width, texture_map->height);
+				return UUcFalse;
+			}
+			break;
+		default:
+			break;
+	}
+
 	UUtBool mipmap = (texture_map->flags & M3cTextureFlags_HasMipMap) ? UUcTrue : UUcFalse;
 	UUtUns32 disable_large_lods = 0;
 
@@ -375,7 +397,14 @@ UUtBool metal_texture_map_create(M3tTextureMap *texture_map)
 			(texture_map->flags & M3cTextureFlags_ClampVert) != 0,
 			levels > 1);
 		NSUInteger index;
-		if (texture_map->opengl_texture_name != 0) {
+		// Stale-name window: Offscreen textures keep their opengl_texture_name
+		// across metal_texture_map_delete (GL parity), so after a texture-system
+		// terminate -> re-initialize the name can outlive the table it indexed.
+		// Only re-upload in place when the name still indexes a live slot;
+		// otherwise fall through and assign a fresh index (overwriting the stale
+		// name below).
+		if (texture_map->opengl_texture_name != 0 &&
+			(NSUInteger)(texture_map->opengl_texture_name - 1) < gTextureTable.count) {
 			index = texture_map->opengl_texture_name - 1; // re-upload in place
 			gTextureTable[index]    = tex;
 			gTextureSamplers[index] = sampler;
@@ -417,6 +446,7 @@ UUtBool metal_texture_map_delete(M3tTextureMap *texture_map)
 
 id<MTLTexture> metal_texture_lookup(M3tTextureMap *inMap, id<MTLSamplerState> *outSampler)
 {
+	if (outSampler) { *outSampler = nil; } // defined value on every early return
 	if (inMap == NULL) { return nil; }
 	if (inMap->opengl_dirty || inMap->opengl_texture_name == 0) {
 		// gl_texture_map_reload equivalent: in-place re-create.
