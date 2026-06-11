@@ -567,12 +567,18 @@ if(Platform_SDL)
                 ../../OniGameSource/Platform_SDL/Oni_RendererSelect_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_RendererSelect_macOS.h
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.mm
-                ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.h)
+                ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_draw.mm
+                ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_texture.mm
+                ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.h
+                ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_internal.h
+                ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_shaders.h)
         set_source_files_properties(
                 ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_RendererSelect_macOS.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.mm
+                ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_draw.mm
+                ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_texture.mm
                 PROPERTIES
                         # -Werror=extern-c-compat: a C/C++ layout divergence in a
                         # shared header (e.g. `struct {}`) is a silent ODR break for

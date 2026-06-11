@@ -2193,6 +2193,13 @@ float gl_calculate_fog_factor(
 {
 	float fog_factor;
 
+	// The GL state only exists once the GL engine initialized. Under another
+	// draw engine (Metal, #43) this is called from engine-agnostic particle
+	// code (BFW_Particle3.c P3rModifyAlphaByFogFromDepth) with gl == NULL —
+	// answer "no fog" (0.f is this function's own no-fog return), which is
+	// also the correct Metal-M1 behaviour (Metal fog lands in M2).
+	if (gl == NULL) return 0.f;
+
 #if SHIPPING_VERSION == 0
 	static boolean gl_fade_particles_by_fog= TRUE;
 	static boolean first_time= TRUE;

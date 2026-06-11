@@ -613,7 +613,12 @@ ONiRunGame(
 				frames_per_second_recent = (float)(RECENT_FRAME_COUNT / (double)time_frame_recent_total * UUgMachineTime_High_Frequency);
 
 				sprintf(s1, "fps:%03.1f 3:%d 4:%d 5:%d", frames_per_second_recent, triCounter, quadCounter, pentCounter);
-				sprintf(s2, "tc:%d tm:%d", gl->num_loaded_textures, gl->current_texture_memory);
+				if (gl != NULL) {
+					sprintf(s2, "tc:%d tm:%d", gl->num_loaded_textures, gl->current_texture_memory);
+				} else {
+					// texture stats are GL-engine state; under Metal (#43) there is none
+					sprintf(s2, "tc:- tm:-");
+				}
 
 				ONrGameState_Performance_UpdateOverall(s1, s2, NULL);
 
@@ -652,7 +657,8 @@ ONiRunGame(
 					if (19 == old_level) {
 						ONrPersist_MarkWonGame();
 
-						if (NULL != strstr(gl->renderer, "3Dfx")) {
+						// gl is NULL under the Metal engine (#43); no 3Dfx there either
+						if ((NULL != gl) && (NULL != gl->renderer) && (NULL != strstr(gl->renderer, "3Dfx"))) {
 							ONrMovie_Play_Hardware("outro.bik", BKcScale_Fill_Window);
 						}
 						else {
