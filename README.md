@@ -25,7 +25,7 @@ Currently it's playable (I've run through the first 4 levels... too many times..
 
 ## Status
 
-Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, save/load all working. Loads **both** (or either?) the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
+Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, save/load all working. Loads **both** (or either?) the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. New: an **experimental native Metal renderer** (hold Option at launch to pick it; OpenGL remains the default) now renders the menu and in-game world — fog and some effects parity still to come. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
 
 <details>
 <summary><strong>Full milestone status</strong></summary>
@@ -84,6 +84,15 @@ Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 - [x] Mac retail `GameDataFolder` drop-and-play (original 2001 Mac disc) — loads + plays natively; engine auto-detects Mac vs PC data by checksum (Apple IMA4 SNDD; OSBD/BINA/TXMP verified through the shared layout) ([#37](https://github.com/andiyar/OniARM64/issues/37))
 - [x] First-run guided data-setup picker — locate + install your `GameDataFolder` with no Terminal/rename; resolver content-validates and accepts both folder names ([#38](https://github.com/andiyar/OniARM64/issues/38))
 - [x] Resolution menu lists the display's real modes (not a hardcoded table) — curated SDL enumeration; 16:10 / 1440p / ultrawide / 4K / 5K now selectable ([#39](https://github.com/andiyar/OniARM64/issues/39))
+
+### Phase 8 — Native Metal renderer (experimental, opt-in) ([#43](https://github.com/andiyar/OniARM64/issues/43))
+- [x] **M0 — scaffolding**: second Motoko draw engine selectable at launch (`-metal` / `ONI_RENDERER=metal` / hold-Option chooser); device + `CAMetalLayer` + clear/present; OpenGL stays the untouched default; non-Apple builds compile zero Metal code
+- [x] **M1 — textured geometry**: runtime-compiled shader pipeline, all eight Motoko primitives, full texture-format coverage, depth + alpha/additive blending, HiDPI drawable, mouse-accurate menu — main menu and in-game world render under Metal (user-verified on level 2: combat, particles, HUD, in-game text)
+- [ ] M1 leftover: in-session resolution change under Metal (implemented, not yet user-verified)
+- [ ] M2 — fog + in-game visual parity pass (incl. engine-agnostic particle fog query)
+- [ ] M3 — env-map/multitexture combine, particle + HUD parity
+- [ ] M4 — `screenCapture`, `pointVisible`, gamma/HiDPI parity verification, pixel-format soak
+- [ ] M5 — batching, persisted renderer preference, in-game renderer menu
 
 </details>
 
