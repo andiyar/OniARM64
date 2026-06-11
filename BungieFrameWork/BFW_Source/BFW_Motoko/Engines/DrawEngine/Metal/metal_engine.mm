@@ -310,7 +310,17 @@ static UUtError metal_frame_sync(void) { return UUcError_None; }
 static UUtError metal_screen_capture(const UUtRect *r, void *out) { (void)r; (void)out; return UUcError_None; }
 static UUtBool  metal_point_visible(const M3tPointScreen *p, float tol) { (void)p; (void)tol; return UUcTrue; }
 static UUtBool  metal_support_point_visible(void) { return UUcFalse; }
-static UUtError metal_change_mode(M3tDisplayMode m) { (void)m; return UUcError_None; }
+static UUtError metal_change_mode(M3tDisplayMode mode)
+{
+	// gl_change_mode parity: store the mode, re-apply display settings
+	// (window size, fullscreen policy, gamma, drawable + depth + GLg feed).
+	gMetalDisplayMode = mode;
+	if (!metal_apply_display_settings(mode.width, mode.height)) {
+		return UUcError_Generic;
+	}
+	UUrStartupMessage("[Metal] mode change -> %ux%u", mode.width, mode.height);
+	return UUcError_None;
+}
 static void     metal_reset_fog(void) { }
 // MUST be true under Metal: M3rGeometry_Draw (Motoko_Geom.c:213-242) otherwise
 // takes a multipass path that calls gl_prepare_multipass_* directly — GL
