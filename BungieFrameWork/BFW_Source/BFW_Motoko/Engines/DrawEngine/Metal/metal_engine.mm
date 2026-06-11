@@ -162,8 +162,9 @@ static UUtBool metal_create_depth_texture(NSUInteger inWidth, NSUInteger inHeigh
 	td.usage       = MTLTextureUsageRenderTarget;
 	td.storageMode = MTLStorageModePrivate;
 	gMetalDepthTexture = [gMetalDevice newTextureWithDescriptor:td];
+	if (gMetalDepthTexture == nil) { return UUcFalse; }
 	UUrStartupMessage("[Metal] depth texture %ux%u", (unsigned)inWidth, (unsigned)inHeight);
-	return (gMetalDepthTexture != nil) ? UUcTrue : UUcFalse;
+	return UUcTrue;
 }
 
 // Apply a logical display mode: SDL window size + fullscreen policy + gamma,
@@ -304,7 +305,7 @@ static UUtError metal_frame_end(UUtUns32 *out_texture_bytes_downloaded)
 
 static UUtError metal_frame_sync(void) { return UUcError_None; }
 
-// ---- no-op stubs (real implementations land in M1 Tasks 2/3) --------------
+// ---- no-op stubs (real implementations land in M1 Task 3) -----------------
 // Signatures match the typedefs in Motoko_Manager.h:79-152.
 static void     metal_triangle(void *inTriangle) { (void)inTriangle; }
 static void     metal_quad(void *inQuad) { (void)inQuad; }
@@ -317,16 +318,13 @@ static void     metal_sprite_array(const M3tPointScreen *pts, const M3tTextureCo
 static UUtError metal_screen_capture(const UUtRect *r, void *out) { (void)r; (void)out; return UUcError_None; }
 static UUtBool  metal_point_visible(const M3tPointScreen *p, float tol) { (void)p; (void)tol; return UUcTrue; }
 static UUtBool  metal_support_point_visible(void) { return UUcFalse; }
-// "_stub" suffix: metal_internal.h declares the real metal_texture_format_available
-// (metal_texture.mm, Task 2); a same-named static here would be a redeclaration error.
-static UUtBool  metal_texture_format_available_stub(IMtPixelType t) { (void)t; return UUcTrue; }
 static UUtError metal_change_mode(M3tDisplayMode m) { (void)m; return UUcError_None; }
 static void     metal_reset_fog(void) { }
-static UUtBool  metal_load_texture(M3tTextureMap *tm) { (void)tm; return UUcTrue; }
-static UUtBool  metal_unload_texture(M3tTextureMap *tm) { (void)tm; return UUcTrue; }
 static UUtBool  metal_support_single_pass_multitexture(void) { return UUcFalse; }
 
 // ---- context lifecycle ---------------------------------------------------
+static void metal_context_private_delete(void); // failure unwind in _new uses it
+
 static UUtError metal_context_private_new(
 	M3tDrawContextDescriptor *in_desc,
 	M3tDrawContextMethods    **out_funcs,
@@ -365,8 +363,19 @@ static UUtError metal_context_private_new(
 			->displayDevices[active_device].displayModes[active_mode];
 	}
 
-	if (!metal_build_pipeline_objects()) { return UUcError_Generic; }
+	// On any failure below, unwind via metal_context_private_delete so a failed
+	// init doesn't leak the SDL Metal view / partially built GPU objects.
+	if (!metal_build_pipeline_objects()) {
+		metal_context_private_delete();
+		return UUcError_Generic;
+	}
 	if (!metal_apply_display_settings(gMetalDisplayMode.width, gMetalDisplayMode.height)) {
+		metal_context_private_delete();
+		return UUcError_Generic;
+	}
+	if (metal_texture_system_initialize() != UUcError_None) {
+		UUrStartupMessage("[Metal] texture system initialize FAILED");
+		metal_context_private_delete();
 		return UUcError_Generic;
 	}
 
@@ -384,11 +393,11 @@ static UUtError metal_context_private_new(
 	gMetalDrawFuncs.screenCapture                 = metal_screen_capture;
 	gMetalDrawFuncs.pointVisible                  = metal_point_visible;
 	gMetalDrawFuncs.supportPointVisible           = metal_support_point_visible;
-	gMetalDrawFuncs.textureFormatAvailable        = metal_texture_format_available_stub;
+	gMetalDrawFuncs.textureFormatAvailable        = metal_texture_format_available;
 	gMetalDrawFuncs.changeMode                    = metal_change_mode;
 	gMetalDrawFuncs.resetFog                      = metal_reset_fog;
-	gMetalDrawFuncs.loadTexture                   = metal_load_texture;
-	gMetalDrawFuncs.unloadTexture                 = metal_unload_texture;
+	gMetalDrawFuncs.loadTexture                   = metal_texture_map_create;
+	gMetalDrawFuncs.unloadTexture                 = metal_texture_map_delete;
 	gMetalDrawFuncs.supportSinglePassMultitexture = metal_support_single_pass_multitexture;
 
 	*out_funcs = &gMetalDrawFuncs;
@@ -397,6 +406,16 @@ static UUtError metal_context_private_new(
 
 static void metal_context_private_delete(void)
 {
+	// Mid-frame teardown guard (currently unreachable: delete only happens
+	// between frames). A live encoder dropped without endEncoding trips a
+	// Metal assert, and a frame_start that waited on gMetalInflight without a
+	// matching commit/completed-handler would deadlock the semaphore — so
+	// close the encoder and give the in-flight slot back before nil-ing out.
+	if (gMetalEncoder != nil) { [gMetalEncoder endEncoding]; }
+	if (gMetalCmd != nil && gMetalInflight != nil) { dispatch_semaphore_signal(gMetalInflight); }
+
+	metal_texture_system_terminate();
+
 	gMetalEncoder = nil; gMetalCmd = nil; gMetalDrawable = nil;
 
 	// Per-encoder caches reference objects torn down below — drop them so a
