@@ -305,22 +305,19 @@ static UUtError metal_frame_end(UUtUns32 *out_texture_bytes_downloaded)
 
 static UUtError metal_frame_sync(void) { return UUcError_None; }
 
-// ---- no-op stubs (real implementations land in M1 Task 3) -----------------
+// ---- non-draw stubs (primitives live in metal_draw.mm since M1 Task 3) ----
 // Signatures match the typedefs in Motoko_Manager.h:79-152.
-static void     metal_triangle(void *inTriangle) { (void)inTriangle; }
-static void     metal_quad(void *inQuad) { (void)inQuad; }
-static void     metal_pent(void *inPent) { (void)inPent; }
-static void     metal_line(UUtUns32 a, UUtUns32 b) { (void)a; (void)b; }
-static void     metal_point(M3tPointScreen *p) { (void)p; }
-static void     metal_tri_sprite(const M3tPointScreen *pts, const M3tTextureCoord *uv) { (void)pts; (void)uv; }
-static void     metal_sprite(const M3tPointScreen *pts, const M3tTextureCoord *uv) { (void)pts; (void)uv; }
-static void     metal_sprite_array(const M3tPointScreen *pts, const M3tTextureCoord *uv, const UUtUns32 *cols, const UUtUns32 n) { (void)pts; (void)uv; (void)cols; (void)n; }
 static UUtError metal_screen_capture(const UUtRect *r, void *out) { (void)r; (void)out; return UUcError_None; }
 static UUtBool  metal_point_visible(const M3tPointScreen *p, float tol) { (void)p; (void)tol; return UUcTrue; }
 static UUtBool  metal_support_point_visible(void) { return UUcFalse; }
 static UUtError metal_change_mode(M3tDisplayMode m) { (void)m; return UUcError_None; }
 static void     metal_reset_fog(void) { }
-static UUtBool  metal_support_single_pass_multitexture(void) { return UUcFalse; }
+// MUST be true under Metal: M3rGeometry_Draw (Motoko_Geom.c:213-242) otherwise
+// takes a multipass path that calls gl_prepare_multipass_* directly — GL
+// internals that dereference the (NULL, under Metal) gl state. True routes
+// env-mapped geometry through the normal state machine, where M1 renders the
+// base map only (MetalGeom_EnvBaseFallback); the real combine is M3.
+static UUtBool metal_support_single_pass_multitexture(void) { return UUcTrue; }
 
 // ---- context lifecycle ---------------------------------------------------
 static void metal_context_private_delete(void); // failure unwind in _new uses it
@@ -382,14 +379,7 @@ static UUtError metal_context_private_new(
 	gMetalDrawFuncs.frameStart                    = metal_frame_start;
 	gMetalDrawFuncs.frameEnd                      = metal_frame_end;
 	gMetalDrawFuncs.frameSync                     = metal_frame_sync;
-	gMetalDrawFuncs.triangle                      = metal_triangle;
-	gMetalDrawFuncs.quad                          = metal_quad;
-	gMetalDrawFuncs.pent                          = metal_pent;
-	gMetalDrawFuncs.line                          = metal_line;
-	gMetalDrawFuncs.point                         = metal_point;
-	gMetalDrawFuncs.triSprite                     = metal_tri_sprite;
-	gMetalDrawFuncs.sprite                        = metal_sprite;
-	gMetalDrawFuncs.spriteArray                   = metal_sprite_array;
+	metal_draw_install_methods(&gMetalDrawFuncs); // the eight primitive entries (metal_draw.mm)
 	gMetalDrawFuncs.screenCapture                 = metal_screen_capture;
 	gMetalDrawFuncs.pointVisible                  = metal_point_visible;
 	gMetalDrawFuncs.supportPointVisible           = metal_support_point_visible;
