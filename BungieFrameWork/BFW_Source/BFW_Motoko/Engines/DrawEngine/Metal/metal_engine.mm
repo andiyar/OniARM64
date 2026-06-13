@@ -213,7 +213,7 @@ static UUtUns32 gDiagFrameStarts, gDiagNilDrawables, gDiagPresents;
 
 static UUtError metal_frame_start(UUtUns32 inGameTime)
 {
-	(void)inGameTime;
+	if (inGameTime > 0) { metal_fog_update((int)inGameTime); } // smooth fog ramps (M2)
 	gDiagFrameStarts++;
 
 	// Cap CPU run-ahead at MetalRing_Depth frames (ring reuse safety).
@@ -321,7 +321,6 @@ static UUtError metal_change_mode(M3tDisplayMode mode)
 	UUrStartupMessage("[Metal] mode change -> %ux%u", mode.width, mode.height);
 	return UUcError_None;
 }
-static void     metal_reset_fog(void) { }
 // MUST be true under Metal: M3rGeometry_Draw (Motoko_Geom.c:213-242) otherwise
 // takes a multipass path that calls gl_prepare_multipass_* directly — GL
 // internals that dereference the (NULL, under Metal) gl state. True routes
@@ -385,6 +384,8 @@ static UUtError metal_context_private_new(
 		metal_context_private_delete();
 		return UUcError_Generic;
 	}
+
+	metal_fog_system_initialize(); // fog defaults + gl_fog_* script vars (M2)
 
 	gMetalDrawFuncs.frameStart                    = metal_frame_start;
 	gMetalDrawFuncs.frameEnd                      = metal_frame_end;

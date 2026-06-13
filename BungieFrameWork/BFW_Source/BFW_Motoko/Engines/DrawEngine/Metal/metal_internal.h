@@ -27,6 +27,20 @@ typedef struct MetalScreenVertex
 // Must match VSIn (packed_float3 x2 + uchar4) in metal_shaders.h exactly.
 _Static_assert(sizeof(MetalScreenVertex) == 28, "MetalScreenVertex/VSIn layout mismatch");
 
+// Fragment fog uniform — GL_LINEAR fog. Layout must match FogU in
+// metal_shaders.h: float4 color (rgb = fog colour, a = enabled 0/1) at offset 0,
+// float2 range (start, end) in screen-space z at offset 16.
+// NB: the alpha slot carries the per-batch fog-enable (gMetalFogEnabled, a
+// UUtBool packed to 0/1f), NOT GL's fog_color.a (which GL holds at 0 and ignores).
+// Task 2's packing code crosses that bool->float boundary (the _Static_assert
+// guards size, not that conversion).
+typedef struct MetalFogUniform
+{
+	float colorR, colorG, colorB, enabled;   // -> float4 color
+	float start, end;                          // -> float2 range
+} MetalFogUniform;
+_Static_assert(sizeof(MetalFogUniform) == 24, "MetalFogUniform/FogU layout mismatch");
+
 typedef enum MetalBlendMode
 {
 	MetalBlend_Opaque = 0,     // (ONE, ZERO)                    — gl_set_textures explicit/untextured
@@ -110,5 +124,19 @@ UUtBool  metal_texture_map_delete(M3tTextureMap *texture_map);
 UUtBool  metal_texture_format_available(IMtPixelType texel_type);
 id<MTLTexture>      metal_texture_lookup(M3tTextureMap *inMap, id<MTLSamplerState> *outSampler);
 id<MTLSamplerState> metal_default_sampler(void);
+
+// ---- fog state (metal_fog.mm) ----------------------------------------------
+extern float   gMetalFogStart, gMetalFogEnd;                 // screen-space z range
+extern float   gMetalFogColorR, gMetalFogColorG, gMetalFogColorB;
+extern UUtBool gMetalFogEnabled;                             // per-batch (M3cDrawStateIntType_Fog)
+
+void  metal_fog_system_initialize(void);   // defaults + same-named script-var registration
+void  metal_reset_fog(void);               // resetFog vtable impl (replaces M1 stub)
+void  metal_fog_update(int inFrames);      // per-frame ramp step (call from frame_start)
+// Particle fog-factor query. No vtable slot exists for this yet — Task 3 adds a
+// M3tDrawContextMethod_FogFactor typedef + fogFactor field to M3tDrawContextMethods
+// and an M3rDraw_GetFogFactor wrapper, then points BFW_Particle3.c at the wrapper
+// (today it calls gl_calculate_fog_factor via a direct extern).
+float metal_calculate_fog_factor(M3tPoint3D *inPoint);
 
 #endif // METAL_INTERNAL_H
