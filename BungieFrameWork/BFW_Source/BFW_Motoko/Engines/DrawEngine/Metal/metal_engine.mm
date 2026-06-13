@@ -469,6 +469,16 @@ static UUtError metal_private_state_update(
 		gMetalDepthStateIndex = idx;
 	}
 
+	// Fog enable/disable (gl_engine.c:312-330). Per-batch toggle; fog colour and
+	// start/end are global (script-driven, metal_fog.mm). Default is ON.
+	// The field is the strict two-value M3cDrawStateFog{Disable,Enable} enum
+	// (BFW_Motoko.h:751-758), so "!= Enable" is exactly "Disable" — GL's decode
+	// only looks tri-state.
+	if (in_state_int_flags & (1 << M3cDrawStateIntType_Fog)) {
+		gMetalFogEnabled = (in_state_int[M3cDrawStateIntType_Fog] == M3cDrawStateFogEnable)
+			? UUcTrue : UUcFalse;
+	}
+
 	// Base texture selection (gl_engine.c:368-382).
 	if ((in_state_int[M3cDrawStateIntType_Appearence] != M3cDrawState_Appearence_Gouraud) &&
 		(in_state_int[M3cDrawStateIntType_Fill] == M3cDrawState_Fill_Solid) &&

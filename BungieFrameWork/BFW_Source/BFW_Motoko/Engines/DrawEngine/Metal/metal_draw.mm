@@ -69,6 +69,20 @@ UUtBool metal_select_textures(M3tTextureMap *inTexture0, int inBlendOverride)
 		[gMetalEncoder setFragmentSamplerState:samp atIndex:0];
 		gMetalBoundSampler = samp;
 	}
+
+	// Fog uniform (M2). Set per primitive: fog colour/range are frame-global but
+	// fog-enable is per-batch, so the cheapest correct path is one setFragmentBytes
+	// per draw. Batching is an M5 concern (correctness-first, per M1).
+	{
+		MetalFogUniform fogU;
+		fogU.colorR = gMetalFogColorR;
+		fogU.colorG = gMetalFogColorG;
+		fogU.colorB = gMetalFogColorB;
+		fogU.enabled = gMetalFogEnabled ? 1.0f : 0.0f;
+		fogU.start = gMetalFogStart;
+		fogU.end   = gMetalFogEnd;
+		[gMetalEncoder setFragmentBytes:&fogU length:sizeof(fogU) atIndex:0];
+	}
 	return UUcTrue;
 }
 
