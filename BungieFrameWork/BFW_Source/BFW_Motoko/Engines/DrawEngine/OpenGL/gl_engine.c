@@ -164,6 +164,10 @@ static UUtError gl_context_private_new(
 	gl->draw_context_methods.textureFormatAvailable= gl_texture_map_format_available;
 	gl->draw_context_methods.changeMode= gl_change_mode;
 	gl->draw_context_methods.resetFog= gl_reset_fog_parameters;
+	{
+		extern float gl_calculate_fog_factor(M3tPoint3D *point); // gl_utility.c:2191
+		gl->draw_context_methods.fogFactor= gl_calculate_fog_factor;
+	}
 	gl->draw_context_methods.loadTexture= gl_texture_map_create;
 	gl->draw_context_methods.unloadTexture= gl_texture_map_delete;
 	gl->draw_context_methods.supportSinglePassMultitexture= gl_single_pass_multitexture_capable;

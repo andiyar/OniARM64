@@ -397,6 +397,7 @@ static UUtError metal_context_private_new(
 	gMetalDrawFuncs.textureFormatAvailable        = metal_texture_format_available;
 	gMetalDrawFuncs.changeMode                    = metal_change_mode;
 	gMetalDrawFuncs.resetFog                      = metal_reset_fog;
+	gMetalDrawFuncs.fogFactor                     = metal_calculate_fog_factor;
 	gMetalDrawFuncs.loadTexture                   = metal_texture_map_create;
 	gMetalDrawFuncs.unloadTexture                 = metal_texture_map_delete;
 	gMetalDrawFuncs.supportSinglePassMultitexture = metal_support_single_pass_multitexture;

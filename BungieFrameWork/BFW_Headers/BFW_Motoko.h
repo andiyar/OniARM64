@@ -1377,6 +1377,7 @@ typedef struct M3tDrawContext_Counters
 			void);
 
 		void M3rDraw_Reset_Fog(void); // S.S.
+		float M3rDraw_GetFogFactor(M3tPoint3D *inPoint); // particle fog-factor query (#43)
 
 	/*
 	 * Texture loading
