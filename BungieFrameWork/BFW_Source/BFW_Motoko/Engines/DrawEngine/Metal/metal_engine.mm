@@ -13,6 +13,10 @@ extern "C" {
 extern int GLgGameWidth, GLgGameHeight;
 // Persisted gamma; M3rSetGamma (BFW_Motoko.h:2388) is the pure-SDL ramp in gl_sdl.c.
 extern float ONrPersist_GetGamma(void);
+// Reflection-mapping quality gate (Oni_Motoko.c:572). When false (graphics
+// quality SuperLow), even GL draws env surfaces base-only — so the M1 fallback
+// stays correct for that setting; the full combine is the >= Low path.
+extern UUtBool ONrMotoko_GraphicsQuality_SupportReflectionMapping(void);
 }
 
 // Pure-SDL display-mode enumerator shared with the GL backend (defined
@@ -577,9 +581,14 @@ static UUtError metal_private_state_update(
 							}
 							else if ((in_state_ptr[M3cDrawStatePtrType_EnvTextureMap] != NULL) &&
 									 (gMetalConstantA == 0xFF)) {
-								// GL would env-map here; M1 draws base-only
-								// (Bungie's own low-quality fallback). M3 fixes.
-								gMetalGeomMode = MetalGeom_EnvBaseFallback;
+								// Env-mapped surface (gl_engine.c:444-461). texture0
+								// is already the base map (set above); resolve the
+								// reflection map here. Quality gate mirrors GL:
+								// SuperLow draws base-only, >= Low does the combine.
+								gMetalEnvTexture = (M3tTextureMap*)in_state_ptr[M3cDrawStatePtrType_EnvTextureMap];
+								gMetalGeomMode = ONrMotoko_GraphicsQuality_SupportReflectionMapping()
+									? MetalGeom_EnvMap
+									: MetalGeom_EnvBaseFallback;
 							}
 							else {
 								gMetalGeomMode = MetalGeom_Default;
