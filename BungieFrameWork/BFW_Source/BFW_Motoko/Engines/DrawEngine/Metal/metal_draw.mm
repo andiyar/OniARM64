@@ -195,12 +195,9 @@ static void metal_submit_polygon(const UUtUns32 *in_indices, UUtUns32 inN, const
 			break;
 		}
 		case MetalGeom_EnvBaseFallback: // env-mapped: base-only fallback (M3 does the combine)
+		case MetalGeom_EnvMap:          // env-mapped: full combine (intercepted by the dedicated branch below)
 		case MetalGeom_Default:
 		default:
-			textured = UUcTrue; per_vertex_shade = UUcTrue;
-			break;
-		case MetalGeom_EnvMap:
-			// Handled by the dedicated branch below; these flags are unused for it.
 			textured = UUcTrue; per_vertex_shade = UUcTrue;
 			break;
 	}
