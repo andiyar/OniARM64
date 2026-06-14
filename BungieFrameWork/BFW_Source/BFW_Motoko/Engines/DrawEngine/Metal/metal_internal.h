@@ -27,6 +27,19 @@ typedef struct MetalScreenVertex
 // Must match VSIn (packed_float3 x2 + uchar4) in metal_shaders.h exactly.
 _Static_assert(sizeof(MetalScreenVertex) == 28, "MetalScreenVertex/VSIn layout mismatch");
 
+// Env-mapped vertex (M3): two perspective UV sets (base + reflection) + colour.
+// Used ONLY on MetalGeom_EnvMap draws, through its own ring + shader/PSO, so the
+// 28-byte common vertex above stays untouched. Must match EnvVSIn in
+// metal_shaders.h (packed_float3 x3 + uchar4) exactly.
+typedef struct MetalEnvVertex
+{
+	float    x, y, z;          // screen position
+	float    bu, bv, bw;       // base UV * invW, invW
+	float    eu, ev, ew;       // env  UV * invW, invW
+	UUtUns8  r, g, b, a;       // diffuse (per-vertex shade rgb, constant a)
+} MetalEnvVertex;
+_Static_assert(sizeof(MetalEnvVertex) == 40, "MetalEnvVertex/EnvVSIn layout mismatch");
+
 // Fragment fog uniform — GL_LINEAR fog. Layout must match FogU in
 // metal_shaders.h: float4 color (rgb = fog colour, a = enabled 0/1) at offset 0,
 // float2 range (start, end) in screen-space z at offset 16.
@@ -55,7 +68,12 @@ enum
 {
 	MetalRing_Depth        = 3,                        // frames in flight
 	MetalRing_Bytes        = 8 * 1024 * 1024,          // per-frame vertex budget (~300K verts)
-	MetalRing_MaxVertices  = MetalRing_Bytes / sizeof(MetalScreenVertex)
+	MetalRing_MaxVertices  = MetalRing_Bytes / sizeof(MetalScreenVertex),
+	// Env geometry is a small fraction of the scene (reflective surfaces only);
+	// a 2 MB ring (~52K env verts/frame) has ample headroom. Overflow is logged
+	// and the remainder dropped, same policy as the main ring.
+	MetalEnvRing_Bytes        = 2 * 1024 * 1024,
+	MetalEnvRing_MaxVertices  = MetalEnvRing_Bytes / sizeof(MetalEnvVertex)
 };
 
 // Geometry submit modes — same meanings as gl_engine.h's _geom_draw_mode_*.
@@ -68,7 +86,8 @@ typedef enum MetalGeomMode
 	MetalGeom_Gouraud,         // per-vertex shade, no texture
 	MetalGeom_Flat,            // base texture only, constant colour
 	MetalGeom_Split,           // split vertex format: own shades + UV indices
-	MetalGeom_EnvBaseFallback  // env-mapped: draw base map only (M1 fallback)
+	MetalGeom_EnvBaseFallback, // env-mapped, low quality: draw base map only
+	MetalGeom_EnvMap           // env-mapped, full quality: base + reflection combine (M3)
 } MetalGeomMode;
 
 // ---- device / frame objects (owned by metal_engine.mm) --------------------
@@ -84,10 +103,16 @@ extern id<MTLDepthStencilState>   gMetalDepthStates[4];   // bit0 = compare, bit
 extern id<MTLTexture>             gMetalDepthTexture;
 extern id<MTLTexture>             gMetalWhiteTexture;     // 1x1 white: the "no texture" texture
 
+extern id<MTLRenderPipelineState> gMetalEnvPipeline;       // env-map combine PSO (opaque)
+extern M3tTextureMap             *gMetalEnvTexture;        // reflection map for this state
+
 extern id<MTLBuffer>              gMetalRing[MetalRing_Depth];
 extern UUtUns32                   gMetalRingIndex;        // which ring buffer this frame
 extern UUtUns32                   gMetalRingCursor;       // vertices written this frame
 extern UUtBool                    gMetalRingOverflowed;   // logged-once-per-frame marker
+extern id<MTLBuffer>              gMetalEnvRing[MetalRing_Depth];
+extern UUtUns32                   gMetalEnvRingCursor;
+extern UUtBool                    gMetalEnvRingOverflowed;
 extern dispatch_semaphore_t       gMetalInflight;
 
 // ---- decoded Motoko draw state (written by metal_private_state_update) ----
@@ -106,6 +131,7 @@ extern id<MTLRenderPipelineState> gMetalBoundPipeline;
 extern id<MTLTexture>             gMetalBoundTexture;
 extern id<MTLSamplerState>        gMetalBoundSampler;
 extern UUtUns32                   gMetalBoundDepthIndex;
+extern id<MTLBuffer>              gMetalBoundVertexBuffer;  // which ring is bound at vertex buffer(0)
 
 // ---- cross-TU functions ----------------------------------------------------
 // metal_engine.mm
@@ -115,6 +141,8 @@ UUtBool metal_apply_display_settings(UUtUns16 inWidth, UUtUns16 inHeight);
 void metal_draw_install_methods(M3tDrawContextMethods *ioMethods);
 UUtBool metal_select_textures(M3tTextureMap *inTexture0, int inBlendOverride);
 MetalScreenVertex *metal_ring_reserve(UUtUns32 inCount, UUtUns32 *outFirstVertex);
+MetalEnvVertex *metal_env_ring_reserve(UUtUns32 inCount, UUtUns32 *outFirstVertex);
+UUtBool         metal_select_env_textures(M3tTextureMap *inBase, M3tTextureMap *inEnv);
 
 // metal_texture.mm (Task 2)
 UUtError metal_texture_system_initialize(void);
