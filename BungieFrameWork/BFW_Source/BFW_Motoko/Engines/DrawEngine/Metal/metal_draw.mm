@@ -267,6 +267,17 @@ static void metal_submit_polygon(const UUtUns32 *in_indices, UUtUns32 inN, const
 		}
 		[gMetalEncoder drawPrimitives:MTLPrimitiveTypeTriangle
 			vertexStart:first vertexCount:tri_count * 3];
+
+		// M3 verification diagnostic (issue #43): env-map geometry is subtle and
+		// sparse in Oni's data, so confirm it's actually being drawn (and how
+		// much) to locate reflective surfaces empirically instead of guessing.
+		// Logged on the first env-map draw of the session + every 600th after.
+		static UUtUns32 sEnvDraws = 0, sEnvTris = 0;
+		sEnvDraws++; sEnvTris += tri_count;
+		if (sEnvDraws == 1 || (sEnvDraws % 600) == 0) {
+			UUrStartupMessage("[Metal] env-map draw #%u (%u tris this call, %u tris cumulative)",
+				sEnvDraws, tri_count, sEnvTris);
+		}
 		return;
 	}
 
