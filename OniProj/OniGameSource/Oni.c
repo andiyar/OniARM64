@@ -64,6 +64,7 @@
 
 #if defined(__APPLE__) && UUmSDL
 #include "Oni_DataSetup_macOS.h"
+#include "Oni_UpdateCheck_macOS.h"
 #endif
 
 #if DEBUGGING
@@ -226,6 +227,14 @@ ONiInitializeAll(
 #endif
 
 	UUmError_ReturnOnErrorMsg(error, "Could not find game data folder");
+
+#if defined(__APPLE__) && UUmSDL
+	// Game data is resolved and we're still pre-window on the main thread —
+	// the same safe point the first-run picker uses. Check GitHub for a newer
+	// release and, if one exists, offer it (throttled + opt-out; silent when
+	// offline). Non-fatal: any failure just continues into the game. (#40)
+	ONrUpdateCheck_RunAtStartup();
+#endif
 
 	UUrStartupMessage("initializing the template manager");
 	error = TMrInitialize(UUcTrue, &ONgGameDataFolder);

@@ -424,6 +424,8 @@ set(SOURCE_FILES
         ../../OniGameSource/ONi_BundlePath.h
         ../../OniGameSource/ONi_GameData.c
         ../../OniGameSource/ONi_GameData.h
+        ../../OniGameSource/ONi_UpdateCheck.c
+        ../../OniGameSource/ONi_UpdateCheck.h
         ../../OniGameSource/Oni_Aiming.c
         ../../OniGameSource/Oni_Aiming.h
         ../../OniGameSource/Oni_Bink.c
@@ -566,6 +568,8 @@ if(Platform_SDL)
                 ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.h
                 ../../OniGameSource/Platform_SDL/Oni_RendererSelect_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_RendererSelect_macOS.h
+                ../../OniGameSource/Platform_SDL/Oni_UpdateCheck_macOS.mm
+                ../../OniGameSource/Platform_SDL/Oni_UpdateCheck_macOS.h
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_draw.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_texture.mm
@@ -576,6 +580,7 @@ if(Platform_SDL)
                 ../../OniGameSource/Platform_SDL/Oni_Cinematic_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_RendererSelect_macOS.mm
+                ../../OniGameSource/Platform_SDL/Oni_UpdateCheck_macOS.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_draw.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_texture.mm
@@ -599,6 +604,12 @@ if(Platform_SDL)
                 ${QUARTZCORE_FRAMEWORK}
                 ${COCOA_FRAMEWORK}
                 ${METAL_FRAMEWORK})
+        # Configure-time epoch (seconds). Used only by the update notifier's
+        # dev-build guard (ONI_BUILD_EPOCH): a locally-built binary won't nag
+        # about a release that predates it. If empty, the .mm defaults it to 0
+        # and the guard is simply disabled (tag-difference still works).
+        string(TIMESTAMP ONI_BUILD_EPOCH "%s" UTC)
+        target_compile_definitions(Oni PRIVATE ONI_BUILD_EPOCH=${ONI_BUILD_EPOCH})
     endif()
 elseif(WIN32)
     add_executable(Oni WIN32
