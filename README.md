@@ -84,6 +84,7 @@ Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 - [x] Mac retail `GameDataFolder` drop-and-play (original 2001 Mac disc) — loads + plays natively; engine auto-detects Mac vs PC data by checksum (Apple IMA4 SNDD; OSBD/BINA/TXMP verified through the shared layout) ([#37](https://github.com/andiyar/OniARM64/issues/37))
 - [x] First-run guided data-setup picker — locate + install your `GameDataFolder` with no Terminal/rename; resolver content-validates and accepts both folder names ([#38](https://github.com/andiyar/OniARM64/issues/38))
 - [x] Resolution menu lists the display's real modes (not a hardcoded table) — curated SDL enumeration; 16:10 / 1440p / ultrawide / 4K / 5K now selectable ([#39](https://github.com/andiyar/OniARM64/issues/39))
+- [ ] Update notifier — on launch the app checks GitHub Releases and offers the newer build when one exists (Download / Skip This Version / Later + opt-out; ~4 h throttle, silent + non-blocking when offline) ([#40](https://github.com/andiyar/OniARM64/issues/40))
 
 ### Phase 8 — Native Metal renderer (experimental, opt-in) ([#43](https://github.com/andiyar/OniARM64/issues/43))
 - [x] **M0 — scaffolding**: second Motoko draw engine selectable at launch (`-metal` / `ONI_RENDERER=metal` / hold-Option chooser); device + `CAMetalLayer` + clear/present; OpenGL stays the untouched default; non-Apple builds compile zero Metal code
