@@ -146,6 +146,7 @@ typedef struct M3tManager_GeomCamera
 	/* S.S. */
 	typedef UUtError (*M3tDrawContextMethod_ChangeMode)(M3tDisplayMode mode);
 	typedef void (*M3tDrawContextMethod_ResetFogParams)(void); // reset fog settings to defaults
+	typedef float (*M3tDrawContextMethod_FogFactor)(M3tPoint3D *inPoint); // particle fog-factor query (#43)
 	typedef UUtBool (*M3tDrawContextMethod_LoadTexture)(M3tTextureMap *texture_map); // load a texture
 	typedef UUtBool (*M3tDrawContextMethod_UnloadTexture)(M3tTextureMap *texture_map); // unload it
 	typedef UUtBool (*M3tDrawContextMethod_Support_Single_Pass_Multitexture)(void); // love these loooooooong names!
@@ -191,6 +192,7 @@ typedef struct M3tManager_GeomCamera
 
 		M3tDrawContextMethod_ChangeMode				changeMode;
 		M3tDrawContextMethod_ResetFogParams			resetFog;
+		M3tDrawContextMethod_FogFactor				fogFactor;
 		M3tDrawContextMethod_LoadTexture			loadTexture;
 		M3tDrawContextMethod_UnloadTexture			unloadTexture;
 		M3tDrawContextMethod_Support_Single_Pass_Multitexture	supportSinglePassMultitexture;

@@ -9605,8 +9605,7 @@ static UUtUns16 P3rModifyAlphaByFogFromDepth(
 	UUtUns16 alpha,
 	M3tPoint3D *point)
 {
-	extern float gl_calculate_fog_factor(M3tPoint3D *point); // from gl_utility.c
-	float fog_factor= gl_calculate_fog_factor(point);
+	float fog_factor= M3rDraw_GetFogFactor(point);
 
 	if (fog_factor > 0.f)
 	{

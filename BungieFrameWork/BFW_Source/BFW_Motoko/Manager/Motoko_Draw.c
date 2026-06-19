@@ -82,6 +82,13 @@ void M3rDraw_Reset_Fog(
 	return;
 }
 
+// particle fog-factor query S.S. (#43)
+float M3rDraw_GetFogFactor(
+	M3tPoint3D *inPoint)
+{
+	return M3gManagerDrawContext.drawFuncs->fogFactor(inPoint);
+}
+
 // load texture S.S.
 static void M3iDraw_Texture_EnsureLoaded_Internal(M3tTextureMap *texture_map)
 {

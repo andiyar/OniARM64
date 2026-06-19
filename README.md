@@ -91,7 +91,7 @@ Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 - [x] **M1 — textured geometry**: runtime-compiled shader pipeline, all eight Motoko primitives, full texture-format coverage, depth + alpha/additive blending, HiDPI drawable, mouse-accurate menu — main menu and in-game world render under Metal (user-verified on level 2: combat, particles, HUD, in-game text)
 - [x] In-session resolution change under Metal — logical render scale switches correctly (drawable stays native-res, same desktop-fullscreen behaviour as GL)
 - [ ] M2 — fog + in-game visual parity pass (incl. engine-agnostic particle fog query)
-- [ ] M3 — env-map/multitexture combine, particle + HUD parity
+- [x] **M3 — env-map reflective combine**: shiny character armour reflects under Metal again (single-pass two-texture shader matching GL's two-pass `base + env·base_alpha`); verified firing + stable in a busy combat run (1.34M env-map triangle draws, no ring overflow, clean exit), no visual anomalies. Per-triangle env draw perf tracked separately ([#48](https://github.com/andiyar/OniARM64/issues/48))
 - [ ] M4 — `screenCapture`, `pointVisible`, gamma/HiDPI parity verification, pixel-format soak
 - [ ] M5 — batching, persisted renderer preference, in-game renderer menu
 

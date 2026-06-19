@@ -13,6 +13,10 @@ extern "C" {
 extern int GLgGameWidth, GLgGameHeight;
 // Persisted gamma; M3rSetGamma (BFW_Motoko.h:2388) is the pure-SDL ramp in gl_sdl.c.
 extern float ONrPersist_GetGamma(void);
+// Reflection-mapping quality gate (Oni_Motoko.c:572). When false (graphics
+// quality SuperLow), even GL draws env surfaces base-only — so the M1 fallback
+// stays correct for that setting; the full combine is the >= Low path.
+extern UUtBool ONrMotoko_GraphicsQuality_SupportReflectionMapping(void);
 }
 
 // Pure-SDL display-mode enumerator shared with the GL backend (defined
@@ -41,16 +45,21 @@ id<MTLRenderPipelineState>  gMetalPipelines[MetalBlend_Count];
 id<MTLDepthStencilState>    gMetalDepthStates[4];
 id<MTLTexture>              gMetalDepthTexture;
 id<MTLTexture>              gMetalWhiteTexture;
+id<MTLRenderPipelineState>  gMetalEnvPipeline;
 
 id<MTLBuffer>               gMetalRing[MetalRing_Depth];
 UUtUns32                    gMetalRingIndex;
 UUtUns32                    gMetalRingCursor;
 UUtBool                     gMetalRingOverflowed;
+id<MTLBuffer>               gMetalEnvRing[MetalRing_Depth];
+UUtUns32                    gMetalEnvRingCursor;
+UUtBool                     gMetalEnvRingOverflowed;
 dispatch_semaphore_t        gMetalInflight;
 
 const UUtInt32             *gMetalStateInt;
 void                      **gMetalStatePtr;
 M3tTextureMap              *gMetalTexture0;
+M3tTextureMap              *gMetalEnvTexture;
 MetalGeomMode               gMetalGeomMode;
 UUtUns8                     gMetalConstantR = 0xFF, gMetalConstantG = 0xFF,
                             gMetalConstantB = 0xFF, gMetalConstantA = 0xFF;
@@ -63,6 +72,7 @@ id<MTLRenderPipelineState>  gMetalBoundPipeline;
 id<MTLTexture>              gMetalBoundTexture;
 id<MTLSamplerState>         gMetalBoundSampler;
 UUtUns32                    gMetalBoundDepthIndex = 0xFFFFFFFF;
+id<MTLBuffer>               gMetalBoundVertexBuffer;
 
 // ---- GPU object construction ----------------------------------------------
 
@@ -116,6 +126,34 @@ static UUtBool metal_build_pipeline_objects(void)
 		}
 	}
 
+	// Env-map combine PSO (M3): dedicated env shaders, opaque (ONE, ZERO) blend.
+	// Opaque because GL's two-pass net writes the combined colour over the
+	// background (pass 1 GL_ONE/GL_ZERO replace; pass 2 adds base over env).
+	{
+		id<MTLFunction> evfn = [lib newFunctionWithName:@"oni_env_vertex"];
+		id<MTLFunction> effn = [lib newFunctionWithName:@"oni_env_fragment"];
+		if (evfn == nil || effn == nil) {
+			UUrStartupMessage("[Metal] env shader functions missing");
+			return UUcFalse;
+		}
+		MTLRenderPipelineDescriptor *pd = [[MTLRenderPipelineDescriptor alloc] init];
+		pd.vertexFunction   = evfn;
+		pd.fragmentFunction = effn;
+		pd.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+		pd.colorAttachments[0].blendingEnabled = YES;
+		pd.colorAttachments[0].sourceRGBBlendFactor        = MTLBlendFactorOne;
+		pd.colorAttachments[0].destinationRGBBlendFactor   = MTLBlendFactorZero;
+		pd.colorAttachments[0].sourceAlphaBlendFactor      = MTLBlendFactorOne;
+		pd.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorZero;
+		pd.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+		gMetalEnvPipeline = [gMetalDevice newRenderPipelineStateWithDescriptor:pd error:&err];
+		if (gMetalEnvPipeline == nil) {
+			UUrStartupMessage("[Metal] env PSO FAILED: %s",
+				err ? [[err localizedDescription] UTF8String] : "unknown");
+			return UUcFalse;
+		}
+	}
+
 	// Depth-stencil table — index bit0 = compare(LEQUAL), bit1 = write.
 	// Mirrors gl_depth_mode_set: read -> LEQUAL else ALWAYS; (0,0) = disabled.
 	for (int i = 0; i < 4; i++) {
@@ -141,10 +179,15 @@ static UUtBool metal_build_pipeline_objects(void)
 		gMetalRing[i] = [gMetalDevice newBufferWithLength:MetalRing_Bytes
 			options:MTLResourceStorageModeShared];
 	}
+	for (int i = 0; i < MetalRing_Depth; i++) {
+		gMetalEnvRing[i] = [gMetalDevice newBufferWithLength:MetalEnvRing_Bytes
+			options:MTLResourceStorageModeShared];
+	}
 	gMetalInflight = dispatch_semaphore_create(MetalRing_Depth);
 
-	UUrStartupMessage("[Metal] pipeline objects built (4 PSOs, 4 depth states, %u KB ring x%u)",
-		(unsigned)(MetalRing_Bytes / 1024), (unsigned)MetalRing_Depth);
+	UUrStartupMessage("[Metal] pipeline objects built (4 PSOs + env PSO, 4 depth states, %u KB ring x%u, %u KB env-ring x%u)",
+		(unsigned)(MetalRing_Bytes / 1024), (unsigned)MetalRing_Depth,
+		(unsigned)(MetalEnvRing_Bytes / 1024), (unsigned)MetalRing_Depth);
 	return UUcTrue;
 }
 
@@ -213,7 +256,7 @@ static UUtUns32 gDiagFrameStarts, gDiagNilDrawables, gDiagPresents;
 
 static UUtError metal_frame_start(UUtUns32 inGameTime)
 {
-	(void)inGameTime;
+	if (inGameTime > 0) { metal_fog_update((int)inGameTime); } // smooth fog ramps (M2)
 	gDiagFrameStarts++;
 
 	// Cap CPU run-ahead at MetalRing_Depth frames (ring reuse safety).
@@ -257,11 +300,15 @@ static UUtError metal_frame_start(UUtUns32 inGameTime)
 	gMetalBoundTexture    = nil;
 	gMetalBoundSampler    = nil;
 	gMetalBoundDepthIndex = 0xFFFFFFFF;
+	gMetalBoundVertexBuffer = nil;
 
 	gMetalRingIndex      = (gMetalRingIndex + 1) % MetalRing_Depth;
 	gMetalRingCursor     = 0;
 	gMetalRingOverflowed = UUcFalse;
+	gMetalEnvRingCursor    = 0;
+	gMetalEnvRingOverflowed = UUcFalse;
 	[gMetalEncoder setVertexBuffer:gMetalRing[gMetalRingIndex] offset:0 atIndex:0];
+	gMetalBoundVertexBuffer = gMetalRing[gMetalRingIndex];
 
 	{
 		float screen[2] = { (float)gMetalDisplayMode.width, (float)gMetalDisplayMode.height };
@@ -321,7 +368,6 @@ static UUtError metal_change_mode(M3tDisplayMode mode)
 	UUrStartupMessage("[Metal] mode change -> %ux%u", mode.width, mode.height);
 	return UUcError_None;
 }
-static void     metal_reset_fog(void) { }
 // MUST be true under Metal: M3rGeometry_Draw (Motoko_Geom.c:213-242) otherwise
 // takes a multipass path that calls gl_prepare_multipass_* directly — GL
 // internals that dereference the (NULL, under Metal) gl state. True routes
@@ -386,6 +432,8 @@ static UUtError metal_context_private_new(
 		return UUcError_Generic;
 	}
 
+	metal_fog_system_initialize(); // fog defaults + gl_fog_* script vars (M2)
+
 	gMetalDrawFuncs.frameStart                    = metal_frame_start;
 	gMetalDrawFuncs.frameEnd                      = metal_frame_end;
 	gMetalDrawFuncs.frameSync                     = metal_frame_sync;
@@ -396,6 +444,7 @@ static UUtError metal_context_private_new(
 	gMetalDrawFuncs.textureFormatAvailable        = metal_texture_format_available;
 	gMetalDrawFuncs.changeMode                    = metal_change_mode;
 	gMetalDrawFuncs.resetFog                      = metal_reset_fog;
+	gMetalDrawFuncs.fogFactor                     = metal_calculate_fog_factor;
 	gMetalDrawFuncs.loadTexture                   = metal_texture_map_create;
 	gMetalDrawFuncs.unloadTexture                 = metal_texture_map_delete;
 	gMetalDrawFuncs.supportSinglePassMultitexture = metal_support_single_pass_multitexture;
@@ -427,7 +476,11 @@ static void metal_context_private_delete(void)
 
 	gMetalDepthTexture = nil;
 	gMetalWhiteTexture = nil;
+	gMetalEnvPipeline  = nil;
+	gMetalEnvTexture   = NULL;
+	gMetalBoundVertexBuffer = nil;
 	for (int i = 0; i < MetalRing_Depth; i++) { gMetalRing[i] = nil; }
+	for (int i = 0; i < MetalRing_Depth; i++) { gMetalEnvRing[i] = nil; }
 	for (int i = 0; i < MetalBlend_Count; i++) { gMetalPipelines[i] = nil; }
 	for (int i = 0; i < 4; i++) { gMetalDepthStates[i] = nil; }
 	// In-flight completed handlers hold their own captured semaphore refs, so
@@ -466,6 +519,16 @@ static UUtError metal_private_state_update(
 		if ((UUtBool)in_state_int[M3cDrawStateIntType_ZCompare] == M3cDrawState_ZCompare_On) { idx |= 1; }
 		if ((UUtBool)in_state_int[M3cDrawStateIntType_ZWrite]   == M3cDrawState_ZWrite_On)   { idx |= 2; }
 		gMetalDepthStateIndex = idx;
+	}
+
+	// Fog enable/disable (gl_engine.c:312-330). Per-batch toggle; fog colour and
+	// start/end are global (script-driven, metal_fog.mm). Default is ON.
+	// The field is the strict two-value M3cDrawStateFog{Disable,Enable} enum
+	// (BFW_Motoko.h:751-758), so "!= Enable" is exactly "Disable" — GL's decode
+	// only looks tri-state.
+	if (in_state_int_flags & (1 << M3cDrawStateIntType_Fog)) {
+		gMetalFogEnabled = (in_state_int[M3cDrawStateIntType_Fog] == M3cDrawStateFogEnable)
+			? UUcTrue : UUcFalse;
 	}
 
 	// Base texture selection (gl_engine.c:368-382).
@@ -518,9 +581,14 @@ static UUtError metal_private_state_update(
 							}
 							else if ((in_state_ptr[M3cDrawStatePtrType_EnvTextureMap] != NULL) &&
 									 (gMetalConstantA == 0xFF)) {
-								// GL would env-map here; M1 draws base-only
-								// (Bungie's own low-quality fallback). M3 fixes.
-								gMetalGeomMode = MetalGeom_EnvBaseFallback;
+								// Env-mapped surface (gl_engine.c:444-461). texture0
+								// is already the base map (set above); resolve the
+								// reflection map here. Quality gate mirrors GL:
+								// SuperLow draws base-only, >= Low does the combine.
+								gMetalEnvTexture = (M3tTextureMap*)in_state_ptr[M3cDrawStatePtrType_EnvTextureMap];
+								gMetalGeomMode = ONrMotoko_GraphicsQuality_SupportReflectionMapping()
+									? MetalGeom_EnvMap
+									: MetalGeom_EnvBaseFallback;
 							}
 							else {
 								gMetalGeomMode = MetalGeom_Default;

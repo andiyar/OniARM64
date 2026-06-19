@@ -22,6 +22,25 @@ MetalScreenVertex *metal_ring_reserve(UUtUns32 inCount, UUtUns32 *outFirstVertex
 	return out;
 }
 
+MetalEnvVertex *metal_env_ring_reserve(UUtUns32 inCount, UUtUns32 *outFirstVertex)
+{
+	if (gMetalEncoder == nil) { return NULL; } // skipped frame (nil drawable)
+	if (gMetalEnvRingCursor + inCount > MetalEnvRing_MaxVertices) {
+		if (!gMetalEnvRingOverflowed) {
+			gMetalEnvRingOverflowed = UUcTrue;
+			UUrStartupMessage("[Metal] env ring FULL (%u) — dropping remainder of frame",
+				(unsigned)MetalEnvRing_MaxVertices);
+		}
+		return NULL;
+	}
+	*outFirstVertex = gMetalEnvRingCursor;
+	MetalEnvVertex *out = (MetalEnvVertex *)
+		((char *)gMetalEnvRing[gMetalRingIndex].contents
+			+ (size_t)gMetalEnvRingCursor * sizeof(MetalEnvVertex));
+	gMetalEnvRingCursor += inCount;
+	return out;
+}
+
 // ---- state selection (the gl_set_textures analogue) -------------------------
 // inBlendOverride: -1 = derive from texture flags (gl's NONE,NONE case);
 // else a MetalBlendMode forced by the caller (e.g. opaque for untextured).
@@ -57,6 +76,12 @@ UUtBool metal_select_textures(M3tTextureMap *inTexture0, int inBlendOverride)
 		[gMetalEncoder setRenderPipelineState:pso];
 		gMetalBoundPipeline = pso;
 	}
+	// Ensure the main vertex ring is bound at buffer(0): an env draw may have
+	// swapped buffer(0) to the env ring since the last normal draw.
+	if (gMetalRing[gMetalRingIndex] != gMetalBoundVertexBuffer) {
+		[gMetalEncoder setVertexBuffer:gMetalRing[gMetalRingIndex] offset:0 atIndex:0];
+		gMetalBoundVertexBuffer = gMetalRing[gMetalRingIndex];
+	}
 	if (gMetalDepthStateIndex != gMetalBoundDepthIndex) {
 		[gMetalEncoder setDepthStencilState:gMetalDepthStates[gMetalDepthStateIndex]];
 		gMetalBoundDepthIndex = gMetalDepthStateIndex;
@@ -68,6 +93,64 @@ UUtBool metal_select_textures(M3tTextureMap *inTexture0, int inBlendOverride)
 	if (samp != gMetalBoundSampler) {
 		[gMetalEncoder setFragmentSamplerState:samp atIndex:0];
 		gMetalBoundSampler = samp;
+	}
+
+	// Fog uniform (M2). Set per primitive: fog colour/range are frame-global but
+	// fog-enable is per-batch, so the cheapest correct path is one setFragmentBytes
+	// per draw. Batching is an M5 concern (correctness-first, per M1).
+	{
+		MetalFogUniform fogU;
+		fogU.colorR = gMetalFogColorR;
+		fogU.colorG = gMetalFogColorG;
+		fogU.colorB = gMetalFogColorB;
+		fogU.enabled = gMetalFogEnabled ? 1.0f : 0.0f;
+		fogU.start = gMetalFogStart;
+		fogU.end   = gMetalFogEnd;
+		[gMetalEncoder setFragmentBytes:&fogU length:sizeof(fogU) atIndex:0];
+	}
+	return UUcTrue;
+}
+
+// Env-map state selection: env PSO + reflection(tex0)/base(tex1) + fog.
+// Mirrors gl_set_textures(texture0=env, texture1=base) for the single-pass
+// _geom_draw_mode_environment_map path (gl_geometry_draw_method.c:199-211).
+UUtBool metal_select_env_textures(M3tTextureMap *inBase, M3tTextureMap *inEnv)
+{
+	if (inBase == NULL || inEnv == NULL) { return UUcFalse; }
+
+	id<MTLSamplerState> sBase = nil, sEnv = nil;
+	id<MTLTexture> tBase = metal_texture_lookup(inBase, &sBase);
+	id<MTLTexture> tEnv  = metal_texture_lookup(inEnv,  &sEnv);
+	if (tBase == nil || tEnv == nil) { return UUcFalse; } // upload failed: skip, never crash
+	if (sBase == nil) { sBase = metal_default_sampler(); }
+	if (sEnv  == nil) { sEnv  = metal_default_sampler(); }
+
+	if (gMetalEnvPipeline != gMetalBoundPipeline) {
+		[gMetalEncoder setRenderPipelineState:gMetalEnvPipeline];
+		gMetalBoundPipeline = gMetalEnvPipeline;
+	}
+	if (gMetalDepthStateIndex != gMetalBoundDepthIndex) {
+		[gMetalEncoder setDepthStencilState:gMetalDepthStates[gMetalDepthStateIndex]];
+		gMetalBoundDepthIndex = gMetalDepthStateIndex;
+	}
+	[gMetalEncoder setFragmentTexture:tEnv  atIndex:0];
+	[gMetalEncoder setFragmentTexture:tBase atIndex:1];
+	[gMetalEncoder setFragmentSamplerState:sEnv  atIndex:0];
+	[gMetalEncoder setFragmentSamplerState:sBase atIndex:1];
+	// The single-texture cache tracks slot 0 only; we just wrote both slots, so
+	// force the next normal draw to rebind its texture0/sampler0.
+	gMetalBoundTexture = nil;
+	gMetalBoundSampler = nil;
+
+	{
+		MetalFogUniform fogU;
+		fogU.colorR  = gMetalFogColorR;
+		fogU.colorG  = gMetalFogColorG;
+		fogU.colorB  = gMetalFogColorB;
+		fogU.enabled = gMetalFogEnabled ? 1.0f : 0.0f;
+		fogU.start   = gMetalFogStart;
+		fogU.end     = gMetalFogEnd;
+		[gMetalEncoder setFragmentBytes:&fogU length:sizeof(fogU) atIndex:0];
 	}
 	return UUcTrue;
 }
@@ -112,6 +195,7 @@ static void metal_submit_polygon(const UUtUns32 *in_indices, UUtUns32 inN, const
 			break;
 		}
 		case MetalGeom_EnvBaseFallback: // env-mapped: base-only fallback (M3 does the combine)
+		case MetalGeom_EnvMap:          // env-mapped: full combine (intercepted by the dedicated branch below)
 		case MetalGeom_Default:
 		default:
 			textured = UUcTrue; per_vertex_shade = UUcTrue;
@@ -133,6 +217,67 @@ static void metal_submit_polygon(const UUtUns32 *in_indices, UUtUns32 inN, const
 		}
 		[gMetalEncoder drawPrimitives:MTLPrimitiveTypeLineStrip
 			vertexStart:first vertexCount:inN + 1];
+		return;
+	}
+
+	if (mode == MetalGeom_EnvMap) {
+		// Single-pass reflection combine. Two UV sets per vertex: base (this
+		// array) + env (EnvTextureCoordArray), both indexed by the geometry's
+		// vertex indices, exactly like SUBMIT_BASE_QRST1 / SUBMIT_ENV_QRST0
+		// (gl_geometry_draw_method.c:199-209). Env-map is unified-only (the
+		// decode never selects it for split geometry), so uv index == vertex index.
+		const M3tTextureCoord *env_uvs =
+			(const M3tTextureCoord *)gMetalStatePtr[M3cDrawStatePtrType_EnvTextureCoordArray];
+		if (env_uvs == NULL) { return; } // defensive: no env UVs => nothing sane to draw
+
+		if (!metal_select_env_textures(gMetalTexture0 /*base*/, gMetalEnvTexture /*reflection*/)) {
+			return;
+		}
+		// Bind the env ring at buffer(0) for this draw (normal draws rebind the
+		// main ring via the guard in metal_select_textures).
+		if (gMetalEnvRing[gMetalRingIndex] != gMetalBoundVertexBuffer) {
+			[gMetalEncoder setVertexBuffer:gMetalEnvRing[gMetalRingIndex] offset:0 atIndex:0];
+			gMetalBoundVertexBuffer = gMetalEnvRing[gMetalRingIndex];
+		}
+
+		UUtUns32 tri_count = inN - 2;
+		UUtUns32 first;
+		MetalEnvVertex *v = metal_env_ring_reserve(tri_count * 3, &first);
+		if (v == NULL) { return; }
+
+		for (UUtUns32 t = 0; t < tri_count; t++) {
+			const UUtUns32 corner[3] = { 0, t + 1, t + 2 };
+			for (UUtUns32 c = 0; c < 3; c++, v++) {
+				UUtUns32 i = corner[c];
+				const M3tPointScreen *p = screen_points + in_indices[i];
+				float oow = p->invW;
+				const M3tTextureCoord *buv = base_uvs + in_indices[i];
+				const M3tTextureCoord *euv = env_uvs  + in_indices[i];
+
+				v->x = p->x; v->y = p->y; v->z = p->z;
+				v->bu = buv->u * oow; v->bv = buv->v * oow; v->bw = oow;
+				v->eu = euv->u * oow; v->ev = euv->v * oow; v->ew = oow;
+
+				UUtUns32 shade = vertex_shades[in_indices[i]];
+				v->r = (UUtUns8)((shade & 0x00FF0000) >> 16);
+				v->g = (UUtUns8)((shade & 0x0000FF00) >> 8);
+				v->b = (UUtUns8) (shade & 0x000000FF);
+				v->a = gMetalConstantA;
+			}
+		}
+		[gMetalEncoder drawPrimitives:MTLPrimitiveTypeTriangle
+			vertexStart:first vertexCount:tri_count * 3];
+
+		// M3 verification diagnostic (issue #43): env-map geometry is subtle and
+		// sparse in Oni's data, so confirm it's actually being drawn (and how
+		// much) to locate reflective surfaces empirically instead of guessing.
+		// Logged on the first env-map draw of the session + every 600th after.
+		static UUtUns32 sEnvDraws = 0, sEnvTris = 0;
+		sEnvDraws++; sEnvTris += tri_count;
+		if (sEnvDraws == 1 || (sEnvDraws % 600) == 0) {
+			UUrStartupMessage("[Metal] env-map draw #%u (%u tris this call, %u tris cumulative)",
+				sEnvDraws, tri_count, sEnvTris);
+		}
 		return;
 	}
 
