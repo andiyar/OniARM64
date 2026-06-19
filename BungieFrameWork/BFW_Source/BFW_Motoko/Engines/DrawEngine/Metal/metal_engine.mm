@@ -354,7 +354,46 @@ static UUtError metal_frame_sync(void) { return UUcError_None; }
 
 // ---- non-draw stubs (primitives live in metal_draw.mm since M1 Task 3) ----
 // Signatures match the typedefs in Motoko_Manager.h:79-152.
-static UUtError metal_screen_capture(const UUtRect *r, void *out) { (void)r; (void)out; return UUcError_None; }
+// screenCapture is intentionally NOT implemented under Metal (M4 descope). Its
+// sole consumer is the in-game screenshot key: iScreenShot -> iWriteScreenToFile
+// -> screen_shot_NNNNN.bmp (Oni_GameState.c:1001 / 933), bound by default to the
+// unreachable fkey13 (Oni.c:885). macOS system screenshots (Cmd-Shift-3/4/5)
+// supersede it, and a robust Metal readback would cost a per-frame drawable->CPU
+// blit (a drawable is unreadable after present) for a feature nobody can press.
+//
+// We must still (1) return UUcError_None — the caller asserts it
+// (UUmAssert(UUcError_None==error), Oni_GameState.c:959) — and (2) define the
+// buffer: the caller reads every byte (Oni_GameState.c:961-972). GL writes
+// GL_RGB/GL_UNSIGNED_BYTE = 3 bytes/pixel (gl_engine.c:683-684); the caller sizes
+// the buffer width*height*3 and passes a full-screen rect (Oni_GameState.c:945,
+// 949-952). Zero it -> a press yields a black BMP, not uninitialised heap data.
+static UUtError metal_screen_capture(const UUtRect *r, void *out)
+{
+	if ((out != NULL) && (r != NULL)) {
+		UUtUns32 w = (UUtUns32)(r->right  - r->left + 1);
+		UUtUns32 h = (UUtUns32)(r->bottom - r->top  + 1);
+		UUrMemory_Clear(out, w * h * 3);
+	}
+	return UUcError_None;
+}
+// pointVisible / supportPointVisible — parity with Mac GL, with one accepted delta.
+//
+// supportPointVisible=FALSE matches GL on Mac: GL's is gl_support_depth_reads
+// (gl_engine.c:713) = !depth_buffer_reads_disabled, and Mac forces that TRUE
+// (gl_utility.c:348-353, "glReadPixels prohibitively slow on Mac video cards").
+//
+// Two consumers, different reach:
+//   1. Particle lens-flare (BFW_Particle3.c:1136 -> M3rPointVisible -> the Software
+//      geom engine's PointTestVisible) gates its draw-engine call behind
+//      `if (0 && M3rDraw_SupportPointVisible())` (MS_GC_Method_Geometry.c:2577) —
+//      DEAD code; the live branch raycasts on the CPU. The stub below is never hit
+//      on this path -> true parity.
+//   2. Sun lens-flare (Oni_Sky.c:646 -> M3rPointVisibleScale -> PointTestVisibleScale)
+//      calls M3rDraw_PointVisible UNCONDITIONALLY (MS_GC_Method_Geometry.c:2699) to
+//      scale the flare alpha. Returning UUcTrue means visible_scale=1 -> the sun glow
+//      does not soften when occluded by geometry (GL on Mac reads depth and fades).
+//      ACCEPTED M4 delta: cosmetic, outdoor/sky levels only; a Metal depth readback
+//      (private depth attachment -> per-frame blit+getBytes) is not worth a flare fade.
 static UUtBool  metal_point_visible(const M3tPointScreen *p, float tol) { (void)p; (void)tol; return UUcTrue; }
 static UUtBool  metal_support_point_visible(void) { return UUcFalse; }
 static UUtError metal_change_mode(M3tDisplayMode mode)
