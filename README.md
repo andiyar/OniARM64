@@ -92,7 +92,7 @@ Levels 1–5 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 - [x] In-session resolution change under Metal — logical render scale switches correctly (drawable stays native-res, same desktop-fullscreen behaviour as GL)
 - [ ] M2 — fog + in-game visual parity pass (incl. engine-agnostic particle fog query)
 - [x] **M3 — env-map reflective combine**: shiny character armour reflects under Metal again (single-pass two-texture shader matching GL's two-pass `base + env·base_alpha`); verified firing + stable in a busy combat run (1.34M env-map triangle draws, no ring overflow, clean exit), no visual anomalies. Per-triangle env draw perf tracked separately ([#48](https://github.com/andiyar/OniARM64/issues/48))
-- [ ] M4 — `screenCapture`, `pointVisible`, gamma/HiDPI parity verification, pixel-format soak
+- [x] **M4 — feature-complete parity**: `screenCapture` made safe (descoped — the in-game screenshot key, superseded by macOS screenshots; no more garbage BMP), `pointVisible` parity confirmed (sun-flare soft-occlusion an accepted cosmetic outdoor-only delta), pixel-format soak clean (zero unsupported texels across 19 Metal sessions / ~15 levels incl. the final level), gamma + HiDPI verified — Metal declared feature-complete with OpenGL
 - [ ] M5 — batching, persisted renderer preference, in-game renderer menu
 
 </details>
