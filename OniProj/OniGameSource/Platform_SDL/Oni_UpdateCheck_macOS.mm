@@ -13,6 +13,7 @@
 #include "ONi_UpdateCheck.h"
 
 #include <string.h>
+#include <stdlib.h>   // exit()
 
 // Configure-time epoch (CMake string(TIMESTAMP ... %s)); 0 disables the
 // dev-build guard but tag-difference still works.
@@ -252,7 +253,12 @@ void ONrUpdateCheck_RunAtStartup(void)
         }
 
         if (resp == NSAlertFirstButtonReturn) {
-            // Download… -> open the release page (fall back to releases list).
+            // Download… -> open the release page (fall back to releases list)
+            // and QUIT. The check runs pre-window at launch (no session has
+            // started yet), and the user signalled intent to update, so we get
+            // out of the way to let them install the new DMG and relaunch —
+            // rather than dropping them into the old build (that's Later's job).
+            // Same clean pre-window exit the first-run data picker uses.
             NSString *urlStr = (latest->url[0] != '\0')
                 ? [NSString stringWithUTF8String:latest->url]
                 : kOniReleasesPage;
@@ -260,6 +266,8 @@ void ONrUpdateCheck_RunAtStartup(void)
             if (open != nil) {
                 [[NSWorkspace sharedWorkspace] openURL:open];
             }
+            [defaults synchronize];   // flush opt-out/last-check before exiting
+            exit(0);
         } else if (resp == NSAlertSecondButtonReturn) {
             // Skip This Version -> persist the EXACT API tag. The pure core's
             // skip-check compares this raw tag with strcmp, so persisting
