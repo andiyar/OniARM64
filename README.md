@@ -25,7 +25,7 @@ Currently it's playable (I've run through the first 4 levels... too many times..
 
 ## Status
 
-Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, save/load all working. Loads **both** (or either?) the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. New: an **experimental native Metal renderer** (hold Option at launch to pick it) now renders the menu and in-game world, but unclear how buggy it is going through. I mean, a bit of fun. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
+Levels 1–5 playable end-to-end: combat, AI, weapons, particle effects, audio, save/load all working. Loads **both** (or either?) the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. New: an **experimental native Metal renderer** (hold Option at launch to pick it) now renders the menu and in-game world, but unclear how buggy it is going through. I mean, a bit of fun. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
 
 <details>
 <summary><strong>Full milestone status</strong></summary>
@@ -74,7 +74,7 @@ Levels 1–4 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 - [x] Konoko engages NPCs in combat end-to-end across a full encounter
 - [x] Tutorial level completable to next-level transition
 - [x] Save / load works across runs
-- [x] Levels 2–4 playable with particle effects, combat, AI, level transitions
+- [x] Levels 2–5 playable with particle effects, combat, AI, level transitions
 - [ ] All 14 levels playable - yet to test
 
 ### Phase 7 — Shippable artefact
