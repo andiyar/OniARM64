@@ -105,6 +105,15 @@ void
 SS2rPlatform_Terminate(
 	void);
 
+#if UUmOpenAL
+/* Invalidate the OpenAL buffer cache on level unload (issue #59). Clears all
+   cached SStSoundData*-keyed buffers and resets the cache count so stale keys
+   can't survive a level transition. */
+void
+SS2rPlatform_BufferCache_FlushAll(
+	void);
+#endif
+
 // ----------------------------------------------------------------------
 void
 SSrDeleteGuard(

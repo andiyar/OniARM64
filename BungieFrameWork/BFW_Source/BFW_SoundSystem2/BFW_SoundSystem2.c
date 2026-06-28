@@ -1006,6 +1006,16 @@ SS2rSoundData_FlushDeallocatedPointers(
 	SStSoundData				**pointer_array;
 	SStGroup					**group_array;
 
+#if UUmOpenAL
+	// issue #59: invalidate the OpenAL buffer cache on level unload. The cache is
+	// keyed on SStSoundData* pointers that become stale (freed / reusable) once a
+	// level's template data unloads; flushing here — the per-unload disposed-sound
+	// hook — clears those keys and resets the cache count. Runs unconditionally
+	// (before the num_pointers==0 early-out) so the cache never survives a level
+	// transition even when no sound data was disposed.
+	SS2rPlatform_BufferCache_FlushAll();
+#endif
+
 	// sort the deallocated pointer array
 	num_pointers = UUrMemory_Array_GetUsedElems(SSgDeallocatedSoundData);
 	if (num_pointers == 0)

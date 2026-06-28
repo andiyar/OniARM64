@@ -1297,7 +1297,7 @@ void AI2rMelee_NotifyAnimation(ONtCharacter *ioCharacter, TRtAnimation *inAnimat
 
 	// send a more general combat behavior notification
 	AI2rCombat_Behavior(ioCharacter, &ioCharacter->ai2State.currentState->state.combat,
-						AI2cCombatMessage_NewAnimation, &handled, inAnimType, inCurFromState, (UUtUns32) inAnimation);
+						AI2cCombatMessage_NewAnimation, &handled, inAnimType, inCurFromState, (uintptr_t) inAnimation);
 
 	if (ioCharacter->ai2State.currentState->state.combat.maneuver.primary_movement != AI2cPrimaryMovement_Melee)
 		return;

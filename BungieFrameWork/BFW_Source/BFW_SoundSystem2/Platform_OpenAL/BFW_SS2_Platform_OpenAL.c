@@ -148,6 +148,20 @@ static void SS2iBufferCache_FreeAll(void)
 	SS2gBufferCacheCount = 0;
 }
 
+/* Public hook: invalidate the whole buffer cache on level unload (issue #59).
+   The cache is keyed on SStSoundData* pointers, which are only stable while the
+   owning template data is loaded; once a level unloads those pointers are freed
+   and may be reused, so stale keys must not survive. Clearing is correct because
+   this is a pure performance cache — the next level re-uploads sounds on first
+   play. SS2iBufferCache_FreeAll also resets SS2gBufferCacheCount, which fixes
+   the silent self-disable (Insert early-returns at 50% load and the count never
+   reset across a session). Safe as a no-op when the cache is empty or disabled
+   via ONI_AUDIO_CACHE=0 — it just iterates the static array. */
+void SS2rPlatform_BufferCache_FlushAll(void)
+{
+	SS2iBufferCache_FreeAll();
+}
+
 // ======================================================================
 // functions
 // ======================================================================
