@@ -1108,7 +1108,7 @@ AIiScript_EnvTexSwap(
 
 	gqS = inParameterList[0].val.i;
 
-	for (i=0; i<=env->envQuadRemaps->numIndices; i++)
+	for (i=0; i<env->envQuadRemaps->numIndices; i++)
 	{
 		UUtUns16 texture_map_index;
 
@@ -1166,7 +1166,7 @@ AIiScript_EnvShow(
 	ref = inParameterList[0].val.i;
 	t = (UUtBool)inParameterList[1].val.i;
 
-	for (i=0; i<=env->envQuadRemaps->numIndices; i++)
+	for (i=0; i<env->envQuadRemaps->numIndices; i++)
 	{
 		if (env->envQuadRemaps->indices[i] != ref) continue;
 		gq = env->envQuadRemapIndices->indices[i];
@@ -1222,7 +1222,7 @@ AIiScript_EnvBroken(
 
 	num_unbroken = 0;
 	UUrBitVector_ClearBitAll(unbroken_bv, AIcEnvBroken_BVLength);
-	for (i = 0; i <= env->envQuadRemaps->numIndices; i++)
+	for (i = 0; i < env->envQuadRemaps->numIndices; i++)
 	{
 		if ((env->envQuadRemaps->indices[i] < refstart) || (env->envQuadRemaps->indices[i] > refend))
 			continue;
@@ -1287,7 +1287,7 @@ AIiScript_EnvShade(
 		shade |= (MUrUnsignedSmallFloat_To_Uns_Round(b * 255) << 0);
 	}
 
-	for (i=0; i<=env->envQuadRemaps->numIndices; i++)
+	for (i=0; i<env->envQuadRemaps->numIndices; i++)
 	{
 		if ((env->envQuadRemaps->indices[i] >= ref_low) && (env->envQuadRemaps->indices[i] <= ref_high)) {
 			UUtUns32 gq_index;
