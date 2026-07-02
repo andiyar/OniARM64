@@ -2655,11 +2655,23 @@ ONrGameState_NewCharacter(
 		error = TMrInstance_GetDataPtr(TRcTemplate_CharacterClass, char_osd->character_class,
 										&thisCharacter->characterClass);
 		if (error == UUcError_None) {
+			// issue #56: a zeroed placeholder ref loads without error and leaves these
+			// sub-references NULL; the console path (ONrCharacter_SetCharacterClass
+			// :1756-1774) guards them, the spawn path must too. A class with no body
+			// or animations cannot spawn; a NULL variant only forbids costume logic.
+			if ((thisCharacter->characterClass->body == NULL) ||
+				(thisCharacter->characterClass->animations == NULL)) {
+				UUrStartupMessage("spawn: character class %s has NULL body/animations - spawn refused",
+					char_osd->character_class);
+				return UUcError_Generic;
+			}
+
 			// check for random costuming
 			num_variants = 0;
 			default_melee_profile = (char_osd->melee_id == thisCharacter->characterClass->ai2_behavior.default_melee_id);
 
-			if (char_osd->flags & (OBJcCharFlags_RandomCostume | OBJcCharFlags_UpgradeDifficulty)) {
+			if ((thisCharacter->characterClass->variant != NULL) &&
+				(char_osd->flags & (OBJcCharFlags_RandomCostume | OBJcCharFlags_UpgradeDifficulty))) {
 				// either look for random people of our variant, or the next harder variant
 				desired_variant = thisCharacter->characterClass->variant->name;
 
@@ -2673,6 +2685,8 @@ ONrGameState_NewCharacter(
 					error = TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, itr, &test_class);
 					if (error != UUcError_None)
 						break;
+
+					if (test_class->variant == NULL) continue;
 
 					if (UUmString_IsEqual(test_class->variant->name, desired_variant)) {
 						// this is a variant of the desired character class
