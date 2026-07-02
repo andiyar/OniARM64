@@ -1527,7 +1527,10 @@ AKtGQ_Render*			AKgGQRenderArray;
 //
 
 #define MAX_TEXTURES 0x3780
-#define MAX_BINS 0x1000
+// issue #54: textureMapIndex is UUtUns16 read from level data; 0x10000 covers the
+// entire index domain so the per-frame bin writes below can never go out of bounds
+// (the old 0x1000 relied on a release-stripped UUmAssert). 64K * UUtUns16 = 128 KB.
+#define MAX_BINS 0x10000
 
 //
 // Note to Bungie, I'm grabbing the memory I need for this from
