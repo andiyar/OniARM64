@@ -60,7 +60,7 @@ Levels 1–5 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 - [x] Looping ambient sounds stop correctly (Daodan health / super ambients no longer leak)
 - [x] Particle effects render — screamers, explosions, acid, environmental FX across levels 1–4
 - [x] Security-laser tripwire beams render and trip.
-- [ ] `w10_sni_p01` sniper particle fits its size class (non-blocking — class is dropped, game continues; see [#10](https://github.com/andiyar/OniARM64/issues/10)). WIP.
+- [ ] `w10_sni_p01` sniper particle fits its size class (non-blocking — class is dropped, game continues; [#10](https://github.com/andiyar/OniARM64/issues/10) closed as accepted-for-now, reopen if it ever blocks).
 
 ### Phase 5 — AI behaviour ✅
 - [x] NPCs detect the player via sight and sound (Knowledge layer)
