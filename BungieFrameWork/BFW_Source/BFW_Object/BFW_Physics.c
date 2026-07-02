@@ -30,6 +30,18 @@
 #define OBcMaxCollisions			AKcMaxNumCollisions
 #define PHcBackfacingMinVelocity	(0.4f / UUcFramesPerSecond)
 
+// issue #53: colliders[] is a fixed OBcMaxColliders-entry caller (stack) buffer;
+// touched collisions plus their 2-sided duplicates can exceed it with dense or
+// modded geometry. Clamp with a one-shot log instead of smashing the stack.
+static void PHiColliderOverflow_WarnOnce(void)
+{
+	static UUtBool PHgColliderOverflowWarned = UUcFalse;
+	if (!PHgColliderOverflowWarned) {
+		PHgColliderOverflowWarned = UUcTrue;
+		UUrStartupMessage("physics: collider buffer full (%d) - extra collisions dropped", OBcMaxColliders);
+	}
+}
+
 UUtBool PHgKeyForces = 0;
 UUtBool PHgPhysicsActive = UUcTrue;
 UUtBool PHgShowCollisions = 0;
@@ -221,6 +233,10 @@ UUtBool PHrCollision_Volume_SphereTree(
 			}
 
 			UUmAssert(outCollisionPoint);
+			if (*ioNumColliders >= OBcMaxColliders) {
+				PHiColliderOverflow_WarnOnce();
+				break;
+			}
 			outColliders[*ioNumColliders].plane = inA->curPlanes[i];
 			outColliders[*ioNumColliders].planePoint = checkPoint;
 			outColliders[*ioNumColliders].type = PHcCollider_Phy;
@@ -1520,7 +1536,13 @@ void PHrPhysics_Callback_FindEnvCollisions(
 		if (touched)
 		{
 			M3tPlaneEquation plane;
-			PHtCollider *newCollider = outColliders + *ioNumColliders;
+			PHtCollider *newCollider;
+
+			if (*ioNumColliders >= OBcMaxColliders) {
+				PHiColliderOverflow_WarnOnce();
+				break;
+			}
+			newCollider = outColliders + *ioNumColliders;
 
 			AKmPlaneEqu_GetComponents(
 				gqCollision->planeEquIndex,
@@ -1544,7 +1566,13 @@ void PHrPhysics_Callback_FindEnvCollisions(
 
 			if (gqGeneral->flags & AKcGQ_Flag_2Sided)
 			{
-				PHtCollider *secondNewCollider = outColliders + *ioNumColliders;
+				PHtCollider *secondNewCollider;
+
+				if (*ioNumColliders >= OBcMaxColliders) {
+					PHiColliderOverflow_WarnOnce();
+					break;
+				}
+				secondNewCollider = outColliders + *ioNumColliders;
 
 				*secondNewCollider = *newCollider;
 
