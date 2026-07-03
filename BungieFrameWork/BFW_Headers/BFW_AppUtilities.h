@@ -413,7 +413,7 @@ extern "C"
 	typedef struct AUtSharedString
 	{
 		char		string[AUcMaxStringLength];
-		UUtUns32	data;
+		uintptr_t	data;    // issue #55: holds an SLtSymbol* on 64-bit; was UUtUns32
 
 	} AUtSharedString;
 
@@ -433,7 +433,7 @@ extern "C"
 	AUrSharedStringArray_AddString(
 		AUtSharedStringArray*	inSharedStringArray,
 		const char*				inString,
-		UUtUns32				inData,
+		uintptr_t				inData,
 		UUtUns32				*outStringIndex);
 
 	AUtSharedString*

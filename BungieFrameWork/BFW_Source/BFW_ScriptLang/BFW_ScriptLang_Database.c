@@ -1298,7 +1298,7 @@ SLrScript_Database_ConsoleCompletionList_Get(
 				AUrSharedStringArray_AddString(
 					sortedStringArray,
 					curSymbol->name,
-					(UUtInt32)curSymbol,
+					(uintptr_t)curSymbol,
 					NULL);
 			UUmAssert(UUcError_None == error);
 		}
@@ -1310,7 +1310,7 @@ SLrScript_Database_ConsoleCompletionList_Get(
 			error = AUrSharedStringArray_AddString(
 					sortedStringArray,
 					curSymbol->name,
-					(UUtInt32)curSymbol,
+					(uintptr_t)curSymbol,
 					NULL);
 			UUmAssert(UUcError_None == error);
 		}

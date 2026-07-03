@@ -1774,7 +1774,7 @@ UUtError
 AUrSharedStringArray_AddString(
 	AUtSharedStringArray*	inSharedStringArray,
 	const char*				inString,
-	UUtUns32				inData,
+	uintptr_t				inData,
 	UUtUns32				*outStringIndex)
 {
 

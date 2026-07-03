@@ -816,7 +816,7 @@ BFrDirectory_GetFileList(
 			AUrSharedStringArray_AddString(
 				stringArray,
 				fileName,
-				(UUtUns32)newFileRef,
+				(uintptr_t)newFileRef,	// issue #55: BFtFileRef* rides in .data; was truncated via UUtUns32
 				&newIndex);
 		UUmError_ReturnOnErrorMsg(error, "Could not add file ref");
 
