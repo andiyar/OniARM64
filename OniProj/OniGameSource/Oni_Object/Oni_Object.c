@@ -4119,22 +4119,19 @@ OBJrTerminate(
 
 
 
-static UUtBool OWiCompare_Object_By_Name(UUtUns32 inA, UUtUns32 inB)
+static int OWiCompare_Object_By_Name(const void *inA, const void *inB)
 {
-	OBJtObject *object_a = (OBJtObject *) inA;
-	OBJtObject *object_b = (OBJtObject *) inB;
+	// issue #11: AUrQSort_32 sorted 4-byte strides of these 8-byte pointers
+	OBJtObject *object_a = *(OBJtObject * const *) inA;
+	OBJtObject *object_b = *(OBJtObject * const *) inB;
 
 	char name_a[128];
 	char name_b[128];
 
-	UUtBool a_less_than_b;
-
 	OBJrObject_GetName(object_a, name_a, 128);
 	OBJrObject_GetName(object_b, name_b, 128);
 
-	a_less_than_b = UUrString_Compare_NoCase(name_a, name_b) > 0;
-
-	return a_less_than_b;
+	return (int) UUrString_Compare_NoCase(name_a, name_b);
 }
 
 void OBJrObjectType_BuildListBox(OBJtObjectType inObjectType, WMtWindow *ioListBox, UUtBool inAllowNone)
@@ -4165,7 +4162,7 @@ void OBJrObjectType_BuildListBox(OBJtObjectType inObjectType, WMtWindow *ioListB
 		list[itr] = OBJrObjectType_GetObject_ByNumber(inObjectType, itr);
 	}
 
-	AUrQSort_32(list, count, OWiCompare_Object_By_Name);
+	qsort(list, count, sizeof(OBJtObject *), OWiCompare_Object_By_Name);
 
 	for(itr = 0; itr < count; itr++)
 	{
@@ -4177,7 +4174,7 @@ void OBJrObjectType_BuildListBox(OBJtObjectType inObjectType, WMtWindow *ioListB
 		new_index = WMrMessage_Send(ioListBox, LBcMessage_AddString, (uintptr_t) name, 0);
 		UUmAssert(new_index == itr + base);
 
-		WMrMessage_Send(ioListBox, LBcMessage_SetItemData, (UUtUns32) list[itr], itr + base);
+		WMrMessage_Send(ioListBox, LBcMessage_SetItemData, (uintptr_t) list[itr], itr + base);
 
 		if (list[itr] == old_selected_object) {
 			WMrMessage_Send(ioListBox, LBcMessage_SetSelection, UUcFalse, itr + base);

@@ -987,12 +987,20 @@ exit:
 }
 
 // ----------------------------------------------------------------------
-static UUtBool
-SS2iSoundData_DeallocatedPointerCompareFunc(
-	UUtUns32 inA,
-	UUtUns32 inB)
+static int
+SS2iSoundData_DeallocatedPointerQSortCompare(
+	const void *inA,
+	const void *inB)
 {
-	return (inA > inB);
+	const SStSoundData *a = *(SStSoundData * const *) inA;
+	const SStSoundData *b = *(SStSoundData * const *) inB;
+
+	// issue #11: AUrQSort_32 sorted 4-byte strides of these 8-byte pointers.
+	// strict address order: the consumer binary-searches this array with
+	// plain pointer comparisons (see the perm sweep below the sort)
+	if (a < b) return -1;
+	if (a > b) return 1;
+	return 0;
 }
 
 // ----------------------------------------------------------------------
@@ -1022,7 +1030,7 @@ SS2rSoundData_FlushDeallocatedPointers(
 		return;
 
 	pointer_array = (SStSoundData **) UUrMemory_Array_GetMemory(SSgDeallocatedSoundData);
-	AUrQSort_32(pointer_array, num_pointers, SS2iSoundData_DeallocatedPointerCompareFunc);
+	qsort(pointer_array, num_pointers, sizeof(SStSoundData *), SS2iSoundData_DeallocatedPointerQSortCompare);
 
 	// go through all of the groups and NULL out the sound_data pointers if they've been deleted
 	group_array = (SStGroup**)UUrMemory_Array_GetMemory(SSgSoundGroups);

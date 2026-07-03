@@ -346,29 +346,26 @@ void UUrPerformanceTimer_Pulse(void)
 	return;
 }
 
-UUtBool UUrPeformanceTimer_Display_Sort(UUtUns32 inA, UUtUns32 inB)
+static int UUiPerformanceTimer_Display_QSortCompare(const void *inA, const void *inB)
 {
-	UUtPerformanceTimer *timer_a = (UUtPerformanceTimer *) inA;
-	UUtPerformanceTimer *timer_b = (UUtPerformanceTimer *) inB;
-	UUtBool result;
+	// issue #11: AUrQSort_32 sorted 4-byte strides of these 8-byte pointers
+	const UUtPerformanceTimer *timer_a = *(UUtPerformanceTimer * const *) inA;
+	const UUtPerformanceTimer *timer_b = *(UUtPerformanceTimer * const *) inB;
 
-	if ('\0' == UUgTimerRequiredPrefix[0]) {
-		result = timer_a->slice_total_time < timer_b->slice_total_time;
-	}
-	else {
+	if ('\0' != UUgTimerRequiredPrefix[0]) {
 		UUtBool string_a_has_prefix = UUrString_HasPrefix(timer_a->name, UUgTimerRequiredPrefix);
 		UUtBool string_b_has_prefix = UUrString_HasPrefix(timer_b->name, UUgTimerRequiredPrefix);
 
 		if (string_a_has_prefix != string_b_has_prefix) {
-			result = !string_a_has_prefix;
-		}
-		else {
-			result = timer_a->slice_total_time < timer_b->slice_total_time;
-			//result = UUrString_Compare_NoCase(timer_a->name, timer_b->name) > 0;
+			// timers matching the prefix sort to the front
+			return string_a_has_prefix ? -1 : 1;
 		}
 	}
 
-	return result;
+	// descending slice_total_time: biggest offenders first
+	if (timer_a->slice_total_time > timer_b->slice_total_time) return -1;
+	if (timer_a->slice_total_time < timer_b->slice_total_time) return 1;
+	return 0;
 }
 
 
@@ -395,7 +392,7 @@ void UUrPerformanceTimer_Display(COtStatusLine *lines, UUtUns32 count)
 		list[itr] = UUgPerformanceTimers + itr;
 	}
 
-	AUrQSort_32(list, UUgPerformanceTimerCount, UUrPeformanceTimer_Display_Sort);
+	qsort(list, UUgPerformanceTimerCount, sizeof(UUtPerformanceTimer *), UUiPerformanceTimer_Display_QSortCompare);
 
 	for(itr = 0; itr < count; itr++)
 	{

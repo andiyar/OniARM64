@@ -3002,14 +3002,6 @@ void P3rLoad_PostProcess(void)
 	}
 }
 
-static UUtBool P3iDumpParticles_SortCompareFunc(UUtUns32 inA, UUtUns32 inB)
-{
-	P3tParticleClass *class_a = (P3tParticleClass *) inA;
-	P3tParticleClass *class_b = (P3tParticleClass *) inB;
-
-	return (strcmp(class_a->classname, class_b->classname) > 0);
-}
-
 // for dumping out particle classes to a text file - used for manually merging particle changes
 void P3rDumpParticles(void)
 {
@@ -3031,7 +3023,9 @@ void P3rDumpParticles(void)
 	for (itr = 0; itr < P3gNumClasses; itr++) {
 		classptrs[itr] = &P3gClassTable[itr];
 	}
-	AUrQSort_32(classptrs, P3gNumClasses, P3iDumpParticles_SortCompareFunc);
+	// issue #11: AUrQSort_32 sorted 4-byte strides of these 8-byte pointers;
+	// P3iQSort_AlphabeticalClassCompare already provides the same ascending-classname order
+	qsort(classptrs, P3gNumClasses, sizeof(P3tParticleClass *), P3iQSort_AlphabeticalClassCompare);
 
 	// write out the particle classes
 	for (itr = 0; itr < P3gNumClasses; itr++) {

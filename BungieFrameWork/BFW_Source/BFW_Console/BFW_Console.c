@@ -712,14 +712,16 @@ COrConfigure(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-static UUtBool
-COiCompletiond_BuildList_Compare_Function(
-	UUtUns32	inA,
-	UUtUns32	inB)
+static int
+COiCompletion_QSortCompare(
+	const void	*inA,
+	const void	*inB)
 {
-	UUtBool result = strcmp((char*)inA, (char*)inB) > 0;
+	// issue #11: AUrQSort_32 sorted 4-byte strides of these 8-byte pointers
+	const char *a = *(const char * const *) inA;
+	const char *b = *(const char * const *) inB;
 
-	return result;
+	return strcmp(a, b);
 }
 
 static void
@@ -731,7 +733,7 @@ COiCompletion_BuildList(
 	SLrScript_ConsoleCompletionList_Get(&numNames, &COgCompletionNames);
 	COgNumCompletionNames = (UUtUns16) numNames;
 
-	AUrQSort_32(COgCompletionNames, COgNumCompletionNames, COiCompletiond_BuildList_Compare_Function);
+	qsort((void *) COgCompletionNames, COgNumCompletionNames, sizeof(*COgCompletionNames), COiCompletion_QSortCompare);
 }
 
 // ----------------------------------------------------------------------
