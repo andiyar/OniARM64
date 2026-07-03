@@ -2895,14 +2895,28 @@ void TRrAnimation_SetSoundName(TRtAnimation *inAnimation, const char *inSoundNam
 	if (inSoundName == NULL) {
 		inAnimation->soundName = 0;
 	} else {
-		UUtUns32 idx = gTRSoundNameCount++;
-		UUmAssert(idx < TRcSoundNameTableSize);
-		if (idx < TRcSoundNameTableSize) {
-			gTRSoundNameTable[idx] = inSoundName;
-			inAnimation->soundName = idx + 1;
-		} else {
-			inAnimation->soundName = 0;
+		UUtUns32 idx;
+
+		// issue #51: dedupe by content and store an owned copy. The table used to
+		// append per Set call (monotonic, never reset -> 8192 ceiling over a long
+		// multi-level session) and stored the caller's pointer (which lives in a
+		// growable UUrMemory_Array element and dies with its level). Growth is now
+		// bounded by unique impulse-sound names and entries can never dangle.
+		// Copies are process-lifetime by design (bounded set, no free needed).
+		for (idx = 0; idx < gTRSoundNameCount; idx++) {
+			if (strcmp(gTRSoundNameTable[idx], inSoundName) == 0) {
+				break;
+			}
 		}
+		if ((idx == gTRSoundNameCount) && (idx < TRcSoundNameTableSize)) {
+			char *copy = UUrMemory_Block_New(strlen(inSoundName) + 1);
+			if (copy != NULL) {
+				strcpy(copy, inSoundName);
+				gTRSoundNameTable[idx] = copy;
+				gTRSoundNameCount++;
+			}
+		}
+		inAnimation->soundName = (idx < gTRSoundNameCount) ? (idx + 1) : 0;
 	}
 #else
 	inAnimation->soundName = (UUtUns32)inSoundName;
