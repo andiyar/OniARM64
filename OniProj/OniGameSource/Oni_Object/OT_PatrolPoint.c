@@ -651,8 +651,19 @@ OBJiPatrolPath_Read(
 		pp_osd->flags = 0;
 	}
 
-	for (itr = 0, waypoint = pp_osd->waypoints;
-		itr < pp_osd->num_waypoints; itr++, waypoint++) {
+	{
+	UUtUns32				num_read = pp_osd->num_waypoints;
+	AI2tWaypoint			scratch;
+
+	// issue #58: num_waypoints comes raw from the .dat; waypoints[] is
+	// AI2cMax_WayPoints (64). Parse every record (the buffer cursor must
+	// advance) but store only the first 64.
+	if (num_read > AI2cMax_WayPoints) {
+		UUrStartupMessage("patrol path %s: %u waypoints exceeds max %u - extras dropped",
+			pp_osd->name, num_read, AI2cMax_WayPoints);
+	}
+	for (itr = 0; itr < num_read; itr++) {
+		waypoint = (itr < AI2cMax_WayPoints) ? (pp_osd->waypoints + itr) : &scratch;
 		// waypoint type
 		bytes_read += OBJmGet4BytesFromBuffer(inBuffer, waypoint->type,	AI2tWaypointType,	inSwapIt);
 
@@ -775,6 +786,8 @@ OBJiPatrolPath_Read(
 			break;
 		}
 	}
+	pp_osd->num_waypoints = UUmMin(num_read, (UUtUns32) AI2cMax_WayPoints);
+	}
 
 	// bring the object up to date
 	OBJrObject_UpdatePosition(inObject);
@@ -799,7 +812,9 @@ OBJiPatrolPath_SetOSD(
 	// copy the data from inOSD to char_osd
 	UUrString_Copy(pp_osd->name, inOSD->osd.patrolpath_osd.name, SLcScript_MaxNameLength);
 
-	pp_osd->num_waypoints = inOSD->osd.patrolpath_osd.num_waypoints;
+	// issue #58: waypoints[] is AI2cMax_WayPoints (64) entries; clamp the
+	// incoming count so the copy loop below cannot run off the end
+	pp_osd->num_waypoints = UUmMin(inOSD->osd.patrolpath_osd.num_waypoints, (UUtUns32) AI2cMax_WayPoints);
 	pp_osd->id_number = inOSD->osd.patrolpath_osd.id_number;
 	pp_osd->flags = inOSD->osd.patrolpath_osd.flags;
 

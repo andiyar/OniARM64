@@ -501,6 +501,12 @@ SLrExpr_Parse_Param(
 
 	expr = SLrExpr_Pop(inContext);
 
+	// issue #58: paramExprs[] is SLcScript_MaxNumParams (8); the read-back side
+	// already clamps (BFW_ScriptLang_Eval.c) but the write here did not.
+	if (curFuncState->numParams >= SLcScript_MaxNumParams) {
+		return UUcError_Generic;
+	}
+
 	curFuncState->paramExprs[curFuncState->numParams++] = *expr;
 
 	return UUcError_None;
@@ -514,6 +520,12 @@ SLrExpr_Parse_Param_Old(
 	SLtContext_FuncState*	curFuncState;
 
 	curFuncState = inContext->curFuncState;
+
+	// issue #58: paramExprs[] is SLcScript_MaxNumParams (8); the read-back side
+	// already clamps (BFW_ScriptLang_Eval.c) but the write here did not.
+	if (curFuncState->numParams >= SLcScript_MaxNumParams) {
+		return UUcError_Generic;
+	}
 
 	if(SLrScript_Parse_TokenStarts_Constant(inToken))
 	{

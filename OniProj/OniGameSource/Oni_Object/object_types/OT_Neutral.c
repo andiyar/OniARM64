@@ -351,16 +351,31 @@ OBJiNeutral_Read(
 	bytes_read += OBJmGetByteFromBuffer  (inBuffer, neutral_osd->give_hypos,			UUtUns8,					inSwapIt);
 	bytes_read += OBJmGetByteFromBuffer  (inBuffer, neutral_osd->give_flags,			UUtUns8,					inSwapIt);
 
-	for(itr = 0; itr < neutral_osd->num_lines; itr++) {
-		bytes_read += OBJmGet2BytesFromBuffer(inBuffer, neutral_osd->lines[itr].flags,		UUtUns16, inSwapIt);
+	{
+	UUtUns16				num_read = neutral_osd->num_lines;
+	OBJtOSD_NeutralLine		scratch;
+	OBJtOSD_NeutralLine		*line;
+
+	// issue #58: num_lines comes raw from the .dat; lines[] is
+	// OBJcNeutral_MaxLines (10). Parse every record (the buffer cursor must
+	// advance) but store only the first 10.
+	if (num_read > OBJcNeutral_MaxLines) {
+		UUrStartupMessage("neutral %s: %u lines exceeds max %u - extras dropped",
+			neutral_osd->name, num_read, OBJcNeutral_MaxLines);
+	}
+	for(itr = 0; itr < num_read; itr++) {
+		line = (itr < OBJcNeutral_MaxLines) ? (neutral_osd->lines + itr) : &scratch;
+		bytes_read += OBJmGet2BytesFromBuffer(inBuffer, line->flags,		UUtUns16, inSwapIt);
 		if (inVersion >= OBJcVersion_24) {
 			OBJmSkip2BytesFromBuffer(inBuffer);
 		}
-		bytes_read += OBJmGet2BytesFromBuffer(inBuffer, neutral_osd->lines[itr].anim_type,	UUtUns16, inSwapIt);
+		bytes_read += OBJmGet2BytesFromBuffer(inBuffer, line->anim_type,	UUtUns16, inSwapIt);
 		if (inVersion >= OBJcVersion_24) {
-			bytes_read += OBJmGet2BytesFromBuffer(inBuffer, neutral_osd->lines[itr].other_anim_type,	UUtUns16, inSwapIt);
+			bytes_read += OBJmGet2BytesFromBuffer(inBuffer, line->other_anim_type,	UUtUns16, inSwapIt);
 		}
-		bytes_read += OBJmGetStringFromBuffer(inBuffer, neutral_osd->lines[itr].sound,		sizeof(neutral_osd->lines[itr].sound), inSwapIt);
+		bytes_read += OBJmGetStringFromBuffer(inBuffer, line->sound,		sizeof(line->sound), inSwapIt);
+	}
+	neutral_osd->num_lines = UUmMin(num_read, (UUtUns16) OBJcNeutral_MaxLines);
 	}
 
 	// bring the object up to date
@@ -387,7 +402,9 @@ OBJiNeutral_SetOSD(
 	UUrString_Copy(neutral_osd->name, inOSD->osd.neutral_osd.name, sizeof(inOSD->osd.neutral_osd.name));
 
 	neutral_osd->id					= inOSD->osd.neutral_osd.id;
-	neutral_osd->num_lines			= inOSD->osd.neutral_osd.num_lines;
+	// issue #58: lines[] is OBJcNeutral_MaxLines (10) entries; clamp the
+	// incoming count so the copy loop below cannot run off the end
+	neutral_osd->num_lines			= UUmMin(inOSD->osd.neutral_osd.num_lines, (UUtUns16) OBJcNeutral_MaxLines);
 	neutral_osd->flags				= inOSD->osd.neutral_osd.flags;
 
 	neutral_osd->trigger_range		= inOSD->osd.neutral_osd.trigger_range;
@@ -405,7 +422,7 @@ OBJiNeutral_SetOSD(
 	neutral_osd->give_hypos			= inOSD->osd.neutral_osd.give_hypos;
 	neutral_osd->give_flags			= inOSD->osd.neutral_osd.give_flags;
 
-	for (itr = 0; itr < inOSD->osd.neutral_osd.num_lines; itr++) {
+	for (itr = 0; itr < neutral_osd->num_lines; itr++) {
 		neutral_osd->lines[itr].flags			= inOSD->osd.neutral_osd.lines[itr].flags;
 		neutral_osd->lines[itr].anim_type		= inOSD->osd.neutral_osd.lines[itr].anim_type;
 		neutral_osd->lines[itr].other_anim_type	= inOSD->osd.neutral_osd.lines[itr].other_anim_type;

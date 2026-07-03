@@ -2646,6 +2646,13 @@ ONiPS_DiaryPage_Init(
 		// add the page to the data
 		inData->diary[inData->num_diary_pages] = pages[itr];
 		inData->num_diary_pages++;
+
+		// issue #58: diary[] is ONcIGU_MaxDiaryPages entries; mirror the
+		// items-loop guard below
+		if (inData->num_diary_pages >= ONcIGU_MaxDiaryPages) {
+			UUmAssert(!"ONiPS_DiaryPage_Init: too many diary pages available!");
+			break;
+		}
 	}
 
 	// sort by level number and page number

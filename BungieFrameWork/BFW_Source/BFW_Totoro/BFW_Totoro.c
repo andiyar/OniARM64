@@ -3491,6 +3491,10 @@ void TRrAnimation_GetAttacks(
 
 		if ((frameNum >= attack->firstDamageFrame) && (frameNum <= attack->lastDamageFrame))
 		{
+			if (*outNumAttacks >= TRcMaxAttacks) {
+				break;   // issue #58: caller buffers are TRcMaxAttacks (2) entries
+			}
+
 			*outAttacks = *attack;
 			*outindices = attackIndex;
 			outAttacks++;
