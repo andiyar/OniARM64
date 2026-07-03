@@ -129,7 +129,7 @@ static void AKiSortCollisions(UUtUns16 inMaxCollisions)
 		AKgCollisionList[0] = AKgTempCollisionList[min_index];
 	}
 	else {
-		UUmAssert(AKcMaxNumCollisions <= UUcMaxUns8);
+		// AKcMaxNumCollisions was once <= 255 (UUtUns8 era); all index paths are UUtUns16 now (verified 2026-07-02, #42)
 
 		for(itr = 0; itr < AKgNumCollisions; itr++)
 		{

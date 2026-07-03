@@ -603,7 +603,7 @@ AKtBSPNodeArray
 /*
  * Collision stuff
  */
-	#define AKcMaxNumCollisions	255	// reducing less then 100 is known to break character collision
+	#define AKcMaxNumCollisions	1024	// Feral 1.2 parity: raised 255->1024 (#42); reducing less then 100 is known to break character collision
 
 	typedef struct AKtCollision
 	{

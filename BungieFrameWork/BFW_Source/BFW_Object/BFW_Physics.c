@@ -26,7 +26,7 @@
 #include "Oni.h"
 #include "Oni_GameStatePrivate.h"
 
-#define OBcMaxColliders				256
+#define OBcMaxColliders				2048	// must hold up to 2x AKcMaxNumCollisions: 2-sided quads add a second collider each (the #53 guards clamp against this constant)
 #define OBcMaxCollisions			AKcMaxNumCollisions
 #define PHcBackfacingMinVelocity	(0.4f / UUcFramesPerSecond)
 
