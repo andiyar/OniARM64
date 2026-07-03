@@ -1666,7 +1666,7 @@ PHrPhysics_Single_PhyCollision(
 		}
 		else
 		{
-			PHtCollider *newCollider = outColliders + *ioNumColliders;
+			PHtCollider *newCollider;
 			M3tPlaneEquation plane;
 			M3tPoint3D collisionPoint;
 			M3tVector3D vectorToMe;
@@ -1713,12 +1713,17 @@ PHrPhysics_Single_PhyCollision(
 					(plane.c * collisionPoint.z));
 			}
 
-			newCollider->type = PHcCollider_Phy;
-			newCollider->data = inTargetContext;
-			newCollider->plane = plane;
-			newCollider->planePoint = collisionPoint;
+			if (*ioNumColliders >= OBcMaxColliders) {
+				PHiColliderOverflow_WarnOnce();
+			} else {
+				newCollider = outColliders + *ioNumColliders;
+				newCollider->type = PHcCollider_Phy;
+				newCollider->data = inTargetContext;
+				newCollider->plane = plane;
+				newCollider->planePoint = collisionPoint;
 
-			(*ioNumColliders) += 1;
+				(*ioNumColliders) += 1;
+			}
 		}
 
 		if (inTargetContext->callback->type == PHcCallback_Object)
