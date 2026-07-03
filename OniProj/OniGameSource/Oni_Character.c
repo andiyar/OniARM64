@@ -2690,6 +2690,7 @@ ONrGameState_NewCharacter(
 
 					if (UUmString_IsEqual(test_class->variant->name, desired_variant)) {
 						// this is a variant of the desired character class
+						if (num_variants >= ONcCharacter_MaxVariants) break;
 						variants[num_variants++] = test_class;
 					}
 				}
