@@ -23,7 +23,7 @@
 #include "Motoko_Sort.h"
 #include "BFW_AppUtilities.h"
 
-#define M3cMaxSortedObjects	(4 * 1024)
+#define M3cMaxSortedObjects	(10 * 1024)	// Feral 1.2 parity (#42): 4K->10K; overflow silently drops transparent geometry/sprites via M3iSort_AddObject's warn-and-drop
 
 typedef struct M3tSort_State
 {
