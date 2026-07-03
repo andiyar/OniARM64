@@ -25,8 +25,8 @@ typedef struct PHtConnection PHtConnection;
 // dynamic data such as location of characters, objects, etc ages three times every second
 #define PHcDynamicDataAgeTime	20
 
-// 256k grid cache (a typical pathfinding grid is 100x100x3 bytes = 30k)
-#define PHcGridCacheSize		256 * 1024
+// grid cache (a typical pathfinding grid is 100x100x3 bytes = 30k)
+#define PHcGridCacheSize		(2 * 1024 * 1024)	// Feral-parity 8x bump; was 256 * 1024
 
 // max number of obstructing characters or objects in a BNV
 #define PHcMaxObstructions		32
