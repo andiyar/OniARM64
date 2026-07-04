@@ -6,6 +6,14 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-07-05 — Session 55: HD-pack crash root-caused — template webs hijacked ONLV enumeration (addresses #62)
+
+First user drive of the CuratedHD pack: menu rendered HD (overlay mechanism working) but showed an AE-branded splash, then **SIGSEGV loading Syndicate Warehouse**. Systematic debugging, root-caused in one pass — the crash report's new `1.3.0r4+main@9003656` stamp (#46) confirmed the binary on first read.
+
+- **Root cause (#62):** the pack was not TXMP-only — Realistic Skies ships ONSK webs embedding carrier ONLV/AKEV instances, character mods ship TRBS webs embedding ONCC, HD Screens ships TXMB splashes + a WMDD pause screen (the AE-branded art). An always-loaded, searched-first level0 overlay carrying ONLV instances hijacks `TMrInstance_GetDataPtr_ByNumber(ONcTemplate_Level, 0)` in `ONrGameState_LevelBegin` — the sky mod's carrier ONLV (environment ref empty → the 64-bit resolver silently writes NULL) got picked as "the level", and `AKrCollision_LevelBegin(NULL)` faulted at +24. Verified by disassembly of the shipped binary + byte-level name-table inspection; the debugger.txt "failed to locate instance" lines were ruled out as pre-existing furniture misses (978 in the previous pack-less session too).
+- **`fix(textures)` `d12b353`** — `build-hd-overlays.sh` stages **`TXMP*.oni` only** (textures are leaf templates, no outbound web). Rebuilt + reinstalled: 1,277 TXMPs, zero foreign tags (verified), single `level0_HD1` triplet, 785 MB. Accepted v1 deltas: splashes/pause screen stay vanilla (removes the AE branding the maintainer flagged), Realistic Skies doesn't apply, character retextures apply only via same-named TXMP replacement (TRBS rebind strategy = follow-up).
+- **`fix(level)` `07ce031`** — defence-in-depth engine guard: level selection now picks the first ONLV **with a non-NULL environment** (logging skipped carriers) and fails with a clean error instead of a NULL-deref if none qualifies — any future user pack with stray ONLVs degrades gracefully.
+
 ### 2026-07-04 — Session 54: HD integration + AI QoL — overlay merged to main, Metal HD-ready, character packs proven, curated pack built (addresses #16, #21, #22, #60, #61)
 
 Wave 2/3 of the 1.0 release plan, same day as session 53. The `hd-texture-packs` branch merged to main, the Metal blocker fixed, the #61 spike delivered the best-case verdict, both AI QoL fixes landed with kill switches, and the curated HD pack was built + installed for the visual gate.
