@@ -12,12 +12,19 @@ if(NOT APPLE)
     return()
 endif()
 
+# Dev builds (ad-hoc sign) pass the configure-time build stamp (#46) so the
+# bundle's CFBundleShortVersionString is suffixed "<branch>@<short-sha>[-dirty]"
+# — coexisting dev bundles become distinguishable in Finder / Get Info.
+# oni_app_release deliberately does NOT pass it: release bundles keep the
+# clean version string.
 add_custom_target(oni_app
     DEPENDS Oni
     COMMAND ${CMAKE_COMMAND} -E echo "Assembling OniARM64.app..."
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/macos/build-bundle.sh
             ${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_BINARY_DIR}
+            -
+            ${ONI_BUILD_STAMP}
     COMMAND ${CMAKE_COMMAND} -E echo "Done: ${CMAKE_BINARY_DIR}/bin/OniARM64.app/"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     VERBATIM

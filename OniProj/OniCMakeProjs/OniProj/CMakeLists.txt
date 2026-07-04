@@ -687,6 +687,9 @@ target_compile_definitions(Oni
 		BINK_VIDEO=$<BOOL:${ONI_BINK_VIDEO}>
 		ONI_MAP_FILE="${ONI_MAP_PATH}"
 		SHIPPING_VERSION=1
+		# Build identity for the session-start log banner (#46); captured at
+		# configure time in the top-level CMakeLists (mirrors ONI_BUILD_EPOCH).
+		ONI_BUILD_STAMP="${ONI_BUILD_STAMP}"
 )
 
 # check if linking math library is required

@@ -118,6 +118,56 @@ endif ()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin" CACHE PATH "Runtime output directory")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib" CACHE PATH "Library output directory")
 
+# Configure-time build identity stamp (#46): "<branch>@<short-sha>[-dirty]".
+# Baked into the session-start log banner (BFW_Error.c, via the compile
+# definition set in OniProj's CMakeLists — same pattern as ONI_BUILD_EPOCH)
+# and suffixed onto the dev bundle's version by the oni_app target, so
+# coexisting dev builds are distinguishable in startup.txt and in Finder.
+# Falls back to "unknown@unknown" when git (or the .git dir) is absent.
+# Dirty check uses --untracked-files=no: only tracked modifications count,
+# matching `git describe --dirty` semantics (stray untracked files would
+# otherwise flag every build dirty).
+set(ONI_BUILD_STAMP "unknown@unknown")
+find_program(ONI_GIT_EXECUTABLE git)
+if(ONI_GIT_EXECUTABLE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
+    execute_process(
+        COMMAND ${ONI_GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE ONI_GIT_BRANCH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE ONI_GIT_BRANCH_RC
+        ERROR_QUIET)
+    execute_process(
+        COMMAND ${ONI_GIT_EXECUTABLE} rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE ONI_GIT_SHA
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE ONI_GIT_SHA_RC
+        ERROR_QUIET)
+    execute_process(
+        COMMAND ${ONI_GIT_EXECUTABLE} status --porcelain --untracked-files=no
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE ONI_GIT_STATUS
+        RESULT_VARIABLE ONI_GIT_STATUS_RC
+        ERROR_QUIET)
+    if(ONI_GIT_BRANCH_RC EQUAL 0 AND ONI_GIT_SHA_RC EQUAL 0
+       AND NOT ONI_GIT_BRANCH STREQUAL "" AND NOT ONI_GIT_SHA STREQUAL "")
+        set(ONI_GIT_DIRTY "")
+        if(ONI_GIT_STATUS_RC EQUAL 0 AND NOT ONI_GIT_STATUS STREQUAL "")
+            set(ONI_GIT_DIRTY "-dirty")
+        endif()
+        set(ONI_BUILD_STAMP "${ONI_GIT_BRANCH}@${ONI_GIT_SHA}${ONI_GIT_DIRTY}")
+    endif()
+    # Re-run configure when HEAD moves (commit / branch switch) so the stamp
+    # doesn't silently go stale across rebuilds. Working-tree-only edits can
+    # still leave the dirty flag stale until the next configure — acceptable
+    # for a forensic hint, same staleness class as ONI_BUILD_EPOCH.
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/.git/HEAD"
+        "${CMAKE_CURRENT_SOURCE_DIR}/.git/index")
+endif()
+message(STATUS "OniARM64 build stamp: ${ONI_BUILD_STAMP}")
+
 if (ONI_BINK_VIDEO)
     add_subdirectory(OniProj/OniCMakeProjs/BinkProj/)
 endif ()

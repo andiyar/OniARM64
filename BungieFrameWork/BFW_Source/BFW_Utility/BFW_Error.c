@@ -90,15 +90,21 @@ static FILE *iOpenLogFile(const char *filename, const char *mode)
 
 // Issue #17 — append a "===== session start <timestamp> =====" banner so consecutive
 // sessions in append-mode log files are visually delimited and greppable.
+// Issue #46 — the banner also carries the build identity ("<branch>@<short-sha>
+// [-dirty]", captured at CMake configure time) so interleaved sessions from
+// coexisting dev builds are attributable to the binary that wrote them.
+#ifndef ONI_BUILD_STAMP
+#define ONI_BUILD_STAMP "unknown@unknown"
+#endif
 static void iWriteSessionBanner(FILE *stream)
 {
 	if (stream == NULL) return;
 	time_t now = time(NULL);
 	struct tm *lt = localtime(&now);
 	if (lt == NULL) return;
-	fprintf(stream, "\n===== session start %04d-%02d-%02d %02d:%02d:%02d =====\n",
+	fprintf(stream, "\n===== session start %04d-%02d-%02d %02d:%02d:%02d [%s] =====\n",
 		lt->tm_year + 1900, lt->tm_mon + 1, lt->tm_mday,
-		lt->tm_hour, lt->tm_min, lt->tm_sec);
+		lt->tm_hour, lt->tm_min, lt->tm_sec, ONI_BUILD_STAMP);
 	fflush(stream);
 }
 

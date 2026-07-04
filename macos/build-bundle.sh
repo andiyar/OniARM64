@@ -2,7 +2,7 @@
 # Assembles OniARM64.app from a freshly-built Oni binary + committed bundle
 # templates + assets. Idempotent: safe to re-run; replaces existing .app.
 #
-# Usage: build-bundle.sh <SOURCE_DIR> <BINARY_DIR>
+# Usage: build-bundle.sh <SOURCE_DIR> <BINARY_DIR> [SIGN_IDENTITY] [DEV_STAMP]
 #   SOURCE_DIR: top-level OniARM64/ source tree (contains macos/, etc.)
 #   BINARY_DIR: cmake binary dir (contains bin/Oni)
 #
@@ -16,6 +16,11 @@ BINARY_DIR="${2:?binary dir required}"
 # Pass a full "Developer ID Application: Name (TEAMID)" string for release
 # builds, which switches the script into hardened-runtime + timestamp mode.
 SIGN_IDENTITY="${3:--}"
+# Fourth arg (#46): dev build stamp "<branch>@<short-sha>[-dirty]". When
+# non-empty, CFBundleShortVersionString is suffixed "+<stamp>" so lookalike
+# dev bundles are distinguishable. Passed only by the oni_app target;
+# oni_app_release omits it and ships the clean version string.
+DEV_STAMP="${4:-}"
 
 APP="$BINARY_DIR/bin/OniARM64.app"
 CONTENTS="$APP/Contents"
@@ -39,6 +44,18 @@ cp "$BINARY_SRC" "$MACOS_DIR/Oni"
 # 2. Bundle templates.
 cp "$SOURCE_DIR/macos/Info.plist" "$CONTENTS/Info.plist"
 cp "$SOURCE_DIR/macos/PkgInfo"    "$CONTENTS/PkgInfo"
+
+# 2a. Dev build stamp (#46): suffix CFBundleShortVersionString with the
+#     configure-time git stamp (e.g. "1.3.0r4+main@abc1234-dirty") so
+#     coexisting dev bundles are tellable apart in Get Info. Runs before
+#     signing, so the seal covers the edited plist. The update notifier is
+#     unaffected: its dev-build guard keys on ONI_BUILD_EPOCH, not the
+#     version string (ONi_UpdateCheck.c step 4 suppresses the prompt for
+#     any locally-built binary regardless of version-string equality).
+if [ -n "$DEV_STAMP" ]; then
+    BASE_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$CONTENTS/Info.plist")
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${BASE_VERSION}+${DEV_STAMP}" "$CONTENTS/Info.plist"
+fi
 
 # 3. Assets.
 cp "$SOURCE_DIR/macos/assets/Oni.icns"  "$RESOURCES/Oni.icns"
