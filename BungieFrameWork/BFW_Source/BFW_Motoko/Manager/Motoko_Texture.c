@@ -181,7 +181,46 @@ M3rTextureMap_TemporarilyLoad_Internal(
 			// determine how much data we want to load
 			hasMipMap = (ioTextureMap->flags & M3cTextureFlags_HasMipMap) ? IMcHasMipMap : IMcNoMipMap;
 			data_size = IMrImage_ComputeSize(ioTextureMap->texelType, hasMipMap, ioTextureMap->width, ioTextureMap->height);
-			UUmAssert(data_size < M3gManager_TextureStorage.temporarySize);
+
+			// HD textures (#16) exceed Bungie's 384 KB temporary buffer, sized
+			// for retail's 256x256 ceiling (M3cTexture_TemporaryStorageSize); a
+			// 512x512 RGB888+mips overlay texture is ~1.4 MB. The old
+			// UUmAssert(data_size < temporarySize) was the only guard and is
+			// compiled out of release builds, so BFrFile_ReadPos overran the
+			// heap with texel data (#45). Grow the buffer instead — it holds no
+			// texture at this point (temporaryTexture == NULL above), so
+			// replacing the block is safe. Refuse absurd sizes (corrupt
+			// width/height/format fields) and allocation failures by skipping
+			// the load: a missing texture beats memory corruption, and the #28
+			// NULL-texture guards downstream handle the skip.
+			if (data_size > M3gManager_TextureStorage.temporarySize) {
+				void	*grown;
+
+				if ((data_size > M3cTexture_TemporaryStorageMax) ||
+					(M3gManager_TextureStorage.temporaryTexture != NULL)) {
+					UUrStartupMessage(
+						"[textures] %s wants %u bytes of temporary storage (cap %u, buffer in use %d); skipping load.",
+						ioTextureMap->debugName, (unsigned)data_size,
+						(unsigned)M3cTexture_TemporaryStorageMax,
+						(int)(M3gManager_TextureStorage.temporaryTexture != NULL));
+					return;
+				}
+
+				grown = UUrMemory_Block_New(data_size);
+				if (grown == NULL) {
+					UUrStartupMessage(
+						"[textures] cannot grow temporary texture storage to %u bytes for %s; skipping load.",
+						(unsigned)data_size, ioTextureMap->debugName);
+					return;
+				}
+
+				UUrMemory_Block_Delete(M3gManager_TextureStorage.temporaryStorage);
+				M3gManager_TextureStorage.temporaryStorage = grown;
+				M3gManager_TextureStorage.temporarySize = data_size;
+				UUrStartupMessage(
+					"[textures] temporary texture storage grown to %u bytes (for %s).",
+					(unsigned)data_size, ioTextureMap->debugName);
+			}
 
 			skip_data_size = 0;
 			if ((hasMipMap == IMcHasMipMap) && (inSkipLargeLODs > 0)) {

@@ -220,6 +220,22 @@ extern "C" {
 		BFtFileRef*		inGameDataFolderRef);
 
 /*
+ * Register extra "overlay" data directories to be scanned (in array order)
+ * BEFORE the game data folder, so their level*.dat files register first and
+ * win TMrInstance_GetFromName. Generic by design: the template manager does
+ * not know what these directories contain (the game layer supplies e.g. HD
+ * texture-pack folders). Must be called before TMrInitialize(). Copies up to
+ * an internal cap; inCount == 0 (or not calling it) is a no-op.
+ *	IN
+ *		inDirs	- array of directory file refs (each must exist)
+ *		inCount	- number of entries in inDirs
+ */
+	void
+	TMrGame_SetOverlaySearchDirs(
+		const BFtFileRef	*inDirs,
+		UUtUns32			inCount);
+
+/*
  * Terminate the template manager
  */
 	void

@@ -424,6 +424,8 @@ set(SOURCE_FILES
         ../../OniGameSource/ONi_BundlePath.h
         ../../OniGameSource/ONi_GameData.c
         ../../OniGameSource/ONi_GameData.h
+        ../../OniGameSource/ONi_TexturePacks.c
+        ../../OniGameSource/ONi_TexturePacks.h
         ../../OniGameSource/ONi_UpdateCheck.c
         ../../OniGameSource/ONi_UpdateCheck.h
         ../../OniGameSource/Oni_Aiming.c

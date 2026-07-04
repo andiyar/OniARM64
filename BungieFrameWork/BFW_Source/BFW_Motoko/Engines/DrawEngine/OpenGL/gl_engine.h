@@ -741,6 +741,9 @@ struct gl_state_global {
 
 	TMtPrivateData *texture_private_data;
 	void *converted_data_buffer;
+	// capacity of converted_data_buffer; grown on demand for HD-sized
+	// textures by gl_converted_buffer_ensure (gl_utility.c, #45)
+	UUtUns32 converted_data_buffer_size;
 
 	// platform-specific parameters
 #if UUmSDL
