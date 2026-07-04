@@ -1138,6 +1138,26 @@ ONiMain(
 		UUmError_ReturnOnErrorMsg(error, "Could not initialize components.");
 
 	/*
+	 * Dev conveniences hook (#47): ONI_DEV_ACCESS=1 in the environment turns
+	 * on developer access at launch — grave/tilde console + F-key dev tools
+	 * with no thedayismine cheat dance (the fog-testing loop). Mirrors the
+	 * cheat's enable branch (Oni_GameState.c ONcCheat_DeveloperAccess).
+	 * Everything is initialized at this point (LIrInitialize + COrInitialize
+	 * ran inside ONiInitializeAll). Unset or any other value: byte-identical
+	 * behaviour — ONgDeveloperAccess keeps its SHIPPING_VERSION default and
+	 * thedayismine still toggles as before.
+	 */
+		{
+			const char *dev_access_env = getenv("ONI_DEV_ACCESS");
+			if ((dev_access_env != NULL) && (strcmp(dev_access_env, "1") == 0)) {
+				ONgDeveloperAccess = UUcTrue;
+				LIrInitializeDeveloperKeys();
+				COrConsole_SetPriority(COcPriority_Console);
+				UUrStartupMessage("ONI_DEV_ACCESS=1: developer access enabled at launch");
+			}
+		}
+
+	/*
 	 * Load Level Zero
 	 */
 		error = ONrLevel_LoadZero();
