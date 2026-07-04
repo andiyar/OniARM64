@@ -59,6 +59,14 @@
 
 #define AI2cKnowledge_InvisibleFrames			90
 
+// QoL tuning (#22): minimum decay time for a Definite (visual) contact, in frames (60/s).
+// Retail ONCC data (ONtMemoryConstants.definite_to_strong, measured uniform across all
+// character classes sampled from level1/level12 PC retail data) is 180 frames = 3 seconds;
+// a brief LOS break therefore starts degrading the AI's target almost immediately. Floor
+// it at 5 seconds so short occlusions don't erase a target the AI actually saw.
+// Kill switch: ONI_AI_LOS_TUNE=0 restores vanilla decay times.
+#define ONcAI2_DefiniteDegradeFloorFrames		300
+
 const char AI2cContactStrengthName[AI2cContactStrength_Max][16]
 	= {"dead", "forgotten", "weak", "strong", "definite"};
 
@@ -1672,6 +1680,19 @@ static void AI2iKnowledge_MoveContactDown(ONtCharacter *inOwner, AI2tKnowledgeSt
 	}
 }
 
+// QoL tuning (#22) kill switch: ONI_AI_LOS_TUNE=0 restores vanilla contact-decay times.
+static UUtBool AI2iKnowledge_LOSTuneEnabled(void)
+{
+	static int enabled = -1;
+
+	if (enabled < 0) {
+		const char *env = getenv("ONI_AI_LOS_TUNE");
+		enabled = ((env != NULL) && (strcmp(env, "0") == 0)) ? 0 : 1;
+	}
+
+	return (UUtBool) enabled;
+}
+
 static UUtUns32 AI2iKnowledge_GetDegradeTime(ONtCharacter *inCharacter, AI2tContactStrength inStrength, AI2tContactStrength inHighestStrength)
 {
 	const ONtMemoryConstants *memory = &inCharacter->characterClass->memory;
@@ -1694,6 +1715,15 @@ static UUtUns32 AI2iKnowledge_GetDegradeTime(ONtCharacter *inCharacter, AI2tCont
 
 		case AI2cContactStrength_Definite:
 			degrade_time = memory->definite_to_strong;
+
+			// QoL tuning (#22): floor the Definite-tier decay so brief LOS breaks don't
+			// immediately start erasing a target the AI actually saw. Only the Definite
+			// tier is floored; when inStrength is Definite, inHighestStrength is
+			// necessarily Definite too (this was a visual contact).
+			if (AI2iKnowledge_LOSTuneEnabled()) {
+				UUmAssert(inHighestStrength == AI2cContactStrength_Definite);
+				degrade_time = UUmMax(degrade_time, ONcAI2_DefiniteDegradeFloorFrames);
+			}
 		break;
 
 		default:
