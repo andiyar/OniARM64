@@ -62,3 +62,7 @@ debugger.txt
 #############################################
 # superpowers skill working dirs (brainstorm scratch, etc.)
 /.superpowers/
+
+#############################################
+# Built HD overlay packs (scripts/build-hd-overlays.sh output)
+/dist/
