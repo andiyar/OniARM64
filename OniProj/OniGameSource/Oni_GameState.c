@@ -827,8 +827,32 @@ ONrGameState_LevelBegin(UUtUns16 inLevelNumber)
 	ONgGameState->local.currentPromptMessage = NULL;
 
 	// load the level & set the environment
-	error = TMrInstance_GetDataPtr_ByNumber(ONcTemplate_Level, 0, &ONgLevel);
-	UUmError_ReturnOnErrorMsg(error, "could not load level");
+	// issue #62: don't blind-trust ONLV instance #0 — overlay pack files are
+	// always loaded and enumerate FIRST, so a pack carrying a template web
+	// (e.g. a sky mod's carrier ONLV with no environment) hijacks level
+	// selection and NULL-crashes AKrLevel_Begin. Pick the first ONLV that
+	// actually has an environment; fail cleanly if none does.
+	{
+		UUtUns32	onlv_itr;
+
+		ONgLevel = NULL;
+		for (onlv_itr = 0; ; onlv_itr++) {
+			ONtLevel *onlv_candidate = NULL;
+
+			error = TMrInstance_GetDataPtr_ByNumber(ONcTemplate_Level, onlv_itr, &onlv_candidate);
+			if (error != UUcError_None) { break; }
+
+			if (onlv_candidate->environment != NULL) {
+				ONgLevel = onlv_candidate;
+				break;
+			}
+			UUrStartupMessage("[lvl-load] skipping ONLV instance %u with NULL environment (overlay carrier?)",
+				(unsigned) onlv_itr);
+		}
+		if (ONgLevel == NULL) {
+			UUmError_ReturnOnErrorMsg(UUcError_Generic, "could not load level (no ONLV instance with an environment)");
+		}
+	}
 	ONgGameState->level = ONgLevel;
 	AKgEnvironment = ONgGameState->level->environment;
 
