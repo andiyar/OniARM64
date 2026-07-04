@@ -11,6 +11,9 @@
 
 */
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "bfw_math.h"
 
 #include "Oni_AI2.h"
@@ -1898,6 +1901,27 @@ static void AI2iKnowledge_UpdateDodgeProjectiles(void)
 	}
 }
 
+// QoL fix (#21): vanilla measures projectile "closest distance" from the WORLD ORIGIN, not from
+// the character (closest_point is a world-space point). At typical level coordinates this makes
+// dist_mag hundreds of units, drives the dodge weight in AI2rManeuver_NotifyNearbyProjectile
+// hugely negative (below AI2cDodge_ZeroWeight), and NPCs essentially never dodge projectiles.
+// The same call also passes the raw world point where the consumer expects a character->danger
+// direction vector (AI2tDodgeEntry.danger_dir: its length is used as the distance to the danger
+// and atan2 of its x/z gives the avoid angle). Feral fixed this symptom in 1.2; Daodan's
+// "projaware" byte-patch defeats the same bug.
+// Kill switch: ONI_AI_DODGE_FIX=0 restores the original (broken) math.
+static UUtBool AI2iKnowledge_DodgeFixEnabled(void)
+{
+	static int enabled = -1;
+
+	if (enabled < 0) {
+		const char *env = getenv("ONI_AI_DODGE_FIX");
+		enabled = ((env != NULL) && (strcmp(env, "0") == 0)) ? 0 : 1;
+	}
+
+	return (UUtBool) enabled;
+}
+
 // update an AI's dodge table with any nearby projectiles
 void AI2rKnowledge_FindNearbyProjectiles(ONtCharacter *ioCharacter, AI2tManeuverState *ioManeuverState)
 {
@@ -1979,10 +2003,25 @@ void AI2rKnowledge_FindNearbyProjectiles(ONtCharacter *ioCharacter, AI2tManeuver
 					} else if (closest_t > 1) {
 						MUmVector_ScaleIncrement(cur_dist, 1.0f - closest_t, projectile_vel);
 					}
-					dist_mag = MUmVector_GetLength(cur_dist);
 
-					// send a notification of this projectile to the maneuver state
-					AI2rManeuver_NotifyNearbyProjectile(ioCharacter, ioManeuverState, projectile, &projectile_vel, dist_mag, &closest_point);
+					if (AI2iKnowledge_DodgeFixEnabled()) {
+						// QoL fix (#21): make the distance character-relative. cur_dist becomes the
+						// vector from the character to the projectile's (segment-clamped) point of
+						// closest approach - exactly the character->danger direction the consumer
+						// stores as danger_dir, whose length it uses as the distance to the danger.
+						MUmVector_Decrement(cur_dist, pelvis_pt);
+						dist_mag = MUmVector_GetLength(cur_dist);
+
+						// send a notification of this projectile to the maneuver state
+						AI2rManeuver_NotifyNearbyProjectile(ioCharacter, ioManeuverState, projectile, &projectile_vel, dist_mag, &cur_dist);
+					} else {
+						// vanilla (broken) math: distance of the world-space point from the origin,
+						// and the raw world point passed where a direction is expected
+						dist_mag = MUmVector_GetLength(cur_dist);
+
+						// send a notification of this projectile to the maneuver state
+						AI2rManeuver_NotifyNearbyProjectile(ioCharacter, ioManeuverState, projectile, &projectile_vel, dist_mag, &closest_point);
+					}
 				}
 			}
 		}
