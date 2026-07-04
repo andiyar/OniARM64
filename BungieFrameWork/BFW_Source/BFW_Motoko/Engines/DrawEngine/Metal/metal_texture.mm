@@ -25,7 +25,16 @@ static NSMutableArray<id<MTLSamplerState>> *gTextureSamplers; // parallel: sampl
 static NSMutableIndexSet               *gFreeIndices;
 static id<MTLSamplerState>              gSamplerCache[2][2][2]; // [clampS][clampT][mip]
 static TMtPrivateData                  *gTexturePrivateData;
-static void                            *gConvertBuffer;  // 256*256*4 like gl->converted_data_buffer
+static void                            *gConvertBuffer;      // grow-on-demand conversion scratch (like gl->converted_data_buffer, #60)
+static UUtUns32                         gConvertBufferSize;  // current capacity in bytes
+
+// opengl_texture_name sentinel: this texture's create failed for a
+// deterministic reason (unsupported texel type, conversion error, scratch
+// ensure failure) — don't retry + re-log it every lookup (#60). Cannot
+// collide with a real name: names are (table index + 1), so 0xFFFFFFFF
+// would require table index 0xFFFFFFFE (~4.3 billion live textures).
+// Cleared by LoadPostProcess/NewPostProcess (name = 0) and by delete.
+static const UUtUns32 MetalTextureName_Failed = 0xFFFFFFFFu;
 
 static id<MTLSamplerState> metal_sampler_for(UUtBool inClampS, UUtBool inClampT, UUtBool inMip)
 {
@@ -94,8 +103,11 @@ UUtError metal_texture_system_initialize(void)
 	gTextureTable    = [[NSMutableArray alloc] initWithCapacity:MetalTexture_InitialCapacity];
 	gTextureSamplers = [[NSMutableArray alloc] initWithCapacity:MetalTexture_InitialCapacity];
 	gFreeIndices     = [[NSMutableIndexSet alloc] init];
-	gConvertBuffer   = UUrMemory_Block_New(256 * 256 * sizeof(UUtUns32)); // M3cTextureMap_MaxWidth^2 RGBA8
+	// Initial size covers the engine-built 256x256 ceiling; HD-pack textures
+	// grow it on demand via metal_convert_buffer_ensure (#60).
+	gConvertBuffer   = UUrMemory_Block_New(256 * 256 * sizeof(UUtUns32));
 	UUmError_ReturnOnNull(gConvertBuffer);
+	gConvertBufferSize = 256 * 256 * sizeof(UUtUns32);
 
 	// Same registration GL performs at context create (gl_engine.c:202-206).
 	return TMrTemplate_PrivateData_New(M3cTemplate_TextureMap, 0,
@@ -109,6 +121,7 @@ void metal_texture_system_terminate(void)
 		gTexturePrivateData = NULL;
 	}
 	if (gConvertBuffer) { UUrMemory_Block_Delete(gConvertBuffer); gConvertBuffer = NULL; }
+	gConvertBufferSize = 0;
 	gTextureTable = nil; gTextureSamplers = nil; gFreeIndices = nil;
 	for (int s = 0; s < 2; s++) {
 		for (int t = 0; t < 2; t++) {
@@ -169,10 +182,55 @@ static MetalUploadKind metal_upload_kind(IMtPixelType inType)
 	}
 }
 
+// Ensure gConvertBuffer can hold one converted level of width x height at
+// 4 bytes/texel (every convert/expand branch stages RGBA8). Mirror of
+// gl_converted_buffer_ensure (gl_utility.c, #45): Bungie sized the scratch
+// for the retail 256x256 ceiling and nothing ever checked it; HD packs are
+// full of 512x512 convert-format TXMPs (#60). Grow on demand; UUcFalse =
+// capacity could not be ensured and the caller must skip the upload.
+static UUtBool metal_convert_buffer_ensure(
+	UUtUns32 width, UUtUns32 height, const char *debug_name)
+{
+	UUtUns64 needed64 = (UUtUns64)width * (UUtUns64)height * 4;
+	const char *name = (debug_name != NULL && debug_name[0] != '\0') ? debug_name : "(unnamed)";
+
+	if (needed64 <= gConvertBufferSize) {
+		return UUcTrue;
+	}
+
+	// an absurd size means corrupt width/height fields — refuse
+	if (needed64 > (128 * 1024 * 1024)) {
+		UUrStartupMessage("[Metal] %s wants a %llu-byte conversion scratch (corrupt header?); upload skipped.",
+			name, (unsigned long long)needed64);
+		return UUcFalse;
+	}
+
+	{
+		UUtUns32 needed = (UUtUns32)needed64;
+		void *grown = UUrMemory_Block_New(needed);
+
+		if (grown == NULL) {
+			UUrStartupMessage("[Metal] cannot grow conversion scratch to %u bytes for %s; upload skipped.",
+				(unsigned)needed, name);
+			return UUcFalse;
+		}
+		if (gConvertBuffer != NULL) {
+			UUrMemory_Block_Delete(gConvertBuffer);
+		}
+		gConvertBuffer     = grown;
+		gConvertBufferSize = needed;
+		UUrStartupMessage("[Metal] conversion scratch grown to %u bytes (for %s).",
+			(unsigned)needed, name);
+	}
+
+	return UUcTrue;
+}
+
 // Upload one mip level into 'tex'. 'src' points at the level's source texels.
 static UUtBool metal_upload_level(
 	id<MTLTexture> tex, MetalUploadKind kind, IMtPixelType src_type,
-	const void *src, UUtUns32 level, UUtUns32 width, UUtUns32 height)
+	const void *src, UUtUns32 level, UUtUns32 width, UUtUns32 height,
+	const char *debug_name)
 {
 	switch (kind)
 	{
@@ -194,6 +252,7 @@ static UUtBool metal_upload_level(
 		case MetalUpload_Convert_RGBA:
 		case MetalUpload_Convert_RGB:
 		{
+			if (!metal_convert_buffer_ensure(width, height, debug_name)) { return UUcFalse; }
 			IMtPixelType dst_type = (kind == MetalUpload_Convert_RGBA)
 				? IMcPixelType_RGBA_Bytes : IMcPixelType_RGB_Bytes;
 			UUtError error = IMrImage_ConvertPixelType(IMcDitherMode_Off,
@@ -221,6 +280,7 @@ static UUtBool metal_upload_level(
 		case MetalUpload_Expand_I8:
 		case MetalUpload_Expand_A4I4:
 		{
+			if (!metal_convert_buffer_ensure(width, height, debug_name)) { return UUcFalse; }
 			const UUtUns8 *s = (const UUtUns8 *)src;
 			UUtUns8 *d = (UUtUns8 *)gConvertBuffer;
 			UUtUns32 n = width * height;
@@ -248,6 +308,7 @@ static UUtBool metal_upload_level(
 
 		case MetalUpload_Expand_16:
 		{
+			if (!metal_convert_buffer_ensure(width, height, debug_name)) { return UUcFalse; }
 			// No IMrImage entry exists for these. Bit layouts verified against
 			// IMiConvert_ARGB1555_to_RGBA_5551 / _ARGB4444_to_RGBA_4444
 			// (BFW_Image_PixelConversion.c:2491,2522): a little-endian 16-bit
@@ -292,6 +353,18 @@ static UUtBool metal_upload_level(
 	}
 }
 
+// Mark a texture whose create failed deterministically (unsupported texel
+// type, conversion error, scratch ensure failure) so metal_texture_lookup
+// doesn't re-run create + re-log every frame (#60). Clearing opengl_dirty is
+// what disarms the retry; the sentinel name keeps the table-index path inert.
+// A later Update/LoadPostProcess resets dirty/name and legitimately retries.
+static UUtBool metal_texture_mark_failed(M3tTextureMap *texture_map)
+{
+	texture_map->opengl_texture_name = MetalTextureName_Failed;
+	texture_map->opengl_dirty = UUcFalse;
+	return UUcFalse;
+}
+
 // ---- create / delete / lookup ----------------------------------------------
 // Mirror of gl_texture_map_create (gl_utility.c:961-1151): TemporarilyLoad
 // materializes ->pixels for separate-data textures, the mip chain advances by
@@ -307,30 +380,12 @@ UUtBool metal_texture_map_create(M3tTextureMap *texture_map)
 	if (kind == MetalUpload_Unsupported) {
 		UUrStartupMessage("[Metal] unsupported texel type %d on '%s'",
 			texture_map->texelType, texture_map->debugName);
-		return UUcFalse;
+		return metal_texture_mark_failed(texture_map);
 	}
 
-	// gConvertBuffer is sized for M3cTextureMap_MaxWidth=256 squared, which all
-	// engine-built textures respect — but modded TXMP data isn't revalidated on
-	// load, so guard the convert/expand paths that stage through the buffer.
-	// Native paths (BGRA8/RGBA8/BC1) upload straight from source and are
-	// unaffected; HD texture packs use native formats, so they pass through.
-	switch (kind) {
-		case MetalUpload_Convert_RGBA:
-		case MetalUpload_Convert_RGB:
-		case MetalUpload_Expand_A8:
-		case MetalUpload_Expand_I8:
-		case MetalUpload_Expand_A4I4:
-		case MetalUpload_Expand_16:
-			if (texture_map->width > 256 || texture_map->height > 256) {
-				UUrStartupMessage("[Metal] texture '%s' %ux%u exceeds convert buffer (256x256 max for non-native formats) — skipped",
-					texture_map->debugName, texture_map->width, texture_map->height);
-				return UUcFalse;
-			}
-			break;
-		default:
-			break;
-	}
+	// Convert/expand paths stage through gConvertBuffer, which grows on demand
+	// (metal_convert_buffer_ensure, per level) — no size ceiling here. HD packs
+	// are full of >256-square convert-format TXMPs (512x512 RGB888 etc., #60).
 
 	UUtBool mipmap = (texture_map->flags & M3cTextureFlags_HasMipMap) ? UUcTrue : UUcFalse;
 	UUtUns32 disable_large_lods = 0;
@@ -379,9 +434,12 @@ UUtBool metal_texture_map_create(M3tTextureMap *texture_map)
 		UUtUns32 w = top_w, h = top_h;
 		const void *src = base;
 		for (UUtUns32 level = 0; level < levels; level++) {
-			if (!metal_upload_level(tex, kind, texture_map->texelType, src, level, w, h)) {
+			if (!metal_upload_level(tex, kind, texture_map->texelType, src, level, w, h,
+					texture_map->debugName)) {
+				// Deterministic failure (conversion error / ensure refused):
+				// mark it so lookup doesn't retry + re-log per frame (#60).
 				M3rTextureMap_UnloadTemporary(texture_map);
-				return UUcFalse;
+				return metal_texture_mark_failed(texture_map);
 			}
 			src = (const char *)src +
 				IMrImage_ComputeSize(texture_map->texelType, IMcNoMipMap, (UUtUns16)w, (UUtUns16)h);
@@ -448,6 +506,9 @@ id<MTLTexture> metal_texture_lookup(M3tTextureMap *inMap, id<MTLSamplerState> *o
 {
 	if (outSampler) { *outSampler = nil; } // defined value on every early return
 	if (inMap == NULL) { return nil; }
+	if (inMap->opengl_texture_name == MetalTextureName_Failed && !inMap->opengl_dirty) {
+		return nil; // create failed once already — don't retry + re-log per frame (#60)
+	}
 	if (inMap->opengl_dirty || inMap->opengl_texture_name == 0) {
 		// gl_texture_map_reload equivalent: in-place re-create.
 		if (!metal_texture_map_create(inMap)) { return nil; }
