@@ -7,20 +7,27 @@
 # registration order; level-0 files are always loaded and searched
 # first, so ONE level0_HD1.dat uber-pack serves every level.
 #
-# Exception discovered while building this script: mod 70000 HD Screens
-# ships the level-end splash screens (TXMBintro/win/fail_splash_screen)
-# as SAME-NAMED instances with DIFFERENT artwork per levelN_Final
-# directory. Those only work in the base game because exactly one
-# levelN file is loaded at a time — flattened into a single always-
-# loaded level0 pack, one level's splash art would win for every
-# level. The script therefore routes any instance name that has
-# multiple distinct-content copies across level directories (within
-# the winning mod) into per-level levelN_HD1.dat overlay files —
-# the same per-level overlay mechanism the level1 spike pack already
-# verified in-game. Everything else goes into the level0_HD1 uber-pack.
+# TXMP-ONLY (issue #62): the pack stages ONLY TXMP*.oni files. Several
+# mods ship whole template webs — TRBS body sets (embedding ONCC),
+# ONSK skies (embedding carrier ONLV/AKEV), TXMB splash screens and a
+# WMDD pause screen. An always-loaded, searched-first level0 overlay
+# carrying ANY of those hijacks the engine's ByNumber template
+# enumerations: a carrier ONLV with no environment gets picked as "the
+# level" and NULL-crashes AKrLevel_Begin (the 2026-07-05 warehouse-load
+# SIGSEGV), and 20 pack ONCCs would shadow the costume system's class
+# scan. Textures are leaf templates with no outbound web — safe.
+# Consequences accepted for v1: level-end splashes and the pause screen
+# stay vanilla (also removes the AE-branded art), Realistic Skies'
+# ONSK-based skies don't apply, and character retextures apply only
+# where the mod replaces same-named TXMPs (TRBS rebind strategy is a
+# follow-up).
+#
+# The per-level routing below (same name, distinct content across
+# levelN dirs) is retained — with TXMP-only input it currently
+# self-deactivates, but it guards any future same-named-per-level TXMP.
 #
 # Input:  extracted AE-installer mod trees under $HD_MODS_ROOT/Tier1 and
-#         Tier2 — TXMP/TXMB .oni files under
+#         Tier2 — TXMP .oni files under
 #         <PkgID><Name>/oni/[common/]level<N>_Final/[subdir/]
 #         (%2F in filenames = URL-encoded '/'; OniSplit decodes it).
 # Output: $OUT_DIR/level<N>_HD1.dat/.raw/.sep + CREDITS.txt
@@ -114,7 +121,7 @@ for mod in "${MODS[@]}"; do
         printf '%03d\t%s\t%s\t%s\t%s\t%s\n' \
             "$prio" "$mod" "$md5sum" "$lvl" "$base" "$f" >> "$MANIFEST"
         count=$((count + 1))
-    done < <(find "$HD_MODS_ROOT/$mod" -type f -name '*.oni' | sort)
+    done < <(find "$HD_MODS_ROOT/$mod" -type f -name 'TXMP*.oni' | sort)   # TXMP-only, issue #62
     printf '  %-55s %5d\n' "$mod" "$count"
     total_oni=$((total_oni + count))
     prio=$((prio + 1))
