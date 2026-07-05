@@ -209,32 +209,31 @@ M3rGeometry_Draw(
 
 		multitextured= ((inGeometryObject->baseMap != NULL) && (inGeometryObject->baseMap->envMap != NULL)) ? UUcTrue : UUcFalse;
 
-		// DIAGNOSTIC (#63 white-head): log each env-mapped surface's reflection
-		// source once (deduped by base texture), so a level-6 intro run reveals
-		// what the face/glass actually reflect. Static analysis says the face's
-		// env 'envksface' is dark (brightness 16/255) and there is no runtime
-		// envMap override, so if the face still whites out the cause is NOT the
-		// reflection — this confirms that live, or surfaces a surprise.
-		if (multitextured)
+		// DIAGNOSTIC (#63 white-head/door): env-map already ruled out live (only
+		// Striker armour env-maps). The white face + glass door are drawn
+		// normally, so pure white means their base texture isn't resolving
+		// (falls back to the white "NONE" texture) or is broken. Log every
+		// unique base texture drawn (deduped, name+dims+fmt+flags+env) so an
+		// airport/level-6 run names the exact white texture to fix.
+		if (inGeometryObject->baseMap != NULL)
 		{
-			static const void *env_diag_seen[256];
-			static UUtUns32 env_diag_count = 0;
-			const void *env_diag_key = (const void *) inGeometryObject->baseMap;
-			UUtUns32 env_diag_i;
-			UUtBool env_diag_found = UUcFalse;
-			for (env_diag_i = 0; env_diag_i < env_diag_count; env_diag_i++)
+			static const void *tex_diag_seen[1024];
+			static UUtUns32 tex_diag_count = 0;
+			const void *tex_diag_key = (const void *) inGeometryObject->baseMap;
+			UUtUns32 tex_diag_i;
+			UUtBool tex_diag_found = UUcFalse;
+			for (tex_diag_i = 0; tex_diag_i < tex_diag_count; tex_diag_i++)
 			{
-				if (env_diag_seen[env_diag_i] == env_diag_key) { env_diag_found = UUcTrue; break; }
+				if (tex_diag_seen[tex_diag_i] == tex_diag_key) { tex_diag_found = UUcTrue; break; }
 			}
-			if (!env_diag_found && env_diag_count < 256)
+			if (!tex_diag_found && tex_diag_count < 1024)
 			{
-				M3tTextureMap *env_diag_bm = inGeometryObject->baseMap;
-				env_diag_seen[env_diag_count++] = env_diag_key;
-				UUrStartupMessage("[env-diag] '%s' (%dx%d fmt=%d flags=0x%x) reflects '%s' (%dx%d fmt=%d)",
-					env_diag_bm->debugName, env_diag_bm->width, env_diag_bm->height,
-					(int) env_diag_bm->texelType, (unsigned) env_diag_bm->flags,
-					env_diag_bm->envMap->debugName, env_diag_bm->envMap->width,
-					env_diag_bm->envMap->height, (int) env_diag_bm->envMap->texelType);
+				M3tTextureMap *tex_diag_bm = inGeometryObject->baseMap;
+				tex_diag_seen[tex_diag_count++] = tex_diag_key;
+				UUrStartupMessage("[tex-diag] '%s' %dx%d fmt=%d flags=0x%x env=%s",
+					tex_diag_bm->debugName, tex_diag_bm->width, tex_diag_bm->height,
+					(int) tex_diag_bm->texelType, (unsigned) tex_diag_bm->flags,
+					tex_diag_bm->envMap ? tex_diag_bm->envMap->debugName : "-");
 			}
 		}
 
