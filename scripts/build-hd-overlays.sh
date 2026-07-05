@@ -26,6 +26,16 @@
 # levelN dirs) is retained — with TXMP-only input it currently
 # self-deactivates, but it guards any future same-named-per-level TXMP.
 #
+# ALPHA-MASK GUARD (issue #63): retail alpha-carrying textures (e.g.
+# BGRA4444 faces/hair/glass) use the alpha channel as the env-map
+# shininess mask. A mod that replaces one with an alpha-less format
+# (BGR/DXT1) makes the engine expand A=1.0, so the additive env-map
+# pass blows out white. We index retail texel formats per TXMP name
+# (scripts/txmp-format-index.c, reading the .dats directly) and drop
+# any staged mod TXMP that would downgrade alpha-carrying -> alpha-less,
+# logging each as ALPHA-SKIP. Those surfaces stay vanilla; a v2 could
+# composite the retail alpha onto the mod RGB instead.
+#
 # Input:  extracted AE-installer mod trees under $HD_MODS_ROOT/Tier1 and
 #         Tier2 — TXMP .oni files under
 #         <PkgID><Name>/oni/[common/]level<N>_Final/[subdir/]
@@ -50,6 +60,11 @@
 #   PACK_SUFFIX        default: HD1   (must NOT be "Final" — the engine
 #                      rejects _Final overlays; see BFW_TM_Game.c
 #                      TMiGame_OverlayDir_Scan)
+#   RETAIL_DATA_DIR    default: CXOni PC reference install GameDataFolder
+#                      (source of the retail texel-format index, #63)
+#   RETAIL_INDEX       default: <repo>/dist/retail-txmp-formats.tsv —
+#                      cached name<TAB>format index; reused when present
+#   FORCE_RETAIL_INDEX set to 1 to rebuild the index even if cached
 # ======================================================================
 
 set -euo pipefail
@@ -62,6 +77,9 @@ ONISPLIT_EXE="${ONISPLIT_EXE:-/Users/andiyar/Developer/oni/community-svn/Oni2/On
 MONO_BIN="${MONO_BIN:-mono}"
 PACK_SUFFIX="${PACK_SUFFIX:-HD1}"
 OUT_DIR="${1:-$REPO_ROOT/dist/CuratedHD}"
+RETAIL_DATA_DIR="${RETAIL_DATA_DIR:-/Users/andiyar/Developer/oni/CXOni/Oni/drive_c/Program Files (x86)/Oni/GameDataFolder}"
+RETAIL_INDEX="${RETAIL_INDEX:-$REPO_ROOT/dist/retail-txmp-formats.tsv}"
+FORCE_RETAIL_INDEX="${FORCE_RETAIL_INDEX:-0}"
 
 if [ "$PACK_SUFFIX" = "Final" ]; then
     echo "ERROR: PACK_SUFFIX must not be 'Final' (engine overlay contract)." >&2
@@ -85,7 +103,49 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 STAGE_ROOT="$WORK_DIR/stage"
 MANIFEST="$WORK_DIR/manifest.tsv"
 DECISIONS="$WORK_DIR/decisions.tsv"
+DECISIONS_GUARDED="$WORK_DIR/decisions-guarded.tsv"
 mkdir -p "$STAGE_ROOT" "$OUT_DIR"
+
+# ----------------------------------------------------------------------
+# 0. Retail texel-format index (issue #63) — name<TAB>format for every
+#    named TXMP in the retail PC .dats. Built once, cached in
+#    $RETAIL_INDEX; the .dat parse is ~50 ms so the cache mostly spares
+#    the reader a rebuild surprise when dist/ is wiped.
+#    Cross-level conflicts (same name, different format) keep the
+#    alpha-carrying format — that's the mask the guard must protect.
+# ----------------------------------------------------------------------
+TXMP_TOOL="$WORK_DIR/txmp-format-index"
+cc -O2 -o "$TXMP_TOOL" "$SCRIPT_DIR/txmp-format-index.c" || {
+    echo "ERROR: failed to compile scripts/txmp-format-index.c" >&2; exit 1; }
+
+if [ ! -s "$RETAIL_INDEX" ] || [ "$FORCE_RETAIL_INDEX" = "1" ]; then
+    if [ ! -d "$RETAIL_DATA_DIR" ]; then
+        echo "ERROR: retail data dir not found: $RETAIL_DATA_DIR" >&2
+        exit 1
+    fi
+    echo "-- building retail TXMP format index --"
+    mkdir -p "$(dirname "$RETAIL_INDEX")"
+    "$TXMP_TOOL" "$RETAIL_DATA_DIR"/level*_Final.dat > "$WORK_DIR/retail-raw.tsv"
+    awk -F '\t' '
+        function alpha(f) { return (f == "BGRA4444" || f == "BGRA5551" || f == "RGBA" || f == "A8" || f == "A4I4") }
+        $1 == "-" { next }   # unnamed instances cannot be overlaid by name
+        {
+            if (!($1 in fmt)) { fmt[$1] = $2; order[++n] = $1 }
+            else if (fmt[$1] != $2) {
+                keep = (alpha($2) && !alpha(fmt[$1])) ? $2 : fmt[$1]
+                printf "  NOTE: %s format differs across levels (%s vs %s); keeping %s\n", \
+                    $1, fmt[$1], $2, keep > "/dev/stderr"
+                fmt[$1] = keep
+            }
+        }
+        END { for (i = 1; i <= n; i++) print order[i] "\t" fmt[order[i]] }
+    ' "$WORK_DIR/retail-raw.tsv" | sort > "$RETAIL_INDEX"
+    echo "  wrote $RETAIL_INDEX ($(wc -l < "$RETAIL_INDEX" | tr -d ' ') named TXMPs)"
+    echo
+else
+    echo "-- retail TXMP format index: cached $RETAIL_INDEX ($(wc -l < "$RETAIL_INDEX" | tr -d ' ') names; FORCE_RETAIL_INDEX=1 rebuilds) --"
+    echo
+fi
 
 # ----------------------------------------------------------------------
 # 1. Enumerate mods in priority order (Tier1 desc-ID, then Tier2 desc-ID)
@@ -183,6 +243,59 @@ sort -t "$(printf '\t')" -k5,5 -k1,1 -k6,6 "$MANIFEST" | awk -F '\t' '
 ' > "$DECISIONS"
 
 # ----------------------------------------------------------------------
+# 2b. Alpha-mask guard (issue #63): drop STAGE lines whose retail
+#     counterpart carries alpha (env-map shininess mask) while the mod
+#     file is alpha-less. Mod formats come from the same .dat/.oni
+#     parser run over every winner in one batch. Names not in retail
+#     are additive textures — kept. The reverse direction (mod adds
+#     alpha where retail had none) is logged as ALPHA-ADD but kept.
+# ----------------------------------------------------------------------
+awk -F '\t' '$1 == "STAGE" { print $3 }' "$DECISIONS" | tr '\n' '\0' \
+    | xargs -0 "$TXMP_TOOL" > "$WORK_DIR/mod-formats.tsv"
+
+echo "-- alpha-mask guard (issue #63) --"
+awk -F '\t' -v OFS='\t' '
+    function alpha(f) { return (f == "BGRA4444" || f == "BGRA5551" || f == "RGBA" || f == "A8" || f == "A4I4") }
+    function instname(p,  b) {
+        b = p
+        sub(/.*\//, "", b); sub(/\.oni$/, "", b); sub(/^TXMP/, "", b)
+        gsub(/%2[Ff]/, "/", b)
+        return b
+    }
+    FNR == 1 { fi++ }
+    fi == 1 { retail[$1] = $2; next }              # RETAIL_INDEX
+    fi == 2 { modfmt[$3] = $2; next }              # mod-formats.tsv (path -> fmt)
+    $1 != "STAGE" { print; next }                  # decisions passthrough
+    {
+        name = instname($3)
+        mf = ($3 in modfmt) ? modfmt[$3] : ""
+        if (mf == "") {
+            printf "  WARNING: no format read for %s; kept unguarded\n", $3 > "/dev/stderr"
+            print; next
+        }
+        if (!(name in retail)) { additive++; print; next }
+        rf = retail[name]
+        if (alpha(rf) && !alpha(mf)) {
+            printf "  ALPHA-SKIP %s retail=%s mod=%s\n", name, rf, mf
+            skipped++
+            next
+        }
+        if (alpha(mf) && !alpha(rf)) {
+            printf "  ALPHA-ADD %s retail=%s mod=%s (kept)\n", name, rf, mf
+        }
+        print
+    }
+    END {
+        printf "  dropped %d alpha-mask downgrades; %d additive names not in retail (kept)\n", \
+            skipped + 0, additive + 0
+    }
+' "$RETAIL_INDEX" "$WORK_DIR/mod-formats.tsv" "$DECISIONS" \
+    > "$WORK_DIR/guard-out.txt"
+grep -v '^  ' "$WORK_DIR/guard-out.txt" > "$DECISIONS_GUARDED" || true
+grep '^  ' "$WORK_DIR/guard-out.txt" || echo "  (guard produced no log lines)"
+echo
+
+# ----------------------------------------------------------------------
 # 3. Stage winners into flat per-level buckets (filenames kept intact —
 #    the basename IS the instance name, %2F encoding and all).
 # ----------------------------------------------------------------------
@@ -192,7 +305,7 @@ while IFS="$(printf '\t')" read -r kind lvl path; do
     mkdir -p "$STAGE_ROOT/level$lvl"
     cp "$path" "$STAGE_ROOT/level$lvl/"
     staged_total=$((staged_total + 1))
-done < "$DECISIONS"
+done < "$DECISIONS_GUARDED"
 
 echo "-- staging --"
 echo "staged $staged_total unique instances into per-level buckets:"
