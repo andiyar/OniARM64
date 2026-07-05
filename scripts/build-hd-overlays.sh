@@ -86,6 +86,10 @@ FORCE_RETAIL_INDEX="${FORCE_RETAIL_INDEX:-0}"
 # reverting the menu chrome to vanilla costs no quality while keeping the
 # mod's HD splash/level-intro/win screens. Space-separated instance names.
 TEXTURE_EXCLUDE="${TEXTURE_EXCLUDE:-buttons navi}"
+# Directory of our channel-corrected TXMP overrides (issue #63); staged last
+# so they win. Holds R/B-corrected HD textures worth keeping (e.g. the blue
+# bike) — contrast TEXTURE_EXCLUDE which reverts same-res restyle junk.
+CORRECTIONS_DIR="${CORRECTIONS_DIR:-$REPO_ROOT/hd-pack-corrections}"
 
 if [ "$PACK_SUFFIX" = "Final" ]; then
     echo "ERROR: PACK_SUFFIX must not be 'Final' (engine overlay contract)." >&2
@@ -346,9 +350,33 @@ while IFS="$(printf '\t')" read -r kind lvl path; do
     staged_total=$((staged_total + 1))
 done < "$DECISIONS_GUARDED"
 
+# ----------------------------------------------------------------------
+# 3b. Pack corrections (issue #63): our own channel-corrected TXMPs copied
+#     in LAST so they OVERRIDE the staged mod winner for the same instance
+#     name — e.g. the level-6 intro bike TXMPMOTORCYCLE02 (24104-HQ-Airport)
+#     ships BGR with R/B swapped (red body, should be blue). Unlike the menu
+#     widgets this is a genuine 512x512 HD texture, so we keep it and
+#     R/B-correct it rather than revert to vanilla. Committed under
+#     hd-pack-corrections/level<N>/; regenerate with build-hd-corrections.sh.
+# ----------------------------------------------------------------------
+corr_total=0
+if [ -d "$CORRECTIONS_DIR" ]; then
+    while IFS= read -r cf; do
+        cbase="$(basename "$cf")"
+        clvl="$(printf '%s\n' "$cf" | sed -nE 's|.*/level([0-9]+)(_[Ff]inal)?/.*|\1|p')"
+        [ -n "$clvl" ] || clvl=0
+        mkdir -p "$STAGE_ROOT/level$clvl"
+        cp "$cf" "$STAGE_ROOT/level$clvl/$cbase"
+        corr_total=$((corr_total + 1))
+    done < <(find "$CORRECTIONS_DIR" -name 'TXMP*.oni')
+fi
+
 echo "-- staging --"
 if [ "$excluded_total" -gt 0 ]; then
     echo "excluded $excluded_total instance(s) via TEXTURE_EXCLUDE=\"$TEXTURE_EXCLUDE\" -> vanilla base used (#63)"
+fi
+if [ "$corr_total" -gt 0 ]; then
+    echo "applied $corr_total pack correction(s) overriding staged winners (#63)"
 fi
 echo "staged $staged_total unique instances into per-level buckets:"
 for d in "$STAGE_ROOT"/level*; do

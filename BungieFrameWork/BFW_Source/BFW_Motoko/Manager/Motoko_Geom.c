@@ -209,6 +209,35 @@ M3rGeometry_Draw(
 
 		multitextured= ((inGeometryObject->baseMap != NULL) && (inGeometryObject->baseMap->envMap != NULL)) ? UUcTrue : UUcFalse;
 
+		// DIAGNOSTIC (#63 white-head): log each env-mapped surface's reflection
+		// source once (deduped by base texture), so a level-6 intro run reveals
+		// what the face/glass actually reflect. Static analysis says the face's
+		// env 'envksface' is dark (brightness 16/255) and there is no runtime
+		// envMap override, so if the face still whites out the cause is NOT the
+		// reflection — this confirms that live, or surfaces a surprise.
+		if (multitextured)
+		{
+			static const void *env_diag_seen[256];
+			static UUtUns32 env_diag_count = 0;
+			const void *env_diag_key = (const void *) inGeometryObject->baseMap;
+			UUtUns32 env_diag_i;
+			UUtBool env_diag_found = UUcFalse;
+			for (env_diag_i = 0; env_diag_i < env_diag_count; env_diag_i++)
+			{
+				if (env_diag_seen[env_diag_i] == env_diag_key) { env_diag_found = UUcTrue; break; }
+			}
+			if (!env_diag_found && env_diag_count < 256)
+			{
+				M3tTextureMap *env_diag_bm = inGeometryObject->baseMap;
+				env_diag_seen[env_diag_count++] = env_diag_key;
+				UUrStartupMessage("[env-diag] '%s' (%dx%d fmt=%d flags=0x%x) reflects '%s' (%dx%d fmt=%d)",
+					env_diag_bm->debugName, env_diag_bm->width, env_diag_bm->height,
+					(int) env_diag_bm->texelType, (unsigned) env_diag_bm->flags,
+					env_diag_bm->envMap->debugName, env_diag_bm->envMap->width,
+					env_diag_bm->envMap->height, (int) env_diag_bm->envMap->texelType);
+			}
+		}
+
 		// determine how many passes to use for rendering this object
 		if ((multitextured == UUcFalse) ||
 			M3rSinglePassMultitexturingAvailable() ||
