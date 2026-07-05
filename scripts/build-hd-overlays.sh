@@ -80,6 +80,12 @@ OUT_DIR="${1:-$REPO_ROOT/dist/CuratedHD}"
 RETAIL_DATA_DIR="${RETAIL_DATA_DIR:-/Users/andiyar/Developer/oni/CXOni/Oni/drive_c/Program Files (x86)/Oni/GameDataFolder}"
 RETAIL_INDEX="${RETAIL_INDEX:-$REPO_ROOT/dist/retail-txmp-formats.tsv}"
 FORCE_RETAIL_INDEX="${FORCE_RETAIL_INDEX:-0}"
+# Instances dropped from the overlay so the engine uses the vanilla base
+# version instead (issue #63). HD-Screens' menu widgets ship colour-swapped
+# (red where vanilla is blue) and are only a same-resolution restyle, so
+# reverting the menu chrome to vanilla costs no quality while keeping the
+# mod's HD splash/level-intro/win screens. Space-separated instance names.
+TEXTURE_EXCLUDE="${TEXTURE_EXCLUDE:-buttons navi}"
 
 if [ "$PACK_SUFFIX" = "Final" ]; then
     echo "ERROR: PACK_SUFFIX must not be 'Final' (engine overlay contract)." >&2
@@ -317,14 +323,33 @@ echo
 #    the basename IS the instance name, %2F encoding and all).
 # ----------------------------------------------------------------------
 staged_total=0
+excluded_total=0
 while IFS="$(printf '\t')" read -r kind lvl path; do
     [ "$kind" = "STAGE" ] || continue
+    # Texture-level exclusion (issue #63): drop specific instances from the
+    # overlay so the engine falls back to the vanilla base version. Used to
+    # revert HD-Screens' colour-swapped menu widgets (buttons/navi render red
+    # where vanilla is blue; the mod is a same-resolution restyle, so vanilla
+    # loses no quality) while keeping the rest of the pack. Instance name =
+    # basename minus the TXMP prefix and .oni suffix.
+    inst="$(basename "$path" .oni)"; inst="${inst#TXMP}"
+    skip=0
+    for ex in $TEXTURE_EXCLUDE; do
+        if [ "$inst" = "$ex" ]; then skip=1; break; fi
+    done
+    if [ "$skip" = "1" ]; then
+        excluded_total=$((excluded_total + 1))
+        continue
+    fi
     mkdir -p "$STAGE_ROOT/level$lvl"
     cp "$path" "$STAGE_ROOT/level$lvl/"
     staged_total=$((staged_total + 1))
 done < "$DECISIONS_GUARDED"
 
 echo "-- staging --"
+if [ "$excluded_total" -gt 0 ]; then
+    echo "excluded $excluded_total instance(s) via TEXTURE_EXCLUDE=\"$TEXTURE_EXCLUDE\" -> vanilla base used (#63)"
+fi
 echo "staged $staged_total unique instances into per-level buckets:"
 for d in "$STAGE_ROOT"/level*; do
     printf '  %-10s %5d files\n' "$(basename "$d")" "$(find "$d" -name '*.oni' | wc -l | tr -d ' ')"

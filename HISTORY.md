@@ -6,6 +6,14 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-07-06 — Session 56: HD-Screens red menu fixed (vanilla-revert); red bike + white face reframed (addresses #63)
+
+The red main-menu chrome was **not** an engine channel-swap and **not** the env-map/alpha/sky theories — it's HD-Screens shipping menu widgets with R and B swapped in the mod data. Proven statically: OniSplit's BGR path round-trips faithfully (blue TGA → BGR .oni → blue) and the engine's `IMiConvert_RGB888_to_RGB_Bytes` reads R from byte[2] just like OniSplit, so the engine renders the stored bytes correctly — the stored bytes are simply wrong. Also eliminated the `SwapBytes`/`M3cTextureFlags_LittleEndian` bit (both `0x1000`) as the cause: a mis-flagged 32-bit texture would come out G/R-scrambled, not cleanly red↔blue.
+
+- **`fix(textures)` — menu chrome reverted to vanilla** — HD-Screens' menu widgets are a **same-resolution restyle** (buttons 128×64, navi 128×128, options/kanji 256² — all identical to vanilla), so reverting costs no quality. New `TEXTURE_EXCLUDE="buttons navi"` in `build-hd-overlays.sh` drops the swapped widgets from the overlay so the engine loads the vanilla-blue base. Rebuilt 1,242 instances, reinstalled. **User-confirmed** the menu is correct. HD-Screens' splash/level-intro/win screens (its actual content) are kept.
+- **Red bike root-caused (fix pending):** the intro bike is `TXMPMOTORCYCLE02` (24104-HQ-Airport, BGR) — a red body (`#BC2A2A`) that R/B-swaps to a coherent blue "RONIN" bike, same swap class as the menu, and it's genuinely HD (512²). This **invalidates the prior session's premise** that the bike had no overridden texture — the whole "shared sky reflection" white-face theory rested on that false premise.
+- **White face reframed, still open:** ruled out with evidence — the face texture (vanilla; mod `KS_face` guard-excluded), its env source `envksface` (vanilla, brightness 16/255, **not** overridden by the pack), base_alpha (retail hair/neck are DXT1, already opaque), and channel-swap. The 2-pass env-map math is `final = base + env·base_alpha`, so a white blowout needs a *bright* env — but the face's env is dark, so its own reflection can't be the cause. Pinning the real (shared/scene) bright source needs live diagnostics in the level-6 intro rather than more static guessing.
+
 ### 2026-07-05 — Session 55: HD-pack crash root-caused — template webs hijacked ONLV enumeration (addresses #62)
 
 First user drive of the CuratedHD pack: menu rendered HD (overlay mechanism working) but showed an AE-branded splash, then **SIGSEGV loading Syndicate Warehouse**. Systematic debugging, root-caused in one pass — the crash report's new `1.3.0r4+main@9003656` stamp (#46) confirmed the binary on first read.
