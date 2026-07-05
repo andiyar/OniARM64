@@ -157,10 +157,27 @@ echo "mods root : $HD_MODS_ROOT"
 echo "output    : $OUT_DIR"
 echo
 
+# Mods excluded entirely (issue #63): sky/skybox mods must NOT be packed.
+# Retail sky images (night_*, day_*, …) are the environment reflection
+# source sampled by every env-mapped surface — the shiny anime face/hair
+# and vehicle paint. Overlaying HD sky TXMPs (which win by name even
+# though the mod's ONSK template was dropped under #62) shifts every
+# reflection at once: level-6's intro blew Konoko's head white and
+# recoloured the motorbike (a vehicle with no overridden texture of its
+# own — proof the change came through the shared reflection, not a skin).
+# Skies were already out-of-v1-scope (#62 notes); this makes the pack
+# match that. MOD_EXCLUDE is a '|'-separated substring list, overridable.
+MOD_EXCLUDE="${MOD_EXCLUDE:-Realistic-Skies|RealSkies}"
+
 MODS=()
 for tier in Tier1 Tier2; do
     while IFS= read -r d; do
-        [ -n "$d" ] && MODS+=("$tier/$d")
+        [ -z "$d" ] && continue
+        if printf '%s\n' "$d" | grep -qE "$MOD_EXCLUDE"; then
+            echo "  (excluded mod: $tier/$d — see MOD_EXCLUDE / #63)"
+            continue
+        fi
+        MODS+=("$tier/$d")
     done < <(find "$HD_MODS_ROOT/$tier" -mindepth 1 -maxdepth 1 -type d \
                  -exec basename {} \; | sort -t- -k1,1rn)
 done
