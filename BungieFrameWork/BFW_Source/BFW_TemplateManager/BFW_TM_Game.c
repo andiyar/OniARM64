@@ -2293,6 +2293,23 @@ iBridgePrepare_ResolveTemplatePtr(UUtUns8* slot, TMtInstanceFile* inInstanceFile
 		(void)TMrInstance_GetDataPtr(target->templatePtr->tag,
 		                             target->namePtr + 4,
 		                             &resolved);
+		if (resolved == NULL) {
+			// DIAGNOSTIC (#63 white face/door): a named cross-file ref that
+			// resolves NULL is written silently and only surfaces much later
+			// as missing texture/geometry at draw time. Name every failure at
+			// load time so one run pins exactly which refs break (capped).
+			static UUtUns32 bridge_null_count = 0;
+			if (bridge_null_count < 200) {
+				bridge_null_count++;
+				UUrStartupMessage("[bridge-null] unresolved ref tag=%c%c%c%c name='%s' file=%s",
+					(char)((target->templatePtr->tag >> 24) & 0xFF),
+					(char)((target->templatePtr->tag >> 16) & 0xFF),
+					(char)((target->templatePtr->tag >> 8) & 0xFF),
+					(char)((target->templatePtr->tag >> 0) & 0xFF),
+					target->namePtr + 4,
+					inInstanceFile->fileName[0] ? inInstanceFile->fileName : "(dynamic)");
+			}
+		}
 	}
 	memcpy(slot, &resolved, 8);
 	return UUcError_None;

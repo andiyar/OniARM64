@@ -311,6 +311,40 @@ MSrGeomContext_Method_Env_DrawGQList(
 				textureMapArray[curGQRender->textureMapIndex]);
 		}
 #else
+		// DIAGNOSTIC (#63 white door): doors/level geometry render through this
+		// env-GQ path, not M3rGeometry_Draw, so [tex-diag] never sees them. Log
+		// each unique env texture index once per environment (NULL slots draw
+		// untextured -> lit vertex colour) so an airport run names the door's map.
+		{
+			M3tTextureMap *env_gq_tex = textureMapArray[curGQRender->textureMapIndex];
+			UUtUns32 env_gq_idx = curGQRender->textureMapIndex;
+			static UUtUns32 env_gq_logged[256]; /* 1 bit per textureMapIndex, 8192 max */
+			static const void *env_gq_env = NULL;
+
+			if ((const void *) MSgGeomContextPrivate->environment != env_gq_env)
+			{
+				UUrMemory_Clear(env_gq_logged, sizeof(env_gq_logged));
+				env_gq_env = (const void *) MSgGeomContextPrivate->environment;
+			}
+			if ((env_gq_idx < 8192) && !(env_gq_logged[env_gq_idx >> 5] & (1u << (env_gq_idx & 31))))
+			{
+				env_gq_logged[env_gq_idx >> 5] |= (1u << (env_gq_idx & 31));
+				if (env_gq_tex == NULL)
+				{
+					UUrStartupMessage("[env-tex-diag] NULL texture at index=%u (draws untextured)",
+						(unsigned) env_gq_idx);
+				}
+				else
+				{
+					UUrStartupMessage("[env-tex-diag] '%s' %dx%d fmt=%d flags=0x%x env=%s idx=%u",
+						env_gq_tex->debugName, env_gq_tex->width, env_gq_tex->height,
+						(int) env_gq_tex->texelType, (unsigned) env_gq_tex->flags,
+						env_gq_tex->envMap ? env_gq_tex->envMap->debugName : "-",
+						(unsigned) env_gq_idx);
+				}
+			}
+		}
+
 		// set the proper base texture map
 		M3rDraw_State_SetPtr(
 			M3cDrawStatePtrType_BaseTextureMap,

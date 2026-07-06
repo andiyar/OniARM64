@@ -6,6 +6,15 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-07-07 — Session 57: adversarial verification of the #63 record; two blind spots instrumented (addresses #63)
+
+Re-verified every session-55/56 claim against the binary, logs, pack contents, and engine source before continuing the white face/door hunt. Most claims held (env-diag genuinely ran in level 8 with the pack loaded; `envksface` is only a name-only *import* descriptor in the pack, not an override; `KS_face` absent / `KS_neck`+`foofhair` present as recorded). Two load-bearing claims failed verification, both baked into the planned "one decisive run":
+
+- **The "white NONE fallback" premise is wrong: retail `NONE` is a 4×4 pure-black DXT1** (extracted from `level0_Final.dat`, every texel `#000000`). A NONE-bound surface should render black under the modulate pipeline — so if the face/door do bind NONE, the *white* must come from a render-side failure (e.g. GL texture-incomplete → texturing disabled → lit vertex colour), not from placeholder content.
+- **`[tex-diag]` can never see the door:** runtime door drawing (`OBJiDoor_Draw`) is entirely `#if TOOL_VERSION` (0 in game builds) — shipped doors are gunk drawn via `M3rEnv_DrawGQList`, a path with no diagnostic. The planned run would have named the face's binding and silently said nothing about the door.
+- New corroborating datum: the 09:20 env-diag run (level 8, pack active, white face on screen during the bike-confirm cinematic) logged **no** `KS_face` line — so the white face was drawn with `envMap == NULL`, i.e. it was *not* carrying vanilla KS_face's baked env link. Consistent with a resolution/binding failure, not an env-map effect.
+- **`diag(textures)` — two new capped diagnostics** to make the next run decisive on both symptoms: `[bridge-null]` in `iBridgePrepare_ResolveTemplatePtr` (`BFW_TM_Game.c`) logs every named cross-file ref that resolves NULL at load — previously written silently (`(void)` on the lookup); `[env-tex-diag]` in `MS_GC_Method_Env.c` logs each unique env-GQ texture bind (name/dims/format/flags, NULL slots called out) — the path doors actually render through. Build + `.app` verified to carry all three diag strings.
+
 ### 2026-07-06 — Session 56: HD-Screens red menu fixed (vanilla-revert); red bike + white face reframed (addresses #63)
 
 The red main-menu chrome was **not** an engine channel-swap and **not** the env-map/alpha/sky theories — it's HD-Screens shipping menu widgets with R and B swapped in the mod data. Proven statically: OniSplit's BGR path round-trips faithfully (blue TGA → BGR .oni → blue) and the engine's `IMiConvert_RGB888_to_RGB_Bytes` reads R from byte[2] just like OniSplit, so the engine renders the stored bytes correctly — the stored bytes are simply wrong. Also eliminated the `SwapBytes`/`M3cTextureFlags_LittleEndian` bit (both `0x1000`) as the cause: a mis-flagged 32-bit texture would come out G/R-scrambled, not cleanly red↔blue.
