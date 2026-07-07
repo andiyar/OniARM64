@@ -257,21 +257,6 @@ boolean initialize_opengl(
 			gl->compress_textures= FALSE;
 		}
 
-		// anisotropic filtering (#65): plain trilinear collapses oblique
-		// surfaces (floors/walls at grazing angles) to low mip levels no
-		// matter the source resolution. Query the device cap once here;
-		// gl_texture_map_download applies it to every mipmapped texture.
-		gl->max_anisotropy= 0.f;
-		if (gl_query_extension("GL_EXT_texture_filter_anisotropic"))
-		{
-			GL_FXN(glGetFloatv)(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &gl->max_anisotropy);
-			UUrStartupMessage("anisotropic filtering available, max %gx", (double)gl->max_anisotropy);
-		}
-		else
-		{
-			UUrStartupMessage("anisotropic filtering NOT available");
-		}
-
 		gl_sync_to_vtrace(TRUE);
 
 		// initialize OpenGL state
@@ -1149,12 +1134,6 @@ UUtBool gl_texture_map_create(
 				else
 				{
 					GL_FXN(glTexParameteri)(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-				}
-
-				if (gl->max_anisotropy > 1.f)
-				{
-					// #65: keep high mips sampled at grazing angles
-					GL_FXN(glTexParameterf)(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, gl->max_anisotropy);
 				}
 			}
 			else
