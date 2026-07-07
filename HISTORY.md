@@ -6,7 +6,9 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
-### 2026-07-07 — Session 58: fmt-7 R/B channel swap fixed — blue face / olive glass (addresses #63)
+### 2026-07-07 — Session 58: fmt-7 R/B channel swap fixed — blue face / olive glass (addresses #63); anisotropic filtering (addresses #65)
+
+- **feat(render) — 16× anisotropic filtering in the GL path** (addresses #65). Found via the #64 neural-pack pilot A/B: 512² textures were provably sharp facing the camera (door-sign crops) yet indistinguishable from vanilla at any distance or grazing angle — plain trilinear collapses oblique surfaces to low mips regardless of source resolution, so filtering (not content) was the visible bottleneck. Init queries `GL_EXT_texture_filter_anisotropic` once (`gl->max_anisotropy`, startup-logged); every mipmapped texture upload sets `GL_TEXTURE_MAX_ANISOTROPY_EXT` to the device cap. Benefits vanilla and all packs alike.
 
 - **fix(render) — ARGB8888 converter decoded the wrong byte order.** User verdict on `fa6950f`'s residual captured with screenshots: Konoko's face rendered pale BLUE and the door glass olive-GREEN — the exact signature of an R/B swap with G and A intact (which is why shading and shininess looked right). Root cause confirmed at the byte level: fmt-7 TXMP texel data is **R,G,B,A byte order** (OniSplit `TextureFormat.RGBA = 7`, `Color.WriteRgba`; pack source `TXMPIteration001%2Fk4_head.oni` row-160 skin pixels read `e9 b5 90` = (233,181,144) with R first), but `IMiConvert_ARGB8888_to_RGBA_Bytes` decoded each texel as a native little-endian ARGB *word* via `IMmARGB8888_to_argb` — extracting R from where B lives and vice versa, rendering skin (233,181,144) as (144,181,233) blue. The source bytes are already exactly `RGBA_Bytes` layout, so the fix collapses the converter to a straight `UUrMemory_MoveFast` copy, with the wire-order fact documented at the function.
 

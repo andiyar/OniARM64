@@ -710,6 +710,7 @@ struct gl_state_global {
 
 	int multitexture;
 	int mipmap_offset;
+	GLfloat max_anisotropy;		// #65: device cap from GL_EXT_texture_filter_anisotropic; 0 = unsupported
 	GLint max_nvidia_general_combiners;
 	boolean nv_register_combiners_enabled;
 
