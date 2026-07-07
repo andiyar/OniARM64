@@ -2414,6 +2414,43 @@ IMiConvert_ARGB4444_to_RGBA_Bytes(
 	return UUcError_None;
 }
 
+/* No retail texture is ARGB8888 — this pair only occurs for community HD
+ * content (mods ship 32-bit TXMPs), so Bungie never needed it. Without it
+ * the GL upload silently skips every mip level and the texture samples as
+ * untextured white (#63). */
+static UUtError
+IMiConvert_ARGB8888_to_RGBA_Bytes(
+	IMtDitherMode	inDitherMode,
+	IMtPixelType	inSrcType,
+	IMtPixelType	inDstType,
+	UUtUns16		inWidth,
+	UUtUns16		inHeight,
+	void*			inSrcData,
+	void*			outDstData)
+{
+	UUtInt32 loop;
+	UUtInt32 count = inWidth * inHeight;
+	UUtUns32 *pSrc = inSrcData;
+	UUtUns8 *pDst = outDstData;
+
+	for(loop = 0; loop < count; loop++)
+	{
+		UUtUns8 a,r,g,b;
+
+		IMmARGB8888_to_argb(pSrc[0], a, r, g, b);
+
+		pDst[0] = r;
+		pDst[1] = g;
+		pDst[2] = b;
+		pDst[3] = a;
+
+		pSrc += 1;
+		pDst += 4;
+	}
+
+	return UUcError_None;
+}
+
 static UUtError
 IMiConvert_ARGB1555_to_RGBA_Bytes(
 	IMtDitherMode	inDitherMode,
@@ -2627,6 +2664,7 @@ static IMtConverPixelType_LookupEntry IMgConvertPixelType_List[] =
 	{	IMcPixelType_ARGB4444,	IMcPixelType_RGB555,	IMiConvert_ARGB4444_to_RGB555},
 	{	IMcPixelType_ARGB4444,	IMcPixelType_ARGB8888,	IMiConvert_ARGB4444_to_ARGB8888},
 	{	IMcPixelType_ARGB4444,	IMcPixelType_RGBA_Bytes,IMiConvert_ARGB4444_to_RGBA_Bytes},
+	{	IMcPixelType_ARGB8888,	IMcPixelType_RGBA_Bytes,IMiConvert_ARGB8888_to_RGBA_Bytes},
 
 	{	IMcPixelType_RGB555,	IMcPixelType_ARGB4444,	IMiConvert_RGB555_to_ARGB4444},
 	{	IMcPixelType_RGB555,	IMcPixelType_ARGB1555,	IMiConvert_RGB555_to_ARGB1555},

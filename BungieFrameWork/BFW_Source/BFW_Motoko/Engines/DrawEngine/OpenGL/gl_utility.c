@@ -1228,6 +1228,22 @@ static void gl_texture_map_download_generic(
 		new_pixel_type, buffer);
 	UUmAssert(error == UUcError_None);
 
+	if (error != UUcError_None)
+	{
+		// #63: a missing converter pair skips every glTexImage2D level and the
+		// texture samples as untextured solid white with no log — make it loud,
+		// once per texel type.
+		static UUtUns32 convert_fail_reported= 0;
+		if ((texture_map->texelType < 32) &&
+			!(convert_fail_reported & (1u << texture_map->texelType)))
+		{
+			convert_fail_reported |= (1u << texture_map->texelType);
+			UUrStartupMessage("[gl-tex] NO pixel converter %d -> %d ('%s' %dx%d) — texture will render WHITE",
+				(int) texture_map->texelType, (int) new_pixel_type,
+				texture_map->debugName, width, height);
+		}
+	}
+
 	if (error == UUcError_None)
 	{
 		GL_FXN(glTexImage2D)(GL_TEXTURE_2D, level,
