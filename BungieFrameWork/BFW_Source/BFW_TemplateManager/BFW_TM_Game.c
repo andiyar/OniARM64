@@ -2102,6 +2102,10 @@ skip_translation_resolve_name:
 	return UUcError_None;
 }
 
+#if UUmPlatform_PointerSize == 8
+static void TMrBridge_PurgeFixupsForFile(TMtInstanceFile* inInstanceFile);
+#endif
+
 static void
 TMiGame_InstanceFile_Delete(
 	TMtInstanceFile*	inInstanceFile)
@@ -2110,6 +2114,12 @@ TMiGame_InstanceFile_Delete(
 	TMtInstanceFile_PrivateInfo*	curPrivateInfo;
 
 	UUmAssertReadPtr(inInstanceFile, sizeof(*inInstanceFile));
+
+#if UUmPlatform_PointerSize == 8
+	/* #63: drop fixups whose slots live in this file's dying instance data;
+	   NULL + re-pend fixups whose resolved target dies with this file. */
+	TMrBridge_PurgeFixupsForFile(inInstanceFile);
+#endif
 
 	TMiGame_InstanceFile_Callback(inInstanceFile, TMcTemplateProcMessage_DisposePreProcess);
 
@@ -2251,6 +2261,109 @@ TMiGame_InstanceFile_GetDataPtr(
  * ============================================================================
  */
 
+/* Deferred cross-file ref fixups (#63): prepare runs once per file, in load
+ * order, so a named TemplatePtr in an early file (e.g. a texture-pack overlay,
+ * loaded before level0_Final) that targets an instance owned by a later- or
+ * not-yet-loaded file resolves NULL — permanently, because preparedForMemory
+ * guards re-prepare. Retail data never held refs across that boundary; overlay
+ * packs do (mod TXMPs carry envMap refs to level-owned env textures), which is
+ * how the airport K4 face lost its env link and rendered its shininess alpha
+ * as transparency. Record every named ref that resolves NULL and retry after
+ * each full prepare pass; when a file unloads, drop fixups whose slots die
+ * with it and re-pend fixups whose resolved target died. */
+typedef struct TMtBridgeFixup
+{
+	TMtInstanceFile*	ownerFile;		/* file whose prepared instance holds the slot */
+	UUtUns8*			slot;			/* 8-byte pointer slot inside owner's data */
+	TMtTemplateTag		tag;
+	const char*			name;			/* -> owner file's name table; stable while owner lives */
+	TMtInstanceFile*	targetFile;		/* file owning the resolved instance; NULL = pending */
+} TMtBridgeFixup;
+
+#define TMcBridgeFixups_Max	4096
+static TMtBridgeFixup	TMgBridgeFixups[TMcBridgeFixups_Max];
+static UUtUns32			TMgBridgeFixups_Count = 0;
+
+static void
+TMrBridge_RetryFixups(
+	void)
+{
+	UUtUns32	itr;
+	UUtUns32	resolved_count = 0;
+
+	for (itr = 0; itr < TMgBridgeFixups_Count; itr++)
+	{
+		TMtBridgeFixup*	fixup = TMgBridgeFixups + itr;
+		UUtUns16		fileItr;
+
+		if (fixup->targetFile != NULL) continue;
+
+		for (fileItr = TMcGame_InstanceFile_Dynamic_Num; fileItr < TMgGame_LoadedInstanceFiles_Num; fileItr++)
+		{
+			void* dataPtr = TMiGame_InstanceFile_GetDataPtr(
+				TMgGame_LoadedInstanceFiles_List[fileItr], fixup->tag, fixup->name);
+
+			if (dataPtr != NULL)
+			{
+				memcpy(fixup->slot, &dataPtr, 8);
+				fixup->targetFile = TMgGame_LoadedInstanceFiles_List[fileItr];
+				resolved_count++;
+				UUrStartupMessage("[bridge-fixup] resolved tag=%c%c%c%c name='%s' owner=%s target=%s",
+					(char)((fixup->tag >> 24) & 0xFF), (char)((fixup->tag >> 16) & 0xFF),
+					(char)((fixup->tag >> 8) & 0xFF), (char)((fixup->tag >> 0) & 0xFF),
+					fixup->name,
+					fixup->ownerFile->fileName[0] ? fixup->ownerFile->fileName : "(dynamic)",
+					fixup->targetFile->fileName[0] ? fixup->targetFile->fileName : "(dynamic)");
+				break;
+			}
+		}
+	}
+
+	if (resolved_count > 0)
+	{
+		UUrStartupMessage("[bridge-fixup] %u deferred ref(s) resolved this pass, %u recorded total",
+			(unsigned)resolved_count, (unsigned)TMgBridgeFixups_Count);
+	}
+}
+
+static void
+TMrBridge_PurgeFixupsForFile(
+	TMtInstanceFile*	inInstanceFile)
+{
+	UUtUns32	itr = 0;
+	UUtUns32	dropped = 0;
+	UUtUns32	repended = 0;
+
+	while (itr < TMgBridgeFixups_Count)
+	{
+		TMtBridgeFixup*	fixup = TMgBridgeFixups + itr;
+
+		if (fixup->ownerFile == inInstanceFile)
+		{
+			/* owning instance data is being freed: the slot dies with it */
+			*fixup = TMgBridgeFixups[--TMgBridgeFixups_Count];
+			dropped++;
+			continue;
+		}
+		if (fixup->targetFile == inInstanceFile)
+		{
+			/* resolved target is being freed: NULL the slot, pend for re-resolution */
+			UUtUns64 zero = 0;
+			memcpy(fixup->slot, &zero, 8);
+			fixup->targetFile = NULL;
+			repended++;
+		}
+		itr++;
+	}
+
+	if (dropped > 0 || repended > 0)
+	{
+		UUrStartupMessage("[bridge-fixup] purge file=%s dropped=%u repended=%u",
+			inInstanceFile->fileName[0] ? inInstanceFile->fileName : "(dynamic)",
+			(unsigned)dropped, (unsigned)repended);
+	}
+}
+
 static UUtError
 iBridgePrepare_ResolveTemplatePtr(UUtUns8* slot, TMtInstanceFile* inInstanceFile)
 {
@@ -2294,14 +2407,22 @@ iBridgePrepare_ResolveTemplatePtr(UUtUns8* slot, TMtInstanceFile* inInstanceFile
 		                             target->namePtr + 4,
 		                             &resolved);
 		if (resolved == NULL) {
-			// DIAGNOSTIC (#63 white face/door): a named cross-file ref that
-			// resolves NULL is written silently and only surfaces much later
-			// as missing texture/geometry at draw time. Name every failure at
-			// load time so one run pins exactly which refs break (capped).
+			// #63: the target may live in a file loaded/prepared after this
+			// one (overlay packs referencing level-owned textures). Record the
+			// slot and retry after each full prepare pass instead of leaving
+			// it silently NULL forever. Log stays for load-time visibility.
 			static UUtUns32 bridge_null_count = 0;
+			if (TMgBridgeFixups_Count < TMcBridgeFixups_Max) {
+				TMtBridgeFixup* fixup = TMgBridgeFixups + TMgBridgeFixups_Count++;
+				fixup->ownerFile = inInstanceFile;
+				fixup->slot = slot;
+				fixup->tag = target->templatePtr->tag;
+				fixup->name = target->namePtr + 4;
+				fixup->targetFile = NULL;
+			}
 			if (bridge_null_count < 200) {
 				bridge_null_count++;
-				UUrStartupMessage("[bridge-null] unresolved ref tag=%c%c%c%c name='%s' file=%s",
+				UUrStartupMessage("[bridge-null] unresolved ref tag=%c%c%c%c name='%s' file=%s (deferred)",
 					(char)((target->templatePtr->tag >> 24) & 0xFF),
 					(char)((target->templatePtr->tag >> 16) & 0xFF),
 					(char)((target->templatePtr->tag >> 8) & 0xFF),
@@ -2850,6 +2971,12 @@ TMiGame_LoadedInstanceFiles_PrepareForMemory(
 		UUrStartupMessage("[PrepFM] file %u/%u done",
 			(unsigned)itr, (unsigned)TMgGame_LoadedInstanceFiles_Num);
 	}
+
+#if UUmPlatform_PointerSize == 8
+	/* #63: with every file in this pass prepared, retry cross-file refs that
+	   resolved NULL because their target file came later in load order. */
+	TMrBridge_RetryFixups();
+#endif
 }
 
 static UUtError
