@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-07-07 — Session 58: fmt-7 R/B channel swap fixed — blue face / olive glass (addresses #63)
+
+- **fix(render) — ARGB8888 converter decoded the wrong byte order.** User verdict on `fa6950f`'s residual captured with screenshots: Konoko's face rendered pale BLUE and the door glass olive-GREEN — the exact signature of an R/B swap with G and A intact (which is why shading and shininess looked right). Root cause confirmed at the byte level: fmt-7 TXMP texel data is **R,G,B,A byte order** (OniSplit `TextureFormat.RGBA = 7`, `Color.WriteRgba`; pack source `TXMPIteration001%2Fk4_head.oni` row-160 skin pixels read `e9 b5 90` = (233,181,144) with R first), but `IMiConvert_ARGB8888_to_RGBA_Bytes` decoded each texel as a native little-endian ARGB *word* via `IMmARGB8888_to_argb` — extracting R from where B lives and vice versa, rendering skin (233,181,144) as (144,181,233) blue. The source bytes are already exactly `RGBA_Bytes` layout, so the fix collapses the converter to a straight `UUrMemory_MoveFast` copy, with the wire-order fact documented at the function.
+
 ### 2026-07-07 — Session 57: adversarial verification of the #63 record; two blind spots instrumented (addresses #63)
 
 Re-verified every session-55/56 claim against the binary, logs, pack contents, and engine source before continuing the white face/door hunt. Most claims held (env-diag genuinely ran in level 8 with the pack loaded; `envksface` is only a name-only *import* descriptor in the pack, not an override; `KS_face` absent / `KS_neck`+`foofhair` present as recorded). Two load-bearing claims failed verification, both baked into the planned "one decisive run":

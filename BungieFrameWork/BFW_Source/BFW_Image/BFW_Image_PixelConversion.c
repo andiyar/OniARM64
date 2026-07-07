@@ -2417,7 +2417,13 @@ IMiConvert_ARGB4444_to_RGBA_Bytes(
 /* No retail texture is ARGB8888 — this pair only occurs for community HD
  * content (mods ship 32-bit TXMPs), so Bungie never needed it. Without it
  * the GL upload silently skips every mip level and the texture samples as
- * untextured white (#63). */
+ * untextured white (#63).
+ *
+ * Wire order: fmt-7 TXMP texel data is R,G,B,A bytes (OniSplit's
+ * TextureFormat.RGBA — Color.WriteRgba), NOT a native-endian ARGB word.
+ * Decoding it with IMmARGB8888_to_argb on a little-endian host swaps R/B
+ * (#63 residual: blue face, olive door glass). The source bytes are already
+ * exactly RGBA_Bytes layout, so this conversion is a straight copy. */
 static UUtError
 IMiConvert_ARGB8888_to_RGBA_Bytes(
 	IMtDitherMode	inDitherMode,
@@ -2428,25 +2434,8 @@ IMiConvert_ARGB8888_to_RGBA_Bytes(
 	void*			inSrcData,
 	void*			outDstData)
 {
-	UUtInt32 loop;
-	UUtInt32 count = inWidth * inHeight;
-	UUtUns32 *pSrc = inSrcData;
-	UUtUns8 *pDst = outDstData;
-
-	for(loop = 0; loop < count; loop++)
-	{
-		UUtUns8 a,r,g,b;
-
-		IMmARGB8888_to_argb(pSrc[0], a, r, g, b);
-
-		pDst[0] = r;
-		pDst[1] = g;
-		pDst[2] = b;
-		pDst[3] = a;
-
-		pSrc += 1;
-		pDst += 4;
-	}
+	UUrMemory_MoveFast(inSrcData, outDstData,
+		(UUtUns32)inWidth * (UUtUns32)inHeight * 4);
 
 	return UUcError_None;
 }
