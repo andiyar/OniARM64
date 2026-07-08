@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-07-09 — Session 59: release correctness wave (issues #66–#72 + #28)
+
+- **fix(file-io) — the IO layer reports real errors again** (addresses #66): `BFrFile_Read`/`BFrFile_Write` computed a short-read/short-write error and then returned `UUcError_None` unconditionally (fork-introduced; BungieSource returned the real code) — truncated or corrupt data files parsed as uninitialised heap downstream instead of failing at the read. Also: `BFrFile_Map`'s mmap path now checks `MAP_FAILED` (mmap never returns NULL), and `BFrFile_ReadPos` pre-checks `pos+len` against the actual file length (fseek past EOF "succeeds") with a `[file-io]` log line on violation.
+
 ### 2026-07-07 — Session 58: fmt-7 R/B channel swap fixed — blue face / olive glass (addresses #63); anisotropic filtering (addresses #65)
 
 - **#64 neural-upscale pilot: built, played, parked.** Full offline pipeline (retail level-8 TXMPs → Real-ESRGAN ×4 at 60% blend, alpha/shininess masks upscaled separately, formats rewritten fmt-0→7 / →8, env-links preserved through OniSplit XML round-trip) produced a working 513-texture `level8_NX1` overlay — log-verified rendering at 512², first at-scale exercise of the #63 fmt-7 converter (clean). User A/B verdict: perceptually marginal at gameplay distance (characters are screen-density-limited; flat env art has nothing to recover) — CuratedHD's hand-authored art is the better win; #64 closed, pipeline preserved as `scripts/experimental-neural-pack.sh`. The pilot's real payoff: its A/B isolated *filtering* as the visible bottleneck → #65.

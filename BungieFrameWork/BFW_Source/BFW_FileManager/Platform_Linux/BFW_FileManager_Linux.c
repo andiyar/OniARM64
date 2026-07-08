@@ -507,7 +507,7 @@ BFrFile_Map(
 		MAP_PRIVATE,
 		fd,
 		inOffset);
-	if (NULL == ptr)
+	if (MAP_FAILED == ptr || NULL == ptr)
 	{
 		error = UUcError_Generic;
 		goto fail;
@@ -672,9 +672,12 @@ BFrFile_Read(
 
 	count = fread(inData, 1, inLength, (FILE *)inFile);
 
+	/* fork-introduced bug (not in BungieSource): the computed error was
+	   discarded and UUcError_None returned unconditionally, so truncated
+	   files parsed as uninitialised heap downstream (#66). */
 	error = (count == inLength) ? UUcError_None : UUcError_Generic;
 
-	return UUcError_None;
+	return error;
 
 }
 
@@ -694,7 +697,7 @@ BFrFile_Write(
 
 	error = (count == inLength) ? UUcError_None : UUcError_Generic;
 
-	return UUcError_None;
+	return error;
 }
 
 UUtError

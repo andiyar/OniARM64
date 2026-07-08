@@ -707,6 +707,16 @@ BFrFile_ReadPos(
 	void*		inDataPtr)
 {
 	UUtError error;
+	UUtUns32 fileLength;
+
+	/* fseek past EOF succeeds, so an out-of-range read used to "succeed"
+	   over an uninitialised buffer (#66). Pre-check against the real length. */
+	error = BFrFile_GetLength(inFile, &fileLength);
+	if ((UUcError_None == error) && (((UUtUns64)inStartPos + inLength) > fileLength)) {
+		UUrStartupMessage("[file-io] ReadPos out of range: pos=%u len=%u file_len=%u",
+			inStartPos, inLength, fileLength);
+		return UUcError_Generic;
+	}
 
 	error = BFrFile_SetPos(inFile, inStartPos);
 
