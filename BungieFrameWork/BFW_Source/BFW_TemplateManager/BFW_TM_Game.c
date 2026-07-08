@@ -1670,6 +1670,13 @@ TMiGame_InstanceFile_New_FromFileRef(
 		newInstanceFile = (TMtInstanceFile *)UUrMemory_Block_New(sizeof(TMtInstanceFile));
 		UUmError_ReturnOnNull(newInstanceFile);
 
+		/* Block_New does not zero. On a raw-map failure only rawPtr was NULLed,
+		   leaving rawMapping as stack/heap garbage that dispose later UnMapped (#28). */
+		newInstanceFile->mapping = NULL;
+		newInstanceFile->rawMapping = NULL;
+		newInstanceFile->rawPtr = NULL;
+		newInstanceFile->separateFile = NULL;
+
 	/*
 	 * map the file
 	 */
@@ -1697,7 +1704,17 @@ TMiGame_InstanceFile_New_FromFileRef(
 			error = BFrFile_Map(rawFileRef, 0, &newInstanceFile->rawMapping, &newInstanceFile->rawPtr, &rawFileLength);
 
 			if (error) {
+				newInstanceFile->rawMapping = NULL;
 				newInstanceFile->rawPtr = NULL;
+				/* A .dat without its .raw companion has no sound/texture bulk —
+				   unplayable. Fail here with a name instead of a bogus-pointer
+				   SIGSEGV at first sound play (#28; Feral 1.2 parity). */
+				UUrStartupMessage("[tm] missing or unmappable .raw companion for '%s'",
+					BFrFileRef_GetLeafName(inInstanceFileRef));
+				BFrFileRef_Dispose(rawFileRef);
+				BFrFile_UnMap(newInstanceFile->mapping);
+				UUrMemory_Block_Delete(newInstanceFile);
+				UUmError_ReturnOnErrorMsg(TMcError_DataCorrupt, "Missing .raw companion file for a .dat — reinstall the game data");
 			}
 
 			BFrFileRef_Dispose(rawFileRef);

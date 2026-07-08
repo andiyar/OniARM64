@@ -903,7 +903,13 @@ SSiSoundData_ProcHandler(
 				(size_t)((UUtUns8*)&sound_data->data - (UUtUns8*)sound_data));
 			UUrStartupMessage("[SNDD] LoadPost flags=0x%x dur=%u num_bytes=%u rawData=%p",
 				sound_data->flags, sound_data->duration_ticks, sound_data->num_bytes, sound_data->data);
-			sound_data->data = (void*)(((uintptr_t)sound_data->data) + ((uintptr_t)TMrInstance_GetRawOffset(sound_data)));
+			if (TMrInstance_GetRawOffset(sound_data) == NULL) {
+				/* No raw base: leave data NULL so playback guards fire instead of
+				   dereferencing the on-disk offset as a pointer (#28). */
+				sound_data->data = NULL;
+			} else {
+				sound_data->data = (void*)(((uintptr_t)sound_data->data) + ((uintptr_t)TMrInstance_GetRawOffset(sound_data)));
+			}
 
 		break;
 
