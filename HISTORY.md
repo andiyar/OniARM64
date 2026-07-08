@@ -8,6 +8,8 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ### 2026-07-09 — Session 59: release correctness wave (issues #66–#72 + #28)
 
+- **fix(data) — .dat header validation runs in release builds** (addresses #66): the four consistency checks on a just-read instance-file header (name/instance descriptor counts, block-offset ordering) were `UUmAssert`s — compiled out in release, so a truncated or corrupt `.dat` SIGBUSed on the descriptor walk with no message. Promoted to `TMcError_DataCorrupt` returns, with 64-bit intermediates so hostile counts can't wrap the arithmetic that validates them.
+
 - **fix(file-io) — the IO layer reports real errors again** (addresses #66): `BFrFile_Read`/`BFrFile_Write` computed a short-read/short-write error and then returned `UUcError_None` unconditionally (fork-introduced; BungieSource returned the real code) — truncated or corrupt data files parsed as uninitialised heap downstream instead of failing at the read. Also: `BFrFile_Map`'s mmap path now checks `MAP_FAILED` (mmap never returns NULL), and `BFrFile_ReadPos` pre-checks `pos+len` against the actual file length (fseek past EOF "succeeds") with a `[file-io]` log line on violation.
 
 ### 2026-07-07 — Session 58: fmt-7 R/B channel swap fixed — blue face / olive glass (addresses #63); anisotropic filtering (addresses #65)

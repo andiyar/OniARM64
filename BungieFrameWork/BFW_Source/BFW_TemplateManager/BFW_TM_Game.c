@@ -1318,20 +1318,22 @@ TMiGame_InstanceFile_LoadHeaderFromMemory(
 	if(inFileHeader->sizeofTemplateDescriptor != sizeof(TMtTemplateDescriptor)) return TMcError_DataCorrupt;
 	if(inFileHeader->sizeofNameDescriptor != sizeof(TMtNameDescriptor)) return TMcError_DataCorrupt;
 
-	UUmAssert(inFileHeader->numNameDescriptors <= inFileHeader->numInstanceDescriptors);
-	UUmAssert(inFileHeader->dataBlockOffset >=
-		sizeof(TMtInstanceFile_Header) +
-		inFileHeader->numInstanceDescriptors * sizeof(TMtInstanceDescriptor) +
-		inFileHeader->numNameDescriptors * sizeof(TMtNameDescriptor) +
-		inFileHeader->numTemplateDescriptors * sizeof(TMtTemplateDescriptor));
-	UUmAssert(inFileHeader->nameBlockOffset >=
-		sizeof(TMtInstanceFile_Header) +
-		inFileHeader->numInstanceDescriptors * sizeof(TMtInstanceDescriptor) +
-		inFileHeader->numNameDescriptors * sizeof(TMtNameDescriptor) +
-		inFileHeader->numTemplateDescriptors * sizeof(TMtTemplateDescriptor) +
-		inFileHeader->dataBlockLength);
+	/* Promoted from UUmAssert (compiled out in release) — a truncated or
+	   corrupt .dat used to SIGBUS on the descriptor walk with no message (#66).
+	   64-bit intermediates prevent the multiply/add from wrapping on hostile
+	   counts — that wrap is exactly what a corrupt header supplies. */
+	if (inFileHeader->numNameDescriptors > inFileHeader->numInstanceDescriptors) return TMcError_DataCorrupt;
+	{
+		UUtUns64 descriptorsEnd =
+			sizeof(TMtInstanceFile_Header) +
+			(UUtUns64)inFileHeader->numInstanceDescriptors * sizeof(TMtInstanceDescriptor) +
+			(UUtUns64)inFileHeader->numNameDescriptors * sizeof(TMtNameDescriptor) +
+			(UUtUns64)inFileHeader->numTemplateDescriptors * sizeof(TMtTemplateDescriptor);
 
-	UUmAssert(inFileHeader->dataBlockOffset + inFileHeader->dataBlockLength <= inFileHeader->nameBlockOffset);
+		if (inFileHeader->dataBlockOffset < descriptorsEnd) return TMcError_DataCorrupt;
+		if (inFileHeader->nameBlockOffset < descriptorsEnd + inFileHeader->dataBlockLength) return TMcError_DataCorrupt;
+	}
+	if ((UUtUns64)inFileHeader->dataBlockOffset + inFileHeader->dataBlockLength > inFileHeader->nameBlockOffset) return TMcError_DataCorrupt;
 
 	*outNeedsSwapping = needsSwapping;
 
