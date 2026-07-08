@@ -318,14 +318,21 @@ void UUrError_Report_Internal(
 	return;
 }
 
+/* Port-exposed (#68): these were UUtUns32, truncating every char* passed
+   through a %s format at the prototyped call — the error path then
+   dereferenced the truncated value. uintptr_t carries both ints and pointers.
+   Integer callers stay correct: on AArch64 the first variadic-consumed slots
+   are 8-byte registers, so a %d in the format reads the low 32 bits of the
+   widened value — identical to the old behaviour. %d keeps working, %s
+   starts working. */
 void UUrError_ReportP_Internal(
 	const char*		file,
 	unsigned long	line,
 	UUtError		error,
 	const char*		message,
-	UUtUns32		value1,
-	UUtUns32		value2,
-	UUtUns32		value3)
+	uintptr_t		value1,
+	uintptr_t		value2,
+	uintptr_t		value3)
 {
 	char buffer[MAX_STRING_LENGTH];
 

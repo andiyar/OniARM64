@@ -689,9 +689,9 @@ extern "C" {
 		unsigned long		inLine,
 		UUtError			inError,
 		const char			*inMessage,
-		UUtUns32			value0,
-		UUtUns32			value1,
-		UUtUns32			value2);
+		uintptr_t			value0,
+		uintptr_t			value1,
+		uintptr_t			value2);
 
 	void UUcArglist_Call UUrPrintWarning(
 		const char 			*format,
