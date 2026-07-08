@@ -141,7 +141,6 @@ void metal_texture_system_terminate(void)
 // unsupplied-proc assert, so they get a hand-rolled unpack instead.
 typedef enum MetalUploadKind
 {
-	MetalUpload_BGRA8_Native,    // ARGB8888 little-endian bytes are exactly BGRA8
 	MetalUpload_RGBA8_Native,    // RGBA_Bytes
 	MetalUpload_BC1_Native,      // DXT1 (Apple Silicon supports BC at the macOS 15 floor)
 	MetalUpload_Convert_RGBA,    // IMrImage_ConvertPixelType -> RGBA_Bytes
@@ -157,7 +156,9 @@ static MetalUploadKind metal_upload_kind(IMtPixelType inType)
 {
 	switch (inType)
 	{
-		case IMcPixelType_ARGB8888:   return MetalUpload_BGRA8_Native;
+		/* fmt-7 TXMP texel data is R,G,B,A BYTE order (issue #63, c8f1c02) —
+		   NOT a native LE ARGB word. Uploading as BGRA8 swaps R/B (#67). */
+		case IMcPixelType_ARGB8888:   return MetalUpload_RGBA8_Native;
 		case IMcPixelType_RGBA_Bytes: return MetalUpload_RGBA8_Native;
 		case IMcPixelType_DXT1:
 			return [gMetalDevice supportsBCTextureCompression]
@@ -234,7 +235,6 @@ static UUtBool metal_upload_level(
 {
 	switch (kind)
 	{
-		case MetalUpload_BGRA8_Native:
 		case MetalUpload_RGBA8_Native:
 			[tex replaceRegion:MTLRegionMake2D(0, 0, width, height) mipmapLevel:level
 				withBytes:src bytesPerRow:(NSUInteger)width * 4];
@@ -258,7 +258,17 @@ static UUtBool metal_upload_level(
 			UUtError error = IMrImage_ConvertPixelType(IMcDitherMode_Off,
 				(UUtUns16)width, (UUtUns16)height, IMcNoMipMap,
 				src_type, (void *)src, dst_type, gConvertBuffer);
-			if (error != UUcError_None) { return UUcFalse; }
+			if (error != UUcError_None) {
+				/* Mirror gl_utility.c's one-shot "NO pixel converter" warning (#63):
+				   a silent skip here presents as mystery-white under Metal (#67). */
+				static UUtUns32 warned_types = 0;
+				if ((UUtUns32)src_type < 32u && !(warned_types & (1u << (UUtUns32)src_type))) {
+					warned_types |= (1u << src_type);
+					UUrStartupMessage("[metal-tex] NO pixel converter for texel type %d ('%s') — texture will render WHITE",
+						src_type, debug_name);
+				}
+				return UUcFalse;
+			}
 
 			if (kind == MetalUpload_Convert_RGB) {
 				// Pad 3-byte RGB to RGBA8 in place, back to front (no overlap).
@@ -419,9 +429,8 @@ UUtBool metal_texture_map_create(M3tTextureMap *texture_map)
 	}
 
 	MTLPixelFormat fmt =
-		(kind == MetalUpload_BGRA8_Native) ? MTLPixelFormatBGRA8Unorm :
-		(kind == MetalUpload_BC1_Native)   ? MTLPixelFormatBC1_RGBA   :
-		                                     MTLPixelFormatRGBA8Unorm;
+		(kind == MetalUpload_BC1_Native) ? MTLPixelFormatBC1_RGBA
+		                                 : MTLPixelFormatRGBA8Unorm;
 
 	MTLTextureDescriptor *td = [MTLTextureDescriptor
 		texture2DDescriptorWithPixelFormat:fmt width:top_w height:top_h mipmapped:(levels > 1)];
