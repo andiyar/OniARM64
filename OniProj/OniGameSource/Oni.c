@@ -485,9 +485,11 @@ ONiRunGame(
 	{
 		static UUtUns32 rg_loop_iter = 0;
 		UUtBool rg_log = (rg_loop_iter == 1);
-		char twmsg[64];
-		snprintf(twmsg, sizeof(twmsg), "RG iter=%u top", (unsigned)rg_loop_iter);
-		TMrAKOT_TripwireCheck(twmsg);
+		if (UUrDiagVerbose()) {	// issue #70 — per-iteration snprintf + tripwire poll gated
+			char twmsg[64];
+			snprintf(twmsg, sizeof(twmsg), "RG iter=%u top", (unsigned)rg_loop_iter);
+			TMrAKOT_TripwireCheck(twmsg);
+		}
 		if (rg_log) UUrStartupMessage("[RG1] top of iter 1 numFrames=%u gameTime=%u", (unsigned)ONgNumFrames, (unsigned)(ONgGameState ? ONgGameState->gameTime : 0));
 
 		time_frame_start = UUrMachineTime_High();

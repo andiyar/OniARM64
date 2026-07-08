@@ -56,9 +56,11 @@ BDiBinaryData_ProcHandler(
 			instance_name += 4;
 
 			separate_data_file = TMrInstance_GetSeparateFile(inInstancePtr);
-			UUrStartupMessage("[BD] ProcHandler LoadPost name=%s sep=%p data_size=%u data_index=%u",
-				instance_name, (void*)separate_data_file,
-				(unsigned)binary_data->data_size, (unsigned)binary_data->data_index);
+			if (UUrDiagVerbose()) {	// issue #70 — per-instance spam
+				UUrStartupMessage("[BD] ProcHandler LoadPost name=%s sep=%p data_size=%u data_index=%u",
+					instance_name, (void*)separate_data_file,
+					(unsigned)binary_data->data_size, (unsigned)binary_data->data_index);
+			}
 			if ((separate_data_file != NULL) && (binary_data->data_size > 0)) {
 				// allocate new memory for the binary data
 				binary_storage = UUrMemory_Block_New(binary_data->data_size);
@@ -68,7 +70,7 @@ BDiBinaryData_ProcHandler(
 				error = BFrFile_ReadPos(separate_data_file, binary_data->data_index, binary_data->data_size, binary_storage);
 				UUmError_ReturnOnError(error);
 
-				{
+				if (UUrDiagVerbose()) {	// issue #70 — per-instance spam
 					BDtData* d = (BDtData*)binary_storage;
 					UUtUns32 ct = d->header.class_type;
 					UUrStartupMessage("[BD] ProcHandler -> BDrBinaryLoader name=%s class_type=%c%c%c%c",

@@ -40,8 +40,10 @@ void TMrAKOT_TripwireCheck(const char* where)
 	if (gAKOT_tripwire_ptr == NULL) return;
 	UUtUns64 now;
 	memcpy(&now, gAKOT_tripwire_ptr, 8);
-	/* Log every call for the first ~80 calls so we can see progression. */
-	if (tw_call_count < 80) {
+	/* Log every call for the first ~80 calls so we can see progression.
+	   Issue #70 — per-call OK lines gated; the CORRUPT branch below stays
+	   unconditional. */
+	if (UUrDiagVerbose() && tw_call_count < 80) {
 		UUrStartupMessage("[Tripwire] %s: val=0x%016llx %s",
 			where,
 			(unsigned long long)now,
@@ -2558,32 +2560,13 @@ TMiGame_InstanceFile_PrepareForMemory(
 		curDescIndex < inInstanceFile->numInstanceDescriptors;
 		curDescIndex++, curDesc++)
 	{
-		if (curDescIndex >= 9335) {
-			UUrStartupMessage("[PrepFM-raw] idx=%u templatePtr=%p flags=0x%x dataPtr=%p size=%u",
-				(unsigned)curDescIndex,
-				(void*)curDesc->templatePtr,
-				(unsigned)curDesc->flags,
-				(void*)curDesc->dataPtr,
-				(unsigned)curDesc->size);
-			if (curDesc->templatePtr != NULL) {
-				UUrStartupMessage("[PrepFM-raw] idx=%u tag=%c%c%c%c tflags=0x%x lyt=%p",
-					(unsigned)curDescIndex,
-					(curDesc->templatePtr->tag >> 24) & 0xFF,
-					(curDesc->templatePtr->tag >> 16) & 0xFF,
-					(curDesc->templatePtr->tag >> 8) & 0xFF,
-					(curDesc->templatePtr->tag >> 0) & 0xFF,
-					(unsigned)curDesc->templatePtr->flags,
-					(void*)curDesc->templatePtr->layoutDescriptor);
-			}
-		}
-		if (curDescIndex >= 9000 && (curDescIndex % 10) == 0) {
-			UUrStartupMessage("[PrepFM-loop] idx=%u/%u",
-				(unsigned)curDescIndex,
-				(unsigned)inInstanceFile->numInstanceDescriptors);
-		} else if ((curDescIndex % 1000) == 0) {
-			UUrStartupMessage("[PrepFM-loop] idx=%u/%u",
-				(unsigned)curDescIndex,
-				(unsigned)inInstanceFile->numInstanceDescriptors);
+		/* Issue #70 — the stale >=9335 / >=9000 hunt filters are gone; the
+		   original hunt's signal was a NULL templatePtr, so log exactly that,
+		   and only when ONI_DIAG_VERBOSE is set. */
+		if (UUrDiagVerbose() && curDesc->templatePtr == NULL) {
+			UUrStartupMessage("[PrepFM-raw] idx=%u templatePtr=NULL flags=0x%x dataPtr=%p size=%u",
+				(unsigned)curDescIndex, (unsigned)curDesc->flags,
+				(void*)curDesc->dataPtr, (unsigned)curDesc->size);
 		}
 
 		if(curDesc->templatePtr == NULL) continue;  /* unregistered template (see Tasks 12+13 guard) */
@@ -2599,7 +2582,7 @@ TMiGame_InstanceFile_PrepareForMemory(
 			TMtLayoutDescriptor* lyt =
 				(TMtLayoutDescriptor*)curDesc->templatePtr->layoutDescriptor;
 			UUtUns32 var_count = 0;
-			if (curDescIndex >= 9000) {
+			if (UUrDiagVerbose() && curDescIndex >= 9000) {	// issue #70 — hunt debris, gated
 				UUrStartupMessage("[PrepFM-tag] idx=%u tag=%c%c%c%c",
 					(unsigned)curDescIndex,
 					(curDesc->templatePtr->tag >> 24) & 0xFF,

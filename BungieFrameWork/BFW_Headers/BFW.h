@@ -555,6 +555,7 @@ extern "C" {
 	// UUrDebuggerMessage prints a messsage to the debugger
 	// UUrEnterDebugger prints a message to the debugger and halts
 	void UUcArglist_Call UUrStartupMessage(const char *format, ...);
+	UUtBool UUrDiagVerbose(void);	// issue #70 — ONI_DIAG_VERBOSE=1 gate for verbose diagnostic families
 	void UUcArglist_Call UUrDebuggerMessage(const char *format, ...);
 	void UUcArglist_Call UUrEnterDebugger(const char *format, ...);
 

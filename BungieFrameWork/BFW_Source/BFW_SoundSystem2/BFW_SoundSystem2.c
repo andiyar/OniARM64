@@ -892,17 +892,19 @@ SSiSoundData_ProcHandler(
 	switch (inMessage)
 	{
 		case TMcTemplateProcMessage_LoadPostProcess:
-			UUrStartupMessage("[SNDD] pre-resolve data=%p rawBase=%p",
-				sound_data->data, TMrInstance_GetRawOffset(sound_data));
-			UUrStartupMessage("[SNDD] sizeof=%zu off_flags=%zu off_f=%zu off_dur=%zu off_nbytes=%zu off_data=%zu",
-				sizeof(SStSoundData),
-				(size_t)((UUtUns8*)&sound_data->flags - (UUtUns8*)sound_data),
-				(size_t)((UUtUns8*)&sound_data->f - (UUtUns8*)sound_data),
-				(size_t)((UUtUns8*)&sound_data->duration_ticks - (UUtUns8*)sound_data),
-				(size_t)((UUtUns8*)&sound_data->num_bytes - (UUtUns8*)sound_data),
-				(size_t)((UUtUns8*)&sound_data->data - (UUtUns8*)sound_data));
-			UUrStartupMessage("[SNDD] LoadPost flags=0x%x dur=%u num_bytes=%u rawData=%p",
-				sound_data->flags, sound_data->duration_ticks, sound_data->num_bytes, sound_data->data);
+			if (UUrDiagVerbose()) {	// issue #70 — per-SNDD spam, ~2 flushed writes per instance
+				UUrStartupMessage("[SNDD] pre-resolve data=%p rawBase=%p",
+					sound_data->data, TMrInstance_GetRawOffset(sound_data));
+				UUrStartupMessage("[SNDD] sizeof=%zu off_flags=%zu off_f=%zu off_dur=%zu off_nbytes=%zu off_data=%zu",
+					sizeof(SStSoundData),
+					(size_t)((UUtUns8*)&sound_data->flags - (UUtUns8*)sound_data),
+					(size_t)((UUtUns8*)&sound_data->f - (UUtUns8*)sound_data),
+					(size_t)((UUtUns8*)&sound_data->duration_ticks - (UUtUns8*)sound_data),
+					(size_t)((UUtUns8*)&sound_data->num_bytes - (UUtUns8*)sound_data),
+					(size_t)((UUtUns8*)&sound_data->data - (UUtUns8*)sound_data));
+				UUrStartupMessage("[SNDD] LoadPost flags=0x%x dur=%u num_bytes=%u rawData=%p",
+					sound_data->flags, sound_data->duration_ticks, sound_data->num_bytes, sound_data->data);
+			}
 			if (TMrInstance_GetRawOffset(sound_data) == NULL) {
 				/* No raw base: leave data NULL so playback guards fire instead of
 				   dereferencing the on-disk offset as a pointer (#28). */

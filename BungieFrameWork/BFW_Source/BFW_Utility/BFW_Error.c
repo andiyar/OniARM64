@@ -55,12 +55,41 @@ FILE *iDebugFile = NULL;
 
 /*---------- code */
 
+// Issue #70 — verbose per-frame / per-instance diagnostic families default OFF
+// for release users. ONI_DIAG_VERBOSE=1 re-enables them; the [tag]s stay in
+// the code so they remain greppable across sessions (feedback_keep_diagnostics).
+UUtBool UUrDiagVerbose(void)
+{
+	static int cached = -1;
+	if (cached < 0) {
+		const char *v = getenv("ONI_DIAG_VERBOSE");
+		cached = (v != NULL && v[0] != '\0' && v[0] != '0') ? 1 : 0;
+	}
+	return (UUtBool)cached;
+}
+
+// Issue #70 — append-mode logs grew unbounded (91 MB observed). At ~10 MB the
+// existing log is renamed to <name>.old (replacing the previous .old) so a
+// session always starts with headroom and history survives one generation.
+#define ONI_LOG_ROTATE_BYTES (10u * 1024u * 1024u)
+static void iRotateLogIfHuge(const char *path)
+{
+	struct stat st;
+	if (stat(path, &st) == 0 && st.st_size > (off_t)ONI_LOG_ROTATE_BYTES) {
+		char oldPath[1024];
+		if (snprintf(oldPath, sizeof(oldPath), "%s.old", path) < (int)sizeof(oldPath)) {
+			rename(path, oldPath);
+		}
+	}
+}
+
 // Open a log file with cwd-first, ~/Library/Logs/OniARM64/ fallback on macOS.
 // Preserves the bare-binary workflow (OniNative/Oni writes to OniNative/startup.txt
 // unchanged) while making the .app workflow (cwd = /) write to a known location.
 // On non-Apple platforms, behaves identically to fopen(filename, mode).
 static FILE *iOpenLogFile(const char *filename, const char *mode)
 {
+	iRotateLogIfHuge(filename);
 	FILE *fp = fopen(filename, mode);
 	if (fp != NULL) {
 		return fp;
@@ -83,6 +112,7 @@ static FILE *iOpenLogFile(const char *filename, const char *mode)
 	if (snprintf(path, sizeof(path), "%s/%s", dir, filename) >= (int)sizeof(path)) {
 		return NULL;
 	}
+	iRotateLogIfHuge(path);
 	fp = fopen(path, mode);
 #endif
 	return fp;
