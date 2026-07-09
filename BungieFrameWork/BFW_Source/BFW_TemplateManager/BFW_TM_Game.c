@@ -1964,7 +1964,9 @@ TMiGame_InstanceFile_New_FromFileRef(
 				   afterwards. */
 				memset(dst_preamble, 0, per_inst_dst);
 
-				if (tag == UUm4CharToUns32('S','N','D','D') && idx < 4860) {
+				/* Issue #70 follow-up — [TM-SNDD] was the fifth ungated family
+				   (383 lines observed in the first post-gating session log). */
+				if (UUrDiagVerbose() && tag == UUm4CharToUns32('S','N','D','D') && idx < 4860) {
 					const UUtUns8 *s = src_data - TMcPreDataSize;
 					UUrStartupMessage("[TM-SNDD] idx=%u disk_off=%u src_bytes: %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
 						idx, disk_off,
