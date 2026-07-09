@@ -229,7 +229,7 @@ BFrFileRef_DuplicateAndAppendName(
 	sprintf(newName, "%s%c%s", leafName, BFcPathSeparator, inAppendName);
 
 	error = BFrFileRef_SetName(newFileRef, newName);
-	UUmError_ReturnOnErrorMsgP(error, "Could not set name %s", (UUtUns32)newName, 0, 0);
+	UUmError_ReturnOnErrorMsgP(error, "Could not set name %s", (uintptr_t)newName, 0, 0);
 
 	*outNewFileRef = newFileRef;
 

@@ -607,7 +607,7 @@ SLrScript_TextToToken(
 		UUmAssert(numTokens < SLcMaxTokens);
 
 		if (numTokens >= SLcMaxTokens) {
-			UUmError_ReturnOnErrorMsgP(UUcError_Generic, "script file %s had more then %d tokens", (UUtUns32) inFileName, SLcMaxTokens, 0);
+			UUmError_ReturnOnErrorMsgP(UUcError_Generic, "script file %s had more then %d tokens", (uintptr_t) inFileName, SLcMaxTokens, 0);
 		}
 
 		SLiToken_Make(inMemoryString, &cp, &allocation_failed, ct);
@@ -615,7 +615,7 @@ SLrScript_TextToToken(
 		if (allocation_failed) {
 			string_size = UUrMemory_String_GetSize(inMemoryString);
 			UUmError_ReturnOnErrorMsgP(UUcError_Generic, "cannot parse text from file %s, exhausted script parsing memory (%d bytes)",
-										(UUtUns32) inFileName, string_size, 0);
+										(uintptr_t) inFileName, string_size, 0);
 		}
 
 		if(ct->token == SLcToken_EOF) break;

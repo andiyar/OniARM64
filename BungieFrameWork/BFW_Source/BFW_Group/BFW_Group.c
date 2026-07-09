@@ -676,7 +676,7 @@ GRrGroup_Context_NewFromFileRef(
 	error = BFrTextFile_OpenForRead(inFileRef, &textFile);
 
 	if (UUcError_None != error) {
-		UUrError_ReportP(error, "failed to open group file %s", (UUtUns32) BFrFileRef_GetLeafName(inFileRef),0,0);
+		UUrError_ReportP(error, "failed to open group file %s", (uintptr_t) BFrFileRef_GetLeafName(inFileRef),0,0);
 	}
 
 	if (NULL != outGroup)
