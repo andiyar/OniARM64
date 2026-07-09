@@ -271,10 +271,12 @@ static void metal_submit_polygon(const UUtUns32 *in_indices, UUtUns32 inN, const
 		// M3 verification diagnostic (issue #43): env-map geometry is subtle and
 		// sparse in Oni's data, so confirm it's actually being drawn (and how
 		// much) to locate reflective surfaces empirically instead of guessing.
-		// Logged on the first env-map draw of the session + every 600th after.
+		// Logged on the first env-map draw of the session (one-shot); the
+		// every-600th sampling is ONI_DIAG_VERBOSE-gated — env draws are so
+		// frequent it still produced 42k lines in one played level (#70 class).
 		static UUtUns32 sEnvDraws = 0, sEnvTris = 0;
 		sEnvDraws++; sEnvTris += tri_count;
-		if (sEnvDraws == 1 || (sEnvDraws % 600) == 0) {
+		if (sEnvDraws == 1 || (UUrDiagVerbose() && (sEnvDraws % 600) == 0)) {
 			UUrStartupMessage("[Metal] env-map draw #%u (%u tris this call, %u tris cumulative)",
 				sEnvDraws, tri_count, sEnvTris);
 		}
