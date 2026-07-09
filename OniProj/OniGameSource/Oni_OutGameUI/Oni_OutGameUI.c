@@ -133,7 +133,7 @@ ONiOutGameUI_ChangeRestart_Display(
 {
 	PStPartSpecUI			*partspec_ui;
 	PStPartSpecUI			*temp_ui;
-	UUtUns32				message;
+	uintptr_t				message;	/* #69 — ModalBegin writes a uintptr_t */
 
 	// save the current ui
 	partspec_ui = PSrPartSpecUI_GetActive();
@@ -195,7 +195,7 @@ ONrOutGameUI_QuitYesNo_Display(
 {
 	PStPartSpecUI			*partspec_ui;
 	PStPartSpecUI			*temp_ui;
-	UUtUns32				message;
+	uintptr_t				message;	/* #69 — ModalBegin writes a uintptr_t */
 
 	// save the current ui
 	partspec_ui = PSrPartSpecUI_GetActive();
@@ -654,7 +654,7 @@ ONrOutGameUI_Options_Display(
 {
 	PStPartSpecUI			*partspec_ui;
 	PStPartSpecUI			*temp_ui;
-	UUtUns32				message;
+	uintptr_t				message;	/* #69 — ModalBegin writes a uintptr_t */
 	WMtDialogID				dialog_id;
 
 	// save the current ui
@@ -775,7 +775,7 @@ ONrOutGameUI_LoadGame_Display(
 {
 	PStPartSpecUI			*partspec_ui;
 	PStPartSpecUI			*temp_ui;
-	UUtUns32				message;
+	uintptr_t				message;	/* #69 — ModalBegin writes a uintptr_t */
 
 	// save the current ui
 	partspec_ui = PSrPartSpecUI_GetActive();
@@ -837,7 +837,7 @@ ONrOutGameUI_NewGame_Display(
 {
 	PStPartSpecUI			*partspec_ui;
 	PStPartSpecUI			*temp_ui;
-	UUtUns32				message;
+	uintptr_t				message;	/* #69 — ModalBegin writes a uintptr_t */
 
 	// save the current ui
 	partspec_ui = PSrPartSpecUI_GetActive();

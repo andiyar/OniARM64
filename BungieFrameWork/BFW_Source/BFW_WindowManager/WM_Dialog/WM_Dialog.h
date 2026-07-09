@@ -153,18 +153,21 @@ WMrDialog_MessageBox(
 	char					*inMessage,
 	WMtMessageBoxStyle		inStyle);
 
+/* #69 — the modal result channel carries pointers on some dialogs
+   (WMrDialog_GetString round-trips a char*), so it is uintptr_t wide.
+   Every caller's out-local must be uintptr_t, not UUtUns32. */
 UUtError
 WMrDialog_ModalBegin(
 	WMtDialogID				inDialogID,
 	WMtWindow				*inParent,
 	WMtDialogCallback		inDialogCallback,
 	uintptr_t				inUserData,
-	UUtUns32				*outMessage);
+	uintptr_t				*outMessage);
 
 void
 WMrDialog_ModalEnd(
 	WMtDialog				*inDialog,
-	UUtUns32				inOutMessage);
+	uintptr_t				inOutMessage);
 
 void
 WMrDialog_RadioButtonCheck(

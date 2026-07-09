@@ -1701,7 +1701,7 @@ WMiListBox_SetDirectoryInfo(
 			if (error != UUcError_None) { break; }
 
 			// add the name of the file to the listbox
-			result = WMiListBox_AddString(inListBox, (UUtUns32)BFrFileRef_GetLeafName(&file_ref));
+			result = WMiListBox_AddString(inListBox, (uintptr_t)BFrFileRef_GetLeafName(&file_ref));	/* #69 — pointer, not a 32-bit int */
 			if (result == LBcError) { break; }
 
 			// add the file type
@@ -1740,7 +1740,7 @@ WMiListBox_SetDirectoryInfo(
 			}
 
 			// add the name of the directory to the listbox
-			result = WMiListBox_AddString(inListBox, (UUtUns32)BFrFileRef_GetLeafName(&dir_ref));
+			result = WMiListBox_AddString(inListBox, (uintptr_t)BFrFileRef_GetLeafName(&dir_ref));	/* #69 — pointer, not a 32-bit int */
 			if (result == LBcError) { break; }
 
 			// add the directory type

@@ -45,7 +45,7 @@ typedef struct WMtDialog_PrivateData
 	WMtDialogCallback	dialog_callback;
 
 	UUtBool				quit_dialog;
-	UUtUns32			out_message;
+	uintptr_t			out_message;	/* #69 — carries pointers for GetString-style dialogs */
 
 	UUtUns32			default_item_id;
 
@@ -897,7 +897,7 @@ WMrDialog_MessageBox(
 	WMtMessageBoxStyle		inStyle)
 {
 	UUtError				error;
-	UUtUns32				message;
+	uintptr_t				message;
 
 	// set the initialization parameters
 	WMgMessageBox_Init.title = inTitle;
@@ -926,7 +926,7 @@ char *WMrDialog_GetString(
 	WMtGetString_Hook		inHook)
 {
 	UUtError error;
-	UUtUns32 message;
+	uintptr_t message;
 	char *result;
 
 	WMtGetString_Private init;
@@ -958,7 +958,7 @@ WMrDialog_ModalBegin(
 	WMtWindow				*inParent,
 	WMtDialogCallback		inDialogCallback,
 	uintptr_t				inUserData,
-	UUtUns32				*outMessage)
+	uintptr_t				*outMessage)
 {
 	UUtError				error;
 	WMtDialog				*dialog;
@@ -1030,7 +1030,7 @@ WMrDialog_ModalBegin(
 void
 WMrDialog_ModalEnd(
 	WMtDialog				*inDialog,
-	UUtUns32				inOutMessage)
+	uintptr_t				inOutMessage)
 {
 	WMtDialog_PrivateData	*private_data;
 

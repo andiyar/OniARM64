@@ -4523,11 +4523,13 @@ OWiChooseObject_Callback(
 	}
 
 	if (finish_dialog || cancel_dialog) {
-		UUtUns32 result_object = (uintptr_t) internals->selected_object;
+		/* #69 — carries an OBJtObject* through the modal channel; must stay
+		   pointer-width end-to-end (was UUtUns32, truncating the pointer). */
+		uintptr_t result_object = (uintptr_t) internals->selected_object;
 
 		if (!cancel_dialog) {
 			if ((internals->allow_none) || (selected_object != NULL)) {
-				result_object = (UUtUns32) selected_object;
+				result_object = (uintptr_t) selected_object;
 			}
 		}
 
@@ -4547,7 +4549,7 @@ OBJtObject *OWrSelectObject(OBJtObjectType inObjectType, OBJtObject *inObject, U
 	select_object_internals.allow_none = inAllowNone;
 	select_object_internals.allow_goto = inAllowGoto;
 
-	WMrDialog_ModalBegin(OWcDialog_AI_ChooseCombat, NULL, OWiChooseObject_Callback, (uintptr_t) &select_object_internals, (UUtUns32 *) &out_selected_object);
+	WMrDialog_ModalBegin(OWcDialog_AI_ChooseCombat, NULL, OWiChooseObject_Callback, (uintptr_t) &select_object_internals, (uintptr_t *) &out_selected_object);
 
 	return out_selected_object;
 }

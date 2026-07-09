@@ -286,7 +286,7 @@ WMrCheckBox_Initialize(
 	UUrMemory_Clear(&window_class, sizeof(WMtWindowClass));
 	window_class.type = WMcWindowType_CheckBox;
 	window_class.callback = WMiCheckBox_Callback;
-	window_class.private_data_size = sizeof(UUtUns32);
+	window_class.private_data_size = sizeof(uintptr_t);	/* #69 — slot stores a pointer on 64-bit */
 
 	error = WMrWindowClass_Register(&window_class);
 	UUmError_ReturnOnError(error);

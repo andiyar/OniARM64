@@ -2147,7 +2147,7 @@ OWrInitialize(
 	UUrMemory_Clear(&window_class, sizeof(WMtWindowClass));
 	window_class.type = OWcWindowType_Oni;
 	window_class.callback = OWiOniWindow_Callback;
-	window_class.private_data_size = 4;
+	window_class.private_data_size = sizeof(uintptr_t);	/* #69 — was a literal 4; slot stores a pointer on 64-bit */
 
 	error = WMrWindowClass_Register(&window_class);
 	UUmError_ReturnOnError(error);

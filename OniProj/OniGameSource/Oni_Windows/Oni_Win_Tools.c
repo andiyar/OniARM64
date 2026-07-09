@@ -6090,7 +6090,7 @@ UUtError OWrStringListDialog_DoModal( OWtStringListDlgInstance* inInstance )
 	if( inInstance->dialog )
 		return UUcError_Generic;
 
-	error = WMrDialog_ModalBegin( OWcDialog_StringList, NULL, OWiStringListDialog_Callback, (uintptr_t) inInstance, (UUtUns32*) &inInstance->return_value );
+	error = WMrDialog_ModalBegin( OWcDialog_StringList, NULL, OWiStringListDialog_Callback, (uintptr_t) inInstance, &inInstance->return_value );
 
 	UUmAssert( error == UUcError_None );
 

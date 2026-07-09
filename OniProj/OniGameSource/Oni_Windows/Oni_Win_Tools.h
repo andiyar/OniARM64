@@ -450,7 +450,7 @@ typedef struct OWtStringListDlgInstance
 {
 	char					title[OWcStringListDlg_MaxStringLength];
 	char					list_title[OWcStringListDlg_MaxStringLength];
-	UUtUns32				return_value;
+	uintptr_t				return_value;	/* #69 — filled by WMrDialog_ModalBegin (uintptr_t channel) */
 	UUtInt32				selected_index;
 	WMtDialog				*dialog;
 	UUtMemory_Array*		string_array;
