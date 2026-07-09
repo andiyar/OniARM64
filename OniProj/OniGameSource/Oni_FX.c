@@ -31,12 +31,22 @@ UUtError FXrEffects_LevelBegin(void)
 	if(FXgLaser_UseAlpha)
 	{
 		TMrInstance_GetDataPtr( M3cTemplate_TextureMap, "contrail4444", (void **) &FXgLaser_Texture );
-		FXgLaser_Texture->flags			&= ~M3cTextureFlags_Blend_Additive;
+		if (FXgLaser_Texture != NULL) {
+			FXgLaser_Texture->flags		&= ~M3cTextureFlags_Blend_Additive;
+		}
 	}
 	else
 	{
 		TMrInstance_GetDataPtr( M3cTemplate_TextureMap, "laser_contrail", (void **) &FXgLaser_Texture );
-		FXgLaser_Texture->flags			|= M3cTextureFlags_Blend_Additive;
+		if (FXgLaser_Texture != NULL) {
+			FXgLaser_Texture->flags		|= M3cTextureFlags_Blend_Additive;
+		}
+	}
+
+	if (FXgLaser_Texture == NULL) {
+		/* Missing contrail texture (modded/partial data): draw path tolerates a
+		   NULL texture; crashing at every level begin does not (#71). */
+		UUrStartupMessage("[fx] laser contrail texture missing — lasers draw untextured");
 	}
 
 	/* One-shot per level begin — confirms whether the contrail texture loaded.

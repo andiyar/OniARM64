@@ -164,10 +164,19 @@ PSrPartSpec_Draw(
 	UUtInt16				m_height;
 	UUtInt16				b_height;
 
+	if (inPartSpec == NULL) {
+		/* Callers cache TMrInstance_GetDataPtr results without checking
+		   (e.g. the cinematic border, Oni_Cinematics.c) — degrade to a
+		   missing border, not a NULL private-data deref (#71). */
+		return;
+	}
 
 	// get the private data
 	private_data = (PStPartSpec_PrivateData*)TMrTemplate_PrivateData_GetDataPtr(PSgTemplate_PartSpec_PrivateData, inPartSpec);
 	UUmAssert(private_data);
+	if (private_data == NULL) {
+		return;
+	}
 
 	texture = (M3tTextureMap*)inPartSpec->texture;
 
