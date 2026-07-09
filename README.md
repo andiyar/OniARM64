@@ -129,12 +129,12 @@ Levels 1–5 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 ### Build from source
 
 ```sh
-cd build && cmake .. -DPlatform_SDL=ON && make -j8 oni_app
+mkdir -p build && cd build && cmake .. -DPlatform_SDL=ON && make -j8 oni_app
 ln -sfn /path/to/your/Oni/GameDataFolder ~/Library/Application\ Support/OniARM64/GameDataFolder
 open build/bin/OniARM64.app
 ```
 
-No Oni game data or assets are included in the source or the app bundle. BYO game to play :). 
+No Oni game data is included in the source or the app bundle — BYO game to play :). (The bundle does carry Feral's intro/outro QuickTime cinematics, which are freely distributed with the Anniversary Edition tooling.)
 
 ---
 

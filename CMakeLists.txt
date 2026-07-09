@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.16.0)
 
+# Pin minos so the binary's minimum macOS doesn't ride the build host's SDK
+# (README + Info.plist claim 15.0; an unpinned build on a newer host silently
+# raises it — #72). Must be set before project() to take effect.
+if(APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum macOS version")
+endif()
+
 project(OniAll LANGUAGES C)
 
 include(CMakeDependentOption)
@@ -174,6 +181,16 @@ if(ONI_GIT_EXECUTABLE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
         "${CMAKE_CURRENT_SOURCE_DIR}/.git/index")
 endif()
 message(STATUS "OniARM64 build stamp: ${ONI_BUILD_STAMP}")
+
+# #72 — the release version (from Info.plist) joins the build stamp in the
+# session-start log banner so a user log names the release it came from.
+execute_process(
+    COMMAND /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" ${CMAKE_SOURCE_DIR}/macos/Info.plist
+    OUTPUT_VARIABLE ONI_PLIST_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(NOT ONI_PLIST_VERSION)
+    set(ONI_PLIST_VERSION "unknown")
+endif()
+message(STATUS "OniARM64 version: ${ONI_PLIST_VERSION}")
 
 if (ONI_BINK_VIDEO)
     add_subdirectory(OniProj/OniCMakeProjs/BinkProj/)

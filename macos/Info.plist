@@ -26,6 +26,8 @@
     <string>Oni </string>
     <key>LSMinimumSystemVersion</key>
     <string>15.0</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.games</string>
     <key>LSArchitecturePriority</key>
     <array>
         <string>arm64</string>

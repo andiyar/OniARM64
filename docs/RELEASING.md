@@ -126,11 +126,14 @@ gh release create v<VERSION> \
     --repo andiyar/OniARM64 \
     --title "Oni <VERSION> — <SHORT-TAGLINE>" \
     --notes-file /tmp/oni-release-notes.md \
-    --prerelease \
     build/OniARM64.dmg
 ```
 
-For non-alpha builds, drop `--prerelease`.
+> **Policy (2026-07-09):** releases are published **without** `--prerelease` from
+> v1.3.0r5 onward. The in-app update notifier offers every non-draft release to
+> every user, so a prerelease-flagged build would nag stable users. Only use
+> `--prerelease` for a build you do NOT want offered — and expect the notifier
+> to offer it anyway (it does not filter on the flag; see ONi_UpdateCheck.h).
 
 ## Bumping the version
 

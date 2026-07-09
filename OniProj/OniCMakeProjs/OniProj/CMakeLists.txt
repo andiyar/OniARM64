@@ -690,6 +690,8 @@ target_compile_definitions(Oni
 		# Build identity for the session-start log banner (#46); captured at
 		# configure time in the top-level CMakeLists (mirrors ONI_BUILD_EPOCH).
 		ONI_BUILD_STAMP="${ONI_BUILD_STAMP}"
+		# Release version from macos/Info.plist for the same banner (#72).
+		ONI_VERSION="${ONI_PLIST_VERSION}"
 )
 
 # check if linking math library is required

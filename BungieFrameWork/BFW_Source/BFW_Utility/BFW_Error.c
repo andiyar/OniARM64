@@ -126,13 +126,18 @@ static FILE *iOpenLogFile(const char *filename, const char *mode)
 #ifndef ONI_BUILD_STAMP
 #define ONI_BUILD_STAMP "unknown@unknown"
 #endif
+// Issue #72 — the release version (from macos/Info.plist at configure time)
+// joins the banner so a user-supplied log names the release it came from.
+#ifndef ONI_VERSION
+#define ONI_VERSION "unknown"
+#endif
 static void iWriteSessionBanner(FILE *stream)
 {
 	if (stream == NULL) return;
 	time_t now = time(NULL);
 	struct tm *lt = localtime(&now);
 	if (lt == NULL) return;
-	fprintf(stream, "\n===== session start %04d-%02d-%02d %02d:%02d:%02d [%s] =====\n",
+	fprintf(stream, "\n===== session start %04d-%02d-%02d %02d:%02d:%02d v" ONI_VERSION " [%s] =====\n",
 		lt->tm_year + 1900, lt->tm_mon + 1, lt->tm_mday,
 		lt->tm_hour, lt->tm_min, lt->tm_sec, ONI_BUILD_STAMP);
 	fflush(stream);
