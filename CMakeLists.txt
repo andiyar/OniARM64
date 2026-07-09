@@ -26,8 +26,8 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
 	# make UUtUns32*-into-uintptr_t* mismatches (silent stack corruption on 64-bit)
 	# a hard error. The tree was verified CLEAN of that class with the fence +
 	# -ferror-limit=0, but ~139 pre-existing benign T**<->void** mismatches (same
-	# diagnostic, no width change) block enabling it permanently. Tracked as a
-	# follow-up: cast those sites, then land
+	# diagnostic, no width change) block enabling it permanently. Tracked as
+	# issue #76: cast those sites, then land
 	#   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Werror=incompatible-pointer-types>)
 endif()
 
