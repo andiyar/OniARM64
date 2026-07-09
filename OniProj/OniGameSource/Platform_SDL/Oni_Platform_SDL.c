@@ -114,6 +114,16 @@ UUtError ONrPlatform_Initialize(
 {
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER);
 
+	// SDL2 enables text-input mode at video init, and while it's active the
+	// macOS backend routes every keyDown through the Cocoa text system
+	// (interpretKeyEvents:) — holding a movement key pops the press-and-hold
+	// accent picker over gameplay, which then swallows the 1-9 row (#77).
+	// Nothing here consumes SDL_TEXTINPUT events (all text UI is raw-keycode
+	// SDL_KEYDOWN), so text-input mode buys nothing: stop it for the session.
+	// SDL only re-arms it on focus gain if this event state is re-enabled,
+	// so a single stop holds.
+	SDL_StopTextInput();
+
 	ONiInstallCrashHandlers();
 
 	ONiPlatform_CreateWindow(outPlatformData);

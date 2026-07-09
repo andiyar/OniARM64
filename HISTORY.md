@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-07-09 — Session 60: macOS accent picker over gameplay (addresses #77)
+
+- **fix(input) — stop SDL text-input mode at init** (addresses #77): SDL2 enables text-input mode at video init and the game never turned it off, so the macOS backend fed every keyDown through the Cocoa text system (`interpretKeyEvents:`) for the whole session — holding a movement key popped the press-and-hold accent picker over gameplay, and its 1–9 selection row swallowed weapon/slot keys while up. SDL's own in-process `ApplePressAndHoldEnabled: NO` registered default demonstrably doesn't hold on macOS 15 (observed with no user override in any defaults domain). The engine consumes zero `SDL_TEXTINPUT` events (all text UI, edit fields and console included, is raw-keycode `SDL_KEYDOWN`), so `SDL_StopTextInput()` once after `SDL_Init` removes the popup path entirely with no input-behaviour change; SDL only re-arms text input on focus-gain if that event state is re-enabled, so the single stop holds for the session. Verified against the shipped SDL 2.32.10 source.
+
 ### 2026-07-09 — Session 59: release correctness wave (issues #66–#72 + #28)
 
 - **fix(logging) — `[TM-SNDD]` gated too** (addresses #70): the first post-gating session log (user GL run, TCTF HQ) confirmed rotation (95 MB → `.old`) and all four families silent — but exposed a fifth ungated family, the `[TM-SNDD]` bridge-translate byte dumps (383 lines/session). Same `UUrDiagVerbose()` gate applied. Same run behaviourally confirmed the #72 banner (`v1.3.0r4 [main@a1c1ae2]`).
