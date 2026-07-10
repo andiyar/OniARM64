@@ -106,6 +106,12 @@ void AI2rTargeting_Initialize(AI2tTargetingOwner inOwner, AI2tTargetingState *io
 
 	ioTargetingState->current_aim_state = AI2cCombatAiming_ByMovementMode;
 	ioTargetingState->predictionbuf = NULL;
+	/* Port-exposed (#79): never initialized upstream. The state lives in the
+	   AI state-buffer union, so 'target' inherits stale bytes — the patrol
+	   shoot-at-flag path sets only target_pt and relies on the target==NULL
+	   branch in AI2rTargeting_Update; non-NULL garbage here routed it into
+	   character prediction, dereferencing trash (SIGSEGV on 64-bit layout). */
+	ioTargetingState->target = NULL;
 	ioTargetingState->valid_target_pt = UUcFalse;
 	ioTargetingState->aiming_distance = 0.0f;
 	ioTargetingState->target_distance = 0.0f;
