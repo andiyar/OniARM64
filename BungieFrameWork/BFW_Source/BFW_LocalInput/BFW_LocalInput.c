@@ -76,6 +76,24 @@ static LItCheatHook				LIgCheatHook = NULL;
 // this is safer than having a variable that has to be initialize to True.
 static volatile UUtBool			LIgActionBufferUnavail;
 
+// Issue #78 — ONI_INPUT_TRACE=1 (same gate as the platform-side trace).
+// A stuck-input repro needs to see WHO flips LI mode and WHEN action
+// production stops: mode != Game gates both the producer
+// (mac_get_input_in_game) and the consumer (LIrActionBuffer_Get), and
+// ONiGameState_ScanButtons replays the last buttonIsDown snapshot on
+// NULL actions — a permanent production stop freezes gameplay input at
+// whatever was held.
+#include <stdlib.h>
+static UUtBool LIiTraceEnabled(void)
+{
+	static int cached = -1;
+	if (cached < 0) {
+		const char *v = getenv("ONI_INPUT_TRACE");
+		cached = (v != NULL && v[0] != '\0' && v[0] != '0') ? 1 : 0;
+	}
+	return (UUtBool)cached;
+}
+
 
 #if UUmPlatform == UUmPlatform_Win32
 HANDLE gInputMutex= NULL;
@@ -783,6 +801,10 @@ static void LIrMode_Set_Internal(void)
 
 void LIrMode_Set(LItMode inMode)
 {
+	if (LIiTraceEnabled() && LIgMode_External != inMode) {
+		UUrStartupMessage("[input-trace] LIrMode_Set %d -> %d (caller %p)",
+			(int)LIgMode_External, (int)inMode, __builtin_return_address(0));
+	}
 	LIgMode_External = inMode;
 
 	LIrMode_Set_Internal();
@@ -792,6 +814,10 @@ void LIrMode_Set(LItMode inMode)
 
 void LIrGameIsActive(UUtBool inGameIsActive)
 {
+	if (LIiTraceEnabled() && LIgGameIsActive != inGameIsActive) {
+		UUrStartupMessage("[input-trace] LIrGameIsActive %d -> %d (caller %p)",
+			(int)LIgGameIsActive, (int)inGameIsActive, __builtin_return_address(0));
+	}
 	LIgGameIsActive = inGameIsActive;
 
 	LIrMode_Set_Internal();
@@ -858,6 +884,24 @@ LIiInterruptHandleProc(
 static void mac_get_input_in_game(
 	void)
 {
+	// #78 trace: production stop/resume edges + a liveness heartbeat. If the
+	// gate below holds false permanently, gameplay input freezes at the last
+	// consumed snapshot (ONiGameState_ScanButtons NULL-action replay).
+	if (LIiTraceEnabled()) {
+		static UUtBool sWasProducing = UUcTrue;
+		static UUtUns32 sPolls = 0;
+		UUtBool producing = (LIgMode_Internal == LIcMode_Game) && (!LIgActionBufferUnavail);
+		if (producing != sWasProducing) {
+			UUrStartupMessage("[input-trace] production %s (mode=%d unavail=%d)",
+				producing ? "RESUMED" : "STOPPED",
+				(int)LIgMode_Internal, (int)LIgActionBufferUnavail);
+			sWasProducing = producing;
+		}
+		if (producing && (++sPolls % 600) == 0) {
+			UUrStartupMessage("[input-trace] production alive, poll #%u", sPolls);
+		}
+	}
+
 	if ((LIgMode_Internal == LIcMode_Game) && (!LIgActionBufferUnavail))
 	{
 		// take control of the action buffers
