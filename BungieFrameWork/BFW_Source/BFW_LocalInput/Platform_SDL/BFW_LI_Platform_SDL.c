@@ -19,10 +19,28 @@
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_mouse.h>
 
+#include <stdlib.h>
+#include <string.h>
+
 // ======================================================================
 // globals
 // ======================================================================
 static UUtWindow			LIgWindow;
+
+// Issue #78 — ONI_INPUT_TRACE=1 traces raw SDL key events and per-poll
+// oni-key edges, to discriminate a lost keyUp (OS/SDL level: the raw UP
+// event never arrives, polled state stays down) from an engine-side
+// movement latch (input goes clean, character keeps moving) when a
+// strafe sticks during creep. Default off; capture-run diagnostic.
+static UUtBool LIiInputTraceEnabled(void)
+{
+	static int cached = -1;
+	if (cached < 0) {
+		const char *v = getenv("ONI_INPUT_TRACE");
+		cached = (v != NULL && v[0] != '\0' && v[0] != '0') ? 1 : 0;
+	}
+	return (UUtBool)cached;
+}
 
 // the other platforms specify a factor to multiply the relative mouse movement value by
 // probably to scale movement to a common range
@@ -263,6 +281,10 @@ LIiPlatform_Keyboard_GetData(
 {
 	int i;
 	int numkeys = 0;
+	UUtBool trace = LIiInputTraceEnabled();
+	static UUtUns8 sPrevDown[32];
+	UUtUns8 nowDown[32] = {0};
+
 	const Uint8 *keyState = SDL_GetKeyboardState(&numkeys);
 	for (i = 0; i < numkeys; ++i)
 	{
@@ -275,9 +297,27 @@ LIiPlatform_Keyboard_GetData(
 
 			if (deviceInput.input != LIcKeyCode_None)
 			{
+				if (trace && deviceInput.input < 256) {
+					nowDown[deviceInput.input >> 3] |= (UUtUns8)(1u << (deviceInput.input & 7));
+				}
 				LIrActionBuffer_Add(outAction, &deviceInput);
 			}
 		}
+	}
+
+	// #78 trace: log only edges of the translated key set, so the log stays
+	// quiet while keys are stable — a stuck key shows as a missing "-" line.
+	if (trace) {
+		int k;
+		for (k = 0; k < 256; ++k) {
+			int was = (sPrevDown[k >> 3] >> (k & 7)) & 1;
+			int now = (nowDown[k >> 3] >> (k & 7)) & 1;
+			if (was != now) {
+				UUrStartupMessage("[input-trace] poll %s oni-key 0x%02x ('%c')",
+					now ? "+" : "-", k, (k >= 0x20 && k < 0x7f) ? (char)k : '?');
+			}
+		}
+		memcpy(sPrevDown, nowDown, sizeof(sPrevDown));
 	}
 }
 
@@ -528,6 +568,16 @@ LIrPlatform_Update(
 		{
 			case SDL_KEYDOWN:
 			case SDL_KEYUP:
+				// #78 trace: raw SDL event stream — a stuck key shows here as
+				// a DOWN with no matching UP; repeat=1 marks macOS auto-repeats
+				// (newly flowing since #77 stopped text-input mode).
+				if (LIiInputTraceEnabled()) {
+					UUrStartupMessage("[input-trace] event %s sym=0x%x scan=%d repeat=%d mod=0x%x",
+						(event.key.state == SDL_PRESSED) ? "DOWN" : "UP",
+						(unsigned)event.key.keysym.sym, (int)event.key.keysym.scancode,
+						(int)event.key.repeat, (unsigned)event.key.keysym.mod);
+				}
+
 				eventType = (event.key.state == SDL_PRESSED) ? LIcInputEvent_KeyDown : LIcInputEvent_KeyUp;
 
 				current_modifiers |= sdl_to_kmod(event.key.keysym.sym);

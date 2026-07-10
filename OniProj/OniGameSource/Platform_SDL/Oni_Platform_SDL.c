@@ -122,7 +122,16 @@ UUtError ONrPlatform_Initialize(
 	// SDL_KEYDOWN), so text-input mode buys nothing: stop it for the session.
 	// SDL only re-arms it on focus gain if this event state is re-enabled,
 	// so a single stop holds.
-	SDL_StopTextInput();
+	// ONI_TEXTINPUT_KEEP=1 skips the stop (pre-#77 behaviour, accent picker
+	// returns) — the A/B lever for the #78 stuck-strafe investigation.
+	{
+		const char *keep = getenv("ONI_TEXTINPUT_KEEP");
+		if (keep == NULL || keep[0] == '\0' || keep[0] == '0') {
+			SDL_StopTextInput();
+		} else {
+			UUrStartupMessage("[input] ONI_TEXTINPUT_KEEP set — SDL text-input left active (pre-#77 behaviour)");
+		}
+	}
 
 	ONiInstallCrashHandlers();
 

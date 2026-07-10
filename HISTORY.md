@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-07-10 — Session 61: stuck strafe during creep — investigation opened (#78)
+
+- **diag(input) — `[input-trace]` instrumentation + `ONI_TEXTINPUT_KEEP` A/B lever** (addresses #78): maintainer repro on the first post-#77 build — hold crouch (shift) + sidestep (q/e), release the sidestep, character keeps strafing. Static analysis can't yet attribute it to #77 (SDL's keyUp path is outside the text-input gate; the newly-flowing auto-repeats are inert in game mode since `LIrInputEvent_Add` early-returns there and movement is rebuilt per poll). New env-gated diagnostics discriminate the two candidate mechanisms: `ONI_INPUT_TRACE=1` logs the raw SDL key-event stream (sym/scancode/repeat/mod — a lost keyUp shows as DOWN with no UP) and per-poll edges of the translated oni-key set (engine latch shows input going clean while the character keeps moving). `ONI_TEXTINPUT_KEEP=1` skips the #77 `SDL_StopTextInput()` for a one-run causal A/B.
+
 ### 2026-07-09 — Session 60: macOS accent picker over gameplay (addresses #77); #68 residual sweep; Metal march verdicts
 
 - **User completed TCTF HQ (level 8) under Metal with CuratedHD** — first full level march under the Metal renderer (Apple M4 Max, 2560×1440). Log-verified: 512²-class HD textures converting (scratch grew to 1 MB, confirming #60's fix in action), zero `[metal-tex]` converter failures, pack overlay registered without level hijack or SIGSEGV through a level-8→9 transition (confirming #62), 93 deferred env-map refs healed by the session-58 bridge fixups (`envksface`/`strikerarmor` → `level8_Final.dat`), OpenAL cache 94.2% hit ratio, clean exit. Daodan spike flare renders correctly ("beautiful" — maintainer). Labels dropped on #60/#62.
