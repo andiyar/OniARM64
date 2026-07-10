@@ -84,6 +84,7 @@ static volatile UUtBool			LIgActionBufferUnavail;
 // NULL actions — a permanent production stop freezes gameplay input at
 // whatever was held.
 #include <stdlib.h>
+#include <dlfcn.h>
 static UUtBool LIiTraceEnabled(void)
 {
 	static int cached = -1;
@@ -92,6 +93,17 @@ static UUtBool LIiTraceEnabled(void)
 		cached = (v != NULL && v[0] != '\0' && v[0] != '0') ? 1 : 0;
 	}
 	return (UUtBool)cached;
+}
+
+// Resolve a return address to a symbol name so mode-flip logs read directly
+// (raw addresses shift per launch under ASLR).
+static const char *LIiCallerName(void *addr)
+{
+	Dl_info info;
+	if (addr != NULL && dladdr(addr, &info) != 0 && info.dli_sname != NULL) {
+		return info.dli_sname;
+	}
+	return "?";
 }
 
 
@@ -802,8 +814,9 @@ static void LIrMode_Set_Internal(void)
 void LIrMode_Set(LItMode inMode)
 {
 	if (LIiTraceEnabled() && LIgMode_External != inMode) {
-		UUrStartupMessage("[input-trace] LIrMode_Set %d -> %d (caller %p)",
-			(int)LIgMode_External, (int)inMode, __builtin_return_address(0));
+		void *ra = __builtin_return_address(0);
+		UUrStartupMessage("[input-trace] LIrMode_Set %d -> %d (caller %s %p)",
+			(int)LIgMode_External, (int)inMode, LIiCallerName(ra), ra);
 	}
 	LIgMode_External = inMode;
 
@@ -815,8 +828,9 @@ void LIrMode_Set(LItMode inMode)
 void LIrGameIsActive(UUtBool inGameIsActive)
 {
 	if (LIiTraceEnabled() && LIgGameIsActive != inGameIsActive) {
-		UUrStartupMessage("[input-trace] LIrGameIsActive %d -> %d (caller %p)",
-			(int)LIgGameIsActive, (int)inGameIsActive, __builtin_return_address(0));
+		void *ra = __builtin_return_address(0);
+		UUrStartupMessage("[input-trace] LIrGameIsActive %d -> %d (caller %s %p)",
+			(int)LIgGameIsActive, (int)inGameIsActive, LIiCallerName(ra), ra);
 	}
 	LIgGameIsActive = inGameIsActive;
 
