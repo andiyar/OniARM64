@@ -112,6 +112,11 @@ void AI2rManeuverState_Clear(ONtCharacter *ioCharacter, struct AI2tCombatState *
 
 	maneuver_state->primary_movement = AI2cPrimaryMovement_None;
 	maneuver_state->gun_target = NULL;
+	/* Port-exposed (#80, same class as #79): nothing ever assigns this field,
+	   and the maneuver state lives in the AI state-buffer union — stale
+	   non-NULL bytes sent FindAlarm down the specific-console branch, which
+	   dereferences it. NULL = the intended "search for a nearby console". */
+	maneuver_state->alarm_console = NULL;
 	maneuver_state->gun_thwart_timer = 0;
 	maneuver_state->gun_possible_thwart_timer = 0;
 
