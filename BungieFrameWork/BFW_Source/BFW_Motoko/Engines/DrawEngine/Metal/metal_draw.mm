@@ -103,7 +103,11 @@ UUtBool metal_select_textures(M3tTextureMap *inTexture0, int inBlendOverride)
 		fogU.colorR = gMetalFogColorR;
 		fogU.colorG = gMetalFogColorG;
 		fogU.colorB = gMetalFogColorB;
-		fogU.enabled = gMetalFogEnabled ? 1.0f : 0.0f;
+		// GL parity: additive blends force fog off (gl_utility.c:1901-1911).
+		// Fog replaces RGB but the alpha mask survives, so a fogged additive
+		// glow renders as flat fog-grey that stacks to white where quads
+		// overlap — level-11 shaft FX drew as white rings + blocky halo (#82).
+		fogU.enabled = (gMetalFogEnabled && blend != MetalBlend_Additive) ? 1.0f : 0.0f;
 		fogU.start = gMetalFogStart;
 		fogU.end   = gMetalFogEnd;
 		[gMetalEncoder setFragmentBytes:&fogU length:sizeof(fogU) atIndex:0];

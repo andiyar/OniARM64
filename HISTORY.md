@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-07-10 — Session 62: Metal fogged-additive FX parity (#82)
+
+- **fix(render): Metal — force fog off for additive-blended draws** (addresses #82): the level-11 escape-shaft energy FX rendered as hard white rings + an opaque blocky "staircase" glow under Metal while the maintainer's same-install GL A/B showed the intended soft blue — GL forces fog off for every additive-blended primitive (`gl_utility.c:1901`, "force fog off!") and Metal bound its fog uniform unconditionally. The shader fogs RGB toward the 0.25-grey fog colour but leaves the alpha mask intact, so fogged additive glows became flat grey shapes whose stacked overlaps accumulated to stepped white — a one-line gate in `metal_select_textures` restores parity. A subagent GL-vs-Metal trace first refuted the tempting candidates (blend-factor plumbing, tint submission, converter failures, sampler filtering — all faithful to GL) before fog emerged as the sole divergence.
+
 ### 2026-07-10 — Session 61: stuck strafe investigation (#78); patrol-targeting SIGSEGV fixed (#79)
 
 - **fix(ai): audit-residue hardening — melee pointer NULLs + combat-enter bail-path init** (addresses #80): the audit's final tranche cleared every remaining AI2 state (patrol, pursuit, alarm, panic, neutral, idle, guard, teamBattle, turret targeting — all init-before-read; full report on #80). Two inherited non-critical residues landed: `AI2rMeleeState_Clear` now NULLs `target`/`last_target`/`position_current_transition` (compared-before-init stale garbage, comparisons only today); `AI2rCombat_Enter`'s no-target bail path now initializes the union-resident sub-states before returning — it used to leave them stale with the state marked begun, so a later `AI2rCombat_Exit` would have called `callback->rSetAimSpeed` through a garbage table (unreachable today, defused anyway).
