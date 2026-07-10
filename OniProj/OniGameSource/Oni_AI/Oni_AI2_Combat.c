@@ -319,10 +319,28 @@ void AI2rCombat_Enter(ONtCharacter *ioCharacter)
 
         if (combat_state->target_knowledge == NULL) {
             AI2tKnowledgeEntry *entry = AI2iCombat_FindNewTarget(ioCharacter, AI2cContactStrength_Strong);
-            if (entry != NULL)
+            if (entry != NULL) {
                 combat_state->target_knowledge = entry;
-            else
+            } else {
+                /* #80 audit hardening: this bail leaves the union-resident
+                   sub-states never-initialized, yet AI2rEnterState still marks
+                   the state begun — a later AI2rCombat_Exit would run
+                   AI2iCombat_Trigger / RemoveFromFight / Targeting_Terminate
+                   against stale garbage (Terminate calls callback->rSetAimSpeed
+                   through a garbage table). Unreachable today (the sole combat
+                   entry guarantees target_knowledge), but make exit safe. */
+                combat_state->combat_parameters = &ioCharacter->characterClass->ai2_behavior.combat_parameters;
+                combat_state->current_weapon = NULL;
+                combat_state->trigger_pressed = UUcFalse;
+                combat_state->alternate_trigger_pressed = UUcFalse;
+                AI2rManeuverState_Clear(ioCharacter, combat_state);
+                AI2rMeleeState_Clear(&combat_state->melee, UUcTrue);
+                targeting_owner.type = AI2cTargetingOwnerType_Character;
+                targeting_owner.owner.character = ioCharacter;
+                AI2rTargeting_Initialize(targeting_owner, &combat_state->targeting, &AI2gCombatAI_TargetingCallbacks, NULL, NULL,
+                        &combat_state->combat_parameters->targeting_params, combat_state->combat_parameters->shooting_skill);
                 return; // Can't find any targets to fight
+            }
         }
 //	UUrDebuggerMessage("AI2rCombat_Enter: target knowledge ptr is 0x%08X\n", (UUtUns32) combat_state->target_knowledge);
 

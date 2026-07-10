@@ -1261,6 +1261,12 @@ void AI2rMeleeState_Clear(AI2tMeleeState *ioMeleeState, UUtBool inClearFightInfo
 	ioMeleeState->current_technique = NULL;
 	ioMeleeState->current_move = NULL;
 	ioMeleeState->current_attackanim = NULL;
+	/* #80 audit hardening: these were never cleared — the melee state lives
+	   in the AI state-buffer union, so pre-first-update reads compared stale
+	   garbage (comparisons only today, so non-crash; NULL costs nothing). */
+	ioMeleeState->target = NULL;
+	ioMeleeState->last_target = NULL;
+	ioMeleeState->position_current_transition = NULL;
 	ioMeleeState->currently_blocking = UUcFalse;
 	ioMeleeState->distance_to_target = 1e+09f;
 	ioMeleeState->angle_to_target = AI2cAngle_None;
