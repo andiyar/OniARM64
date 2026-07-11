@@ -53,6 +53,20 @@ enum {
 #define OPK_TXMP_FLAG_HASMIPMAP (1u << 0)
 #define OPK_TXMP_FLAG_LE        (1u << 12)
 
+/* TXAN body field offsets (M3tTextureMapAnimation, BFW_Motoko.h:830-844):
+ * pad[12], u16 timePerFrame @0x0C, u16 randTPF_low @0x0E, u16 randTPF_range
+ * @0x10, pad[2], u32 numFrames @0x14, u32 maps[numFrames] @0x18 (TXMP
+ * placeholder ids (descIdx<<8)|1, file-local). bodySize = OPK_TXAN_MAPS +
+ * 4*numFrames; record = align32(8 + bodySize).
+ * NB maps[0] is ZERO by convention: frame 0 means "the base texture itself",
+ * stored as a NULL link "to prevent recursive touching issue" (engine,
+ * Motoko_State_Draw.c ~102; OniSplit TextureImporter3.cs writes the literal
+ * 0; all 13 CuratedHD TXANs carry it). */
+enum {
+    OPK_TXAN_TIMEPERFRAME = 0x0C, OPK_TXAN_NUMFRAMES = 0x14,
+    OPK_TXAN_MAPS = 0x18
+};
+
 static inline uint32_t opk_align32(uint32_t v) { return (v + 31u) & ~31u; }
 
 static inline void opk_wr16(uint8_t *p, uint16_t v) {
