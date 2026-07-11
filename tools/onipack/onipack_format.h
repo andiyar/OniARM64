@@ -77,9 +77,11 @@ static inline uint64_t opk_rd64(const uint8_t *p) {
 }
 
 /* fileID from output name parts — engine: TMrUtility_LevelInfo_Get
- * (BFW_TM_Common.c:623-704); OniSplit: MakeFileId. "Final" => hash 0. */
+ * (BFW_TM_Common.c:623-704); OniSplit: MakeFileId. "Final" => hash 0.
+ * hash/factor are uint32_t as in the engine (UUtUns32); negative digit
+ * terms wrap mod 2^32, giving results bit-identical to int arithmetic. */
 static inline uint32_t opk_file_id(int level, const char *suffix) {
-    int hash = 0, factor = 1;
+    uint32_t hash = 0, factor = 1;
     const char *c;
     if (suffix[0]=='F' && suffix[1]=='i' && suffix[2]=='n' &&
         suffix[3]=='a' && suffix[4]=='l' && suffix[5]=='\0') {
@@ -91,8 +93,15 @@ static inline uint32_t opk_file_id(int level, const char *suffix) {
     return ((uint32_t)level << 25) | (((uint32_t)hash & 0xFFFFFFu) << 1) | 1u;
 }
 
-/* bytes for one mip level; 0 = unrecognized format (caller must reject) */
+/* bytes for one mip level, ENGINE ComputeSize semantics; 0 = unrecognized
+ * format or out-of-range dims (caller must reject). Dims capped at the
+ * engine max 4096, which also prevents uint32 w*h overflow on hostile or
+ * corrupt input. NB: the engine additionally pads odd widths for 1-byte
+ * formats (fmt 3/5/6: ((w+1)&~1)*h) and has no case for fmt 10 — our
+ * corpus contains neither; if 1-byte formats ever matter, mirror
+ * BFW_Image.c:965. */
 static inline uint32_t opk_texel_level_bytes(uint32_t fmt, uint32_t w, uint32_t h) {
+    if (w < 1 || h < 1 || w > 4096 || h > 4096) return 0;
     switch (fmt) {
         case 7: case 8: case 11: return w * h * 4;  /* ARGB8888 / RGB888(BGRX) / RGBA_Bytes */
         case 10:                 return w * h * 3;  /* RGB_Bytes */
@@ -111,12 +120,36 @@ static inline uint32_t opk_texel_level_bytes(uint32_t fmt, uint32_t w, uint32_t 
 /* total texel bytes incl. optional mip chain (largest level first) */
 static inline uint32_t opk_texel_bytes(uint32_t fmt, uint32_t w, uint32_t h,
                                        int hasMips) {
-    uint32_t total = opk_texel_level_bytes(fmt, w, h);
+    uint32_t total;
+    if (w < 1 || h < 1 || w > 4096 || h > 4096) return 0;
+    total = opk_texel_level_bytes(fmt, w, h);
     if (total == 0) return 0;
     while (hasMips && (w > 1 || h > 1)) {
         if (w > 1) w >>= 1;
         if (h > 1) h >>= 1;
         total += opk_texel_level_bytes(fmt, w, h);
+    }
+    return total;
+}
+
+/* Blob size as OniSplit WROTE it (Surface.cs w*h/2 floor for DXT1 — a 2x2
+ * DXT1 mip level is 2 bytes and a 1x1 level is 0, unlike the engine's
+ * ceil-to-block ComputeSize). Use THIS when slicing OniSplit-written files;
+ * use opk_texel_bytes (engine semantics) when computing engine expectations. */
+static inline uint32_t opk_texel_level_bytes_os(uint32_t fmt, uint32_t w, uint32_t h) {
+    if (fmt == 9) {
+        if (w < 1 || h < 1 || w > 4096 || h > 4096) return 0;
+        return w * h / 2;
+    }
+    return opk_texel_level_bytes(fmt, w, h);
+}
+static inline uint32_t opk_texel_bytes_os(uint32_t fmt, uint32_t w, uint32_t h, int hasMips) {
+    uint32_t total = opk_texel_level_bytes_os(fmt, w, h);
+    if (total == 0) return 0;
+    while (hasMips && (w > 1 || h > 1)) {
+        if (w > 1) w >>= 1;
+        if (h > 1) h >>= 1;
+        total += opk_texel_level_bytes_os(fmt, w, h);  /* tail levels may add 0 */
     }
     return total;
 }

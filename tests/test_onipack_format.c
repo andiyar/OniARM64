@@ -37,6 +37,8 @@ int main(void) {
 
     // fileID: suffix "Final" special-case -> hash 0
     CHECK(opk_file_id(0, "Final") == 1, "fileID level0_Final == 1");
+    // pinned from today's disk-verified run — portable when dist/ is absent
+    CHECK(opk_file_id(0, "HD1") == 0x01FFFFC7u, "fileID HD1 known answer");
 
     // texel sizes
     CHECK(opk_texel_bytes(0, 256, 256, 0) == 256*256*2, "BGRA4444 256^2 no mips");
@@ -46,6 +48,15 @@ int main(void) {
     // 4x4 fmt0 with mips: 32 + 8 (2x2) + 2 (1x1) = 42
     CHECK(opk_texel_bytes(0, 4, 4, 1) == 42, "BGRA4444 4x4 mip chain");
     CHECK(opk_texel_bytes(99, 4, 4, 0) == 0, "unknown format -> 0");
+    // dimension guard (engine cap 4096; also blocks w*h uint32 overflow)
+    CHECK(opk_texel_bytes(0, 8192, 8192, 0) == 0, "over-cap dims -> 0");
+    CHECK(opk_texel_bytes(7, 0, 4, 0) == 0, "zero width -> 0");
+    // OniSplit write-side sizing: DXT1 floors (w*h/2), tail levels may be 0
+    // 8x8=32, 4x4=8, 2x2=2, 1x1=0 -> 42
+    CHECK(opk_texel_bytes_os(9, 8, 8, 1) == 42, "DXT1 mips OniSplit floor sizing");
+    CHECK(opk_texel_bytes_os(0, 4, 4, 1) == 42, "non-DXT1 _os identical to engine");
+    // engine ceil-to-block contrast: 32 + 8 + 8 + 8 = 56
+    CHECK(opk_texel_bytes(9, 8, 8, 1) == 56, "DXT1 mips engine ceil sizing");
 
     // LE helpers round-trip
     uint8_t buf[8];
