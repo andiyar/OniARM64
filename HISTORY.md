@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-07-11 — Session 63: controller support (#73)
+
+- **feat(input): pure gamepad mapping logic — stick quantize, aim curve, dash gap** (addresses #73): the libc-only maths foundation for gamepad support (`BFW_LI_GamepadLogic.c/.h` under `BFW_LocalInput/Platform_SDL/`). Three pure functions the SDL-facing code will call: `LIrPadLogic_QuantizeStick` turns a left-stick position into eight-way direction bits with on/off hysteresis so a stick hovering at the threshold doesn't chatter; `LIrPadLogic_AimDelta` applies a circular dead zone then a squared response curve for right-stick aim; `LIrPadLogic_DashTick` is the tiny state machine that inserts a suppression gap after a dash press so a double-tap reads as dash, not two steps. No SDL or engine headers, so the standalone test (`tests/test_gamepad_logic.c`, 15 checks) compiles and runs without the game. TDD: test written first, seen to fail, then the implementation — all 15 pass, no warnings under `-Wall -Wextra`.
+
 ### 2026-07-11 — Session 63: crash-recovery UX (#74)
 
 - **feat(ux): crash sentinel + next-launch report dialog** (addresses #74): `.session-active` is written to App Support once the pre-window dialogs pass and removed at the end of clean teardown; if it survives to the next launch, a native alert offers **Report on GitHub…** (browser opens the new-issue compose page pre-filled with version, build stamp, renderer, macOS version and the last ~30 lines of `startup.txt`, capped ~7 KB encoded; the newest recent `Oni-*.ips` is revealed in Finder for one-drag attaching), **Show Logs**, or **Dismiss**, with a don't-ask-again suppression preference. No tokens, no auto-filing — the user sees the whole report in the compose page. New `Oni_CrashReport_macOS.mm` mirrors the update-notifier shell; hooks in `Oni.c` order the startup so the data picker's and update check's clean `exit(0)` paths can never arm the sentinel. Sentinel lifecycle verified headless (5-check standalone harness); dialog + report path await an in-game crash to confirm.
