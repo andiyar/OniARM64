@@ -55,8 +55,8 @@ static int desc_name(const uint8_t *buf, long fsize, uint32_t nameTabOff,
     if (nameOff >= nameTabLen) return -1;
     const char *full = (const char *)buf + nameTabOff + nameOff;
     const char *nul  = memchr(full, '\0', nameTabLen - nameOff);
-    if (nul == NULL || nul < full + 4)
-        return -1;      /* unterminated, or NUL inside the 4CC tag prefix */
+    if (nul == NULL || nul <= full + 4)
+        return -1;      /* unterminated, NUL inside the 4CC tag, or empty name */
     snprintf(out, OPK_NAME_MAX, "%s", full + 4);    /* strip 4CC tag */
     return 0;
 }
