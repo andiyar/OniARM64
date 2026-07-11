@@ -83,13 +83,6 @@ static void write_fixture_oni(const char *path, uint32_t version,
     fclose(f);
 }
 
-#ifndef GEN_MAIN
-
-static int g_pass = 0, g_fail = 0;
-#define CHECK(cond, msg) do { \
-    if (cond) { g_pass++; } \
-    else { g_fail++; fprintf(stderr, "FAIL: %s\n", msg); } } while (0)
-
 /* Animated V32 .oni mirroring TXMPscan.oni's shape: base TXMP (named
  * in-file, anim -> TXAN, envMap -> external placeholder) + 2 Unique frame
  * TXMPs + 1 TXAN + 1 TXMP placeholder "SKYENV". TXAN follows the OniSplit
@@ -175,6 +168,13 @@ static void write_fixture_oni_anim(const char *path) {
         for (int i = 0; i < 32; i++) fputc(0xA0 + t * 0x10 + (i & 0x0F), f);
     fclose(f);
 }
+
+#ifndef GEN_MAIN
+
+static int g_pass = 0, g_fail = 0;
+#define CHECK(cond, msg) do { \
+    if (cond) { g_pass++; } \
+    else { g_fail++; fprintf(stderr, "FAIL: %s\n", msg); } } while (0)
 
 static void test_reader(void) {
     char err[256];
@@ -662,6 +662,8 @@ int main(int argc, char **argv) {
     write_fixture_oni(p, OPK_VERSION_32, OPK_TAG_TXMP, 1);
     snprintf(p, sizeof p, "%s/ONCCbad.oni", argv[1]);
     write_fixture_oni(p, OPK_VERSION_32, 0x4F4E4343u, 1);
+    snprintf(p, sizeof p, "%s/TXMPanim.oni", argv[1]);
+    write_fixture_oni_anim(p);
     return 0;
 }
 
