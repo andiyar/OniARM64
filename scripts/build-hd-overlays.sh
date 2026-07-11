@@ -30,16 +30,20 @@
 # BGRA4444 faces/hair/glass) use the alpha channel as the env-map
 # shininess mask. A mod that replaces one with an alpha-less format
 # (BGR/DXT1) makes the engine expand A=1.0, so the additive env-map
-# pass blows out white. We index retail texel formats per TXMP name
-# (scripts/txmp-format-index.c, reading the .dats directly) and drop
-# any staged mod TXMP that would downgrade alpha-carrying -> alpha-less,
-# logging each as ALPHA-SKIP. Those surfaces stay vanilla; a v2 could
-# composite the retail alpha onto the mod RGB instead.
+# pass blows out white. The script indexes retail texel formats per
+# TXMP name (scripts/txmp-format-index.c, reading the .dats directly);
+# since #88 the DROP itself happens inside onipack at pack time
+# (--alpha-guard), which logs each as ALPHA-SKIP and hard-fails if the
+# index loads empty. Those surfaces stay vanilla; a v2 could composite
+# the retail alpha onto the mod RGB instead.
+#
+# PACKING is native since #88: tools/onipack import-sep writes the
+# .dat/.raw/.sep triple directly — no Mono, no OniSplit in this script.
 #
 # Input:  extracted AE-installer mod trees under $HD_MODS_ROOT/Tier1 and
 #         Tier2 — TXMP .oni files under
 #         <PkgID><Name>/oni/[common/]level<N>_Final/[subdir/]
-#         (%2F in filenames = URL-encoded '/'; OniSplit decodes it).
+#         (%2F in filenames = URL-encoded '/'; the packer decodes it).
 # Output: $OUT_DIR/level<N>_HD1.dat/.raw/.sep + CREDITS.txt
 #
 # Collision policy (first staged file wins, per basename):
@@ -55,15 +59,16 @@
 #     output-dir       default: <repo>/dist/CuratedHD (gitignored)
 # Env overrides:
 #   HD_MODS_ROOT       default: /Users/andiyar/Developer/oni/HDTextureMods
-#   ONISPLIT_EXE       default: community-svn OniSplit Release build
-#   MONO_BIN           default: mono
+#   ONIPACK_EXE        default: <repo>/build/bin/onipack (make onipack)
 #   PACK_SUFFIX        default: HD1   (must NOT be "Final" — the engine
 #                      rejects _Final overlays; see BFW_TM_Game.c
 #                      TMiGame_OverlayDir_Scan)
 #   RETAIL_DATA_DIR    default: CXOni PC reference install GameDataFolder
 #                      (source of the retail texel-format index, #63)
 #   RETAIL_INDEX       default: <repo>/dist/retail-txmp-formats.tsv —
-#                      cached name<TAB>format index; reused when present
+#                      cached name<TAB>format<TAB>source index consumed
+#                      by onipack --alpha-guard; a pre-#88 2-column
+#                      cache is detected and rebuilt automatically
 #   FORCE_RETAIL_INDEX set to 1 to rebuild the index even if cached
 # ======================================================================
 
@@ -73,8 +78,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
 HD_MODS_ROOT="${HD_MODS_ROOT:-/Users/andiyar/Developer/oni/HDTextureMods}"
-ONISPLIT_EXE="${ONISPLIT_EXE:-/Users/andiyar/Developer/oni/community-svn/Oni2/OniSplit/bin/Release/OniSplit.exe}"
-MONO_BIN="${MONO_BIN:-mono}"
+ONIPACK_EXE="${ONIPACK_EXE:-$REPO_ROOT/build/bin/onipack}"
 PACK_SUFFIX="${PACK_SUFFIX:-HD1}"
 OUT_DIR="${1:-$REPO_ROOT/dist/CuratedHD}"
 RETAIL_DATA_DIR="${RETAIL_DATA_DIR:-/Users/andiyar/Developer/oni/CXOni/Oni/drive_c/Program Files (x86)/Oni/GameDataFolder}"
@@ -99,12 +103,8 @@ if [ ! -d "$HD_MODS_ROOT/Tier1" ] || [ ! -d "$HD_MODS_ROOT/Tier2" ]; then
     echo "ERROR: $HD_MODS_ROOT does not contain Tier1/ and Tier2/." >&2
     exit 1
 fi
-if [ ! -f "$ONISPLIT_EXE" ]; then
-    echo "ERROR: OniSplit not found at $ONISPLIT_EXE." >&2
-    exit 1
-fi
-if ! command -v "$MONO_BIN" >/dev/null 2>&1; then
-    echo "ERROR: mono runtime '$MONO_BIN' not found." >&2
+if [ ! -x "$ONIPACK_EXE" ]; then
+    echo "ERROR: onipack not built at $ONIPACK_EXE — run: cd build && make onipack" >&2
     exit 1
 fi
 
@@ -113,22 +113,32 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 STAGE_ROOT="$WORK_DIR/stage"
 MANIFEST="$WORK_DIR/manifest.tsv"
 DECISIONS="$WORK_DIR/decisions.tsv"
-DECISIONS_GUARDED="$WORK_DIR/decisions-guarded.tsv"
 mkdir -p "$STAGE_ROOT" "$OUT_DIR"
 
 # ----------------------------------------------------------------------
-# 0. Retail texel-format index (issue #63) — name<TAB>format for every
-#    named TXMP in the retail PC .dats. Built once, cached in
-#    $RETAIL_INDEX; the .dat parse is ~50 ms so the cache mostly spares
-#    the reader a rebuild surprise when dist/ is wiped.
-#    Cross-level conflicts (same name, different format) keep the
-#    alpha-carrying format — that's the mask the guard must protect.
+# 0. Retail texel-format index (issue #63) — one line per named retail
+#    TXMP: name<TAB>format<TAB>source. Consumed by onipack --alpha-guard
+#    (since #88 the downgrade drop lives in the tool; the script only
+#    builds the index). onipack keeps the FIRST line per name, so
+#    cross-level conflicts (same name, different format across retail
+#    levels) must be resolved HERE, same rule as always: keep the
+#    alpha-carrying format — that's the mask the guard protects.
+#    Cached in $RETAIL_INDEX; rebuilt when missing, when the cache is
+#    the pre-#88 2-column shape, or when FORCE_RETAIL_INDEX=1.
 # ----------------------------------------------------------------------
 TXMP_TOOL="$WORK_DIR/txmp-format-index"
 cc -O2 -o "$TXMP_TOOL" "$SCRIPT_DIR/txmp-format-index.c" || {
     echo "ERROR: failed to compile scripts/txmp-format-index.c" >&2; exit 1; }
 
-if [ ! -s "$RETAIL_INDEX" ] || [ "$FORCE_RETAIL_INDEX" = "1" ]; then
+need_index=1
+if [ -s "$RETAIL_INDEX" ] && [ "$FORCE_RETAIL_INDEX" != "1" ]; then
+    if head -n 1 "$RETAIL_INDEX" | awk -F '\t' 'NF >= 3 { exit 0 } { exit 1 }'; then
+        need_index=0
+    else
+        echo "-- retail index cache is the pre-#88 2-column shape; rebuilding --"
+    fi
+fi
+if [ "$need_index" = "1" ]; then
     if [ ! -d "$RETAIL_DATA_DIR" ]; then
         echo "ERROR: retail data dir not found: $RETAIL_DATA_DIR" >&2
         exit 1
@@ -148,7 +158,7 @@ if [ ! -s "$RETAIL_INDEX" ] || [ "$FORCE_RETAIL_INDEX" = "1" ]; then
                 fmt[$1] = keep
             }
         }
-        END { for (i = 1; i <= n; i++) print order[i] "\t" fmt[order[i]] }
+        END { for (i = 1; i <= n; i++) print order[i] "\t" fmt[order[i]] "\tretail-dedup" }
     ' "$WORK_DIR/retail-raw.tsv" | sort > "$RETAIL_INDEX"
     echo "  wrote $RETAIL_INDEX ($(wc -l < "$RETAIL_INDEX" | tr -d ' ') named TXMPs)"
     echo
@@ -269,58 +279,11 @@ sort -t "$(printf '\t')" -k5,5 -k1,1 -k6,6 "$MANIFEST" | awk -F '\t' '
     END { flush() }
 ' > "$DECISIONS"
 
-# ----------------------------------------------------------------------
-# 2b. Alpha-mask guard (issue #63): drop STAGE lines whose retail
-#     counterpart carries alpha (env-map shininess mask) while the mod
-#     file is alpha-less. Mod formats come from the same .dat/.oni
-#     parser run over every winner in one batch. Names not in retail
-#     are additive textures — kept. The reverse direction (mod adds
-#     alpha where retail had none) is logged as ALPHA-ADD but kept.
-# ----------------------------------------------------------------------
-awk -F '\t' '$1 == "STAGE" { print $3 }' "$DECISIONS" | tr '\n' '\0' \
-    | xargs -0 "$TXMP_TOOL" > "$WORK_DIR/mod-formats.tsv"
-
-echo "-- alpha-mask guard (issue #63) --"
-awk -F '\t' -v OFS='\t' '
-    function alpha(f) { return (f == "BGRA4444" || f == "BGRA5551" || f == "RGBA" || f == "A8" || f == "A4I4") }
-    function instname(p,  b) {
-        b = p
-        sub(/.*\//, "", b); sub(/\.oni$/, "", b); sub(/^TXMP/, "", b)
-        gsub(/%2[Ff]/, "/", b)
-        return b
-    }
-    FNR == 1 { fi++ }
-    fi == 1 { retail[$1] = $2; next }              # RETAIL_INDEX
-    fi == 2 { modfmt[$3] = $2; next }              # mod-formats.tsv (path -> fmt)
-    $1 != "STAGE" { print; next }                  # decisions passthrough
-    {
-        name = instname($3)
-        mf = ($3 in modfmt) ? modfmt[$3] : ""
-        if (mf == "") {
-            printf "  WARNING: no format read for %s; kept unguarded\n", $3 > "/dev/stderr"
-            print; next
-        }
-        if (!(name in retail)) { additive++; print; next }
-        rf = retail[name]
-        if (alpha(rf) && !alpha(mf)) {
-            printf "  ALPHA-SKIP %s retail=%s mod=%s\n", name, rf, mf
-            skipped++
-            next
-        }
-        if (alpha(mf) && !alpha(rf)) {
-            printf "  ALPHA-ADD %s retail=%s mod=%s (kept)\n", name, rf, mf
-        }
-        print
-    }
-    END {
-        printf "  dropped %d alpha-mask downgrades; %d additive names not in retail (kept)\n", \
-            skipped + 0, additive + 0
-    }
-' "$RETAIL_INDEX" "$WORK_DIR/mod-formats.tsv" "$DECISIONS" \
-    > "$WORK_DIR/guard-out.txt"
-grep -v '^  ' "$WORK_DIR/guard-out.txt" > "$DECISIONS_GUARDED" || true
-grep '^  ' "$WORK_DIR/guard-out.txt" || echo "  (guard produced no log lines)"
-echo
+# (The former §2b staging-time alpha drop-loop is gone: since #88 the
+#  guard lives in ONE place — onipack applies it at pack time from
+#  $RETAIL_INDEX and logs ALPHA-SKIP per dropped texture. Note the
+#  tool logs only drops; the old informational ALPHA-ADD lines are no
+#  longer emitted.)
 
 # ----------------------------------------------------------------------
 # 3. Stage winners into flat per-level buckets (filenames kept intact —
@@ -348,7 +311,7 @@ while IFS="$(printf '\t')" read -r kind lvl path; do
     mkdir -p "$STAGE_ROOT/level$lvl"
     cp "$path" "$STAGE_ROOT/level$lvl/"
     staged_total=$((staged_total + 1))
-done < "$DECISIONS_GUARDED"
+done < "$DECISIONS"
 
 # ----------------------------------------------------------------------
 # 3b. Pack corrections (issue #63): our own channel-corrected TXMPs copied
@@ -397,34 +360,39 @@ grep '^WARN' "$DECISIONS" | sed 's/^WARN\t/  WARNING: /' || true
 echo
 
 # ----------------------------------------------------------------------
-# 4. Pack each level bucket with OniSplit (-import:sep = Mac .dat+.raw+.sep).
+# 4. Pack each level bucket with onipack import-sep (native .dat+.raw+.sep;
+#    replaces OniSplit+Mono, #88). The alpha-mask guard (#63) runs IN the
+#    tool: it drops downgrades itself, logging each as ALPHA-SKIP on
+#    stderr, and hard-fails if the retail index loads empty. onipack
+#    exits 3 when it packed but skipped some inputs — surfaced as a
+#    warning, not a build failure (each SKIP line names file + reason).
 # ----------------------------------------------------------------------
-echo "-- packing (OniSplit -import:sep) --"
+echo "-- packing (onipack import-sep) --"
 for d in "$STAGE_ROOT"/level*; do
     lvl="${d##*level}"
     out="$OUT_DIR/level${lvl}_${PACK_SUFFIX}.dat"
-    "$MONO_BIN" "$ONISPLIT_EXE" -import:sep "$d" "$out"
+    rc=0
+    "$ONIPACK_EXE" import-sep --alpha-guard "$RETAIL_INDEX" "$d" "$out" || rc=$?
+    if [ "$rc" -eq 3 ]; then
+        echo "  WARNING: onipack skipped some inputs for $(basename "$out") (see SKIP lines above)" >&2
+    elif [ "$rc" -ne 0 ]; then
+        echo "ERROR: onipack failed for $(basename "$out") (exit $rc)" >&2
+        exit "$rc"
+    fi
 done
 echo
 
 # ----------------------------------------------------------------------
-# 5. Verify: re-read every produced .dat with OniSplit -list and compare
-#    named-instance counts against what was staged.
+# 5. Verify: independent cross-parse of every produced .dat — our
+#    txmp-format-index vs kanabo (Iritscen's reader) via the parent-repo
+#    harness. Replaces the OniSplit -list re-read; a mismatch or parse
+#    failure aborts the build (set -e).
 # ----------------------------------------------------------------------
-echo "-- verification (OniSplit -list re-read) --"
-listed_total=0
-verify_fail=0
-for d in "$STAGE_ROOT"/level*; do
-    lvl="${d##*level}"
-    dat="$OUT_DIR/level${lvl}_${PACK_SUFFIX}.dat"
-    want="$(find "$d" -name '*.oni' | wc -l | tr -d ' ')"
-    got="$("$MONO_BIN" "$ONISPLIT_EXE" -list "$dat" | wc -l | tr -d ' ')"
-    listed_total=$((listed_total + got))
-    status="OK"
-    if [ "$got" -ne "$want" ]; then status="MISMATCH"; verify_fail=1; fi
-    printf '  %-18s staged %5d  listed %5d  %s\n' "$(basename "$dat")" "$want" "$got" "$status"
+echo "-- verification (txmp-format-index + kanabo cross-parse) --"
+VERIFY_PACK="${VERIFY_PACK:-/Users/andiyar/Developer/oni/scripts/verify-pack.sh}"
+for f in "$OUT_DIR"/level*_"${PACK_SUFFIX}".dat; do
+    "$VERIFY_PACK" "$f"
 done
-printf '  %-18s staged %5d  listed %5d\n' "TOTAL" "$staged_total" "$listed_total"
 echo
 
 # ----------------------------------------------------------------------
@@ -467,9 +435,5 @@ du -h "$OUT_DIR"/*."dat" "$OUT_DIR"/*."raw" "$OUT_DIR"/*."sep" 2>/dev/null | sed
 printf '  total: %s\n' "$(du -ch "$OUT_DIR"/*.dat "$OUT_DIR"/*.raw "$OUT_DIR"/*.sep 2>/dev/null | tail -n 1 | cut -f1)"
 echo
 
-if [ "$verify_fail" -ne 0 ]; then
-    echo "BUILD FINISHED WITH VERIFICATION MISMATCHES (see above)." >&2
-    exit 1
-fi
 echo "Build OK. Install by copying $OUT_DIR/* to"
 echo "  ~/Library/Application Support/OniARM64/TexturePacks/CuratedHD/"

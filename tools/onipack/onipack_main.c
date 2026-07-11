@@ -56,6 +56,11 @@ static int load_alpha_guard(const char *path) {
         g_retail[g_retailN++].fmt = fmt;
     }
     fclose(f);
+    if (g_retailN == 0) {   /* a silent no-op guard is worse than no guard */
+        fprintf(stderr, "onipack: alpha-guard %s loaded 0 entries — wrong shape?"
+                        " expected name<TAB>format<TAB>source per line\n", path);
+        return -1;
+    }
     fprintf(stderr, "onipack: alpha-guard loaded, %zu retail entries\n", g_retailN);
     return 0;
 }
