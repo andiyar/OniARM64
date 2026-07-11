@@ -1,8 +1,8 @@
 # Changelog
 
-Plain-English log of what's changed in OniARM64, newest first — the "Done
-Stuff" ledger. Written for a player reading release notes, not a developer
-reading commits (that's [HISTORY.md](HISTORY.md)).
+Plain-English log of what's changed in OniARM64, newest first. Entries here
+are written for players; the per-commit developer detail lives in
+[HISTORY.md](HISTORY.md).
 
 **How it works:** user-visible changes get a line under **Unreleased** as they
 land. At each release cut, the Unreleased section becomes the body of the
@@ -12,35 +12,35 @@ GitHub release notes and gets stamped with the version + date.
 
 ### Campaign progress
 - Chapters 1–9 (through *Truth and Consequences*) now verified playable
-  end-to-end — combat, AI, cutscenes, save/load. Chapters 10–14 load and
+  end-to-end: combat, AI, cutscenes, save/load. Chapters 10–14 load and
   render but await a full playthrough.
 
 ### Metal renderer
-- The Metal renderer is now **feature-complete** with OpenGL and carried the
+- The Metal renderer is now feature-complete with OpenGL and carried the
   entire chapter 1–9 march. (Hold Option at launch to select it; OpenGL
   remains the default while it soaks.)
 - Fixed HD-pack textures rendering with red/blue swapped under Metal (#67).
 - Fixed glow effects (energy rings, light halos) washing out to hard white in
-  fogged areas under Metal — additive effects are now drawn fog-free, matching
+  fogged areas under Metal. Additive effects are now drawn fog-free, matching
   OpenGL (#82).
 
 ### HD texture packs
 - Texture-pack support landed: drop a pack into
   `~/Library/Application Support/OniARM64/TexturePacks` and its textures
-  override the originals — no game-data surgery (#16).
+  override the originals, with no changes to your game data (#16).
 - A chain of engine fixes to make packs safe: HD-sized textures no longer
   overflow load buffers or vanish (#44, #45, #60), packs can no longer hijack
   level selection (#62), and the modern 32-bit texture format now converts
-  correctly — the white-face / blue-face / olive-glass family of bugs (#63).
+  correctly, fixing the white-face, blue-face and olive-glass bugs (#63).
 - Curation rules learned the hard way: sky textures are excluded (they're the
   shared reflection source for faces and vehicles), as are retextures that
   drop the original shininess masks.
 
 ### AI
-- **Enemies now dodge gunfire.** The dodge system shipped broken in 2001 — a
-  distance was measured from the world origin instead of the character, so
-  NPCs charged in a straight line for 25 years. Feral fixed the behaviour in
-  their 2014 Intel port; ours is a source-level root-cause fix (#21).
+- Enemies now dodge gunfire. The dodge system shipped broken in 2001: the
+  code measured a distance from the world origin instead of from the
+  character, so NPCs charged in a straight line for 25 years. Feral fixed the
+  behaviour in their 2014 Intel port; ours is a source-level fix (#21).
 - Enemies no longer forget their target after the briefest line-of-sight
   break (#22).
 - Fixed two AI crashes from playtesting: patrol guards shooting at a waypoint,
@@ -62,15 +62,15 @@ GitHub release notes and gets stamped with the version + date.
 
 ### Engine limits (Feral parity)
 - Collision and object-sort limits raised and the pathfinding cache enlarged
-  to match Feral's 1.1/1.2 Intel-port values — fewer oddities in busy
-  scenes (#42).
+  to match Feral's 1.1/1.2 Intel-port values, so busy scenes hit fewer
+  limits (#42).
 
 ### Housekeeping
 - Deployment target pinned to macOS 15; app category set; version + build
   stamped into the session log banner; release process written down (#72).
 - Developer access can be enabled at launch via `ONI_DEV_ACCESS=1` (#47).
-- Tried and honestly reverted: anisotropic filtering (no visible difference
-  in play, #65); neural texture upscaling parked with its pipeline
+- Tried and reverted: anisotropic filtering made no visible difference in
+  play (#65). Neural texture upscaling is parked with its pipeline
   preserved (#64).
 
 ## 1.3.0r4 — 2026-06-19
