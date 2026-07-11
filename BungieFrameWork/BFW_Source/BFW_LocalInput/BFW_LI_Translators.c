@@ -175,6 +175,29 @@ LItInputNames				LIgInputNames[] =
 	{ "mouseyaxis",			LIcMouseCode_YAxis		},
 	{ "mousezaxis",			LIcMouseCode_ZAxis		},
 
+	{ "pad_a",				LIcGamepadCode_South	},
+	{ "pad_b",				LIcGamepadCode_East		},
+	{ "pad_x",				LIcGamepadCode_West		},
+	{ "pad_y",				LIcGamepadCode_North	},
+	{ "pad_back",			LIcGamepadCode_Back		},
+	{ "pad_start",			LIcGamepadCode_Start	},
+	{ "pad_l3",				LIcGamepadCode_L3		},
+	{ "pad_r3",				LIcGamepadCode_R3		},
+	{ "pad_l",				LIcGamepadCode_LB		},
+	{ "pad_r",				LIcGamepadCode_RB		},
+	{ "pad_zl",				LIcGamepadCode_ZL		},
+	{ "pad_zr",				LIcGamepadCode_ZR		},
+	{ "pad_up",				LIcGamepadCode_DPadUp	},
+	{ "pad_down",			LIcGamepadCode_DPadDown	},
+	{ "pad_left",			LIcGamepadCode_DPadLeft	},
+	{ "pad_right",			LIcGamepadCode_DPadRight},
+	{ "pad_ls_up",			LIcGamepadCode_LSUp		},
+	{ "pad_ls_down",		LIcGamepadCode_LSDown	},
+	{ "pad_ls_left",		LIcGamepadCode_LSLeft	},
+	{ "pad_ls_right",		LIcGamepadCode_LSRight	},
+	{ "pad_rs_x",			LIcGamepadCode_RSX		},
+	{ "pad_rs_y",			LIcGamepadCode_RSY		},
+
 	{ "",					LIcKeyCode_None			}
 };
 

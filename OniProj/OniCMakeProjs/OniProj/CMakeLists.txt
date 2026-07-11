@@ -536,6 +536,10 @@ if(Platform_SDL)
 
             ../../../BungieFrameWork/BFW_Source/BFW_LocalInput/Platform_SDL/BFW_LI_Platform_SDL.c
             ../../../BungieFrameWork/BFW_Source/BFW_LocalInput/Platform_SDL/BFW_LI_Platform_SDL.h
+            ../../../BungieFrameWork/BFW_Source/BFW_LocalInput/Platform_SDL/BFW_LI_GamepadLogic.c
+            ../../../BungieFrameWork/BFW_Source/BFW_LocalInput/Platform_SDL/BFW_LI_GamepadLogic.h
+            ../../../BungieFrameWork/BFW_Source/BFW_LocalInput/Platform_SDL/BFW_LI_Gamepad_SDL.c
+            ../../../BungieFrameWork/BFW_Source/BFW_LocalInput/Platform_SDL/BFW_LI_Gamepad_SDL.h
 
             ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/OpenGL/gl_sdl.c
             ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/OpenGL/gl_resolution_curate.c

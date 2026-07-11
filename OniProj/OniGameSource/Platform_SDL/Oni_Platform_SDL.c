@@ -11,6 +11,7 @@
 
 #include "Oni_Platform.h"
 #include "Oni.h" // for ONgCommandLine.useMetal
+#include "BFW_LI_Gamepad_SDL.h" // gamepad init/terminate (#73)
 
 #include <signal.h>
 #include <unistd.h>
@@ -112,7 +113,7 @@ ONiInstallCrashHandlers(void)
 UUtError ONrPlatform_Initialize(
 	ONtPlatformData			*outPlatformData)
 {
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER);
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER);
 
 	// SDL2 enables text-input mode at video init, and while it's active the
 	// macOS backend routes every keyDown through the Cocoa text system
@@ -139,6 +140,9 @@ UUtError ONrPlatform_Initialize(
 
 	SDL_ShowCursor(SDL_FALSE);
 
+	// open any connected game controller (#73); ONI_GAMEPAD=0 disables
+	LIrGamepad_Initialize();
+
 	return UUcError_None;
 }
 
@@ -159,6 +163,8 @@ void ONrPlatform_Terminate(
 	{
 		fclose(ONgErrorFile);
 	}
+
+	LIrGamepad_Terminate();
 
 	SDL_Quit();
 }
