@@ -9,7 +9,6 @@
 #include "onipack_format.h"
 #include "onipack_writer.h"
 
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +38,7 @@ struct OpkPack {
     char     suffix[64];
     OpkEntry e[OPK_MAX_INSTANCES];
     uint32_t n;
+    uint64_t sepTotal;            /* projected .sep end; guards the u32 cap */
 };
 
 static int fail(char *err, size_t errsz, const char *msg) {
@@ -46,12 +46,28 @@ static int fail(char *err, size_t errsz, const char *msg) {
     return -1;
 }
 
+/* .sep blobs are 32-aligned, so each texture advances the (32-aligned)
+ * cursor by exactly align32(pixelsSize) */
+static uint64_t sep_step(uint32_t pixelsSize) {
+    return ((uint64_t)pixelsSize + 31ull) & ~31ull;
+}
+
 OpkPack *opk_pack_new(int level, const char *suffix) {
     if (level < 0 || level >= 128) return NULL;          /* engine parse limit */
     if (strcmp(suffix, "Final") == 0) return NULL;       /* overlay contract */
     if (!*suffix || strlen(suffix) >= sizeof ((OpkPack *)0)->suffix) return NULL;
+    for (const char *c = suffix; *c; c++)   /* [A-Za-z0-9]+ only: keeps paths
+                                               '/'-free and the fileID hash
+                                               locale-independent */
+        if (!((*c >= 'A' && *c <= 'Z') || (*c >= 'a' && *c <= 'z') ||
+              (*c >= '0' && *c <= '9')))
+            return NULL;
     OpkPack *p = calloc(1, sizeof *p);
-    if (p) { p->level = level; snprintf(p->suffix, sizeof p->suffix, "%s", suffix); }
+    if (p) {
+        p->level = level;
+        snprintf(p->suffix, sizeof p->suffix, "%s", suffix);
+        p->sepTotal = OPK_BLOB_BASE;
+    }
     return p;
 }
 
@@ -77,12 +93,27 @@ static long add_placeholder(OpkPack *p, uint32_t tag, const char *name) {
 }
 
 int opk_pack_add(OpkPack *p, OpkTexture *tex, char *err, size_t errsz) {
+    /* ---- validate first: ownership is only taken on success ---- */
     long existing = find_entry(p, OPK_TAG_TXMP, tex->name);
     if (existing >= 0 && !p->e[existing].isPlaceholder)
         return fail(err, errsz, "duplicate instance name");
-    if (p->n >= OPK_MAX_INSTANCES)
+    uint32_t needed = (existing < 0) ? 1u : 0u;
+    if (tex->animName[0] && find_entry(p, OPK_TAG_TXAN, tex->animName) < 0)
+        needed++;
+    if (tex->envMapName[0] && find_entry(p, OPK_TAG_TXMP, tex->envMapName) < 0)
+        needed++;
+    if (p->n + needed > OPK_MAX_INSTANCES)
         return fail(err, errsz, "pack full");
+    /* u32 wire-offset cap; impractical to exercise with real allocations
+     * in tests — guarded here and re-checked in opk_pack_write */
+    uint64_t addSep = sep_step(tex->pixelsSize);
+    if (p->sepTotal + addSep > 0xFFFFFFFFull) {
+        snprintf(err, errsz, "pack exceeds 4 GiB .sep limit at '%s'",
+                 tex->name);
+        return -1;
+    }
 
+    /* ---- mutate: nothing below can fail ---- */
     OpkEntry *e;
     if (existing >= 0) {
         e = &p->e[existing];       /* upgrade placeholder to real instance */
@@ -101,9 +132,7 @@ int opk_pack_add(OpkPack *p, OpkTexture *tex, char *err, size_t errsz) {
         ? add_placeholder(p, OPK_TAG_TXAN, tex->animName) : -1;
     e->envTarget = tex->envMapName[0]
         ? add_placeholder(p, OPK_TAG_TXMP, tex->envMapName) : -1;
-    if ((tex->animName[0] && e->animTarget < 0) ||
-        (tex->envMapName[0] && e->envTarget < 0))
-        return fail(err, errsz, "pack full (placeholders)");
+    p->sepTotal += addSep;
     return 0;
 }
 
@@ -160,6 +189,13 @@ int opk_pack_add_group(OpkPack *p, OpkGroup *g, char *err, size_t errsz) {
             if (!found)
                 return fail(err, errsz, "TXAN frame ref outside group");
         }
+    }
+    uint64_t addSep = 0;                        /* u32 wire-offset cap */
+    for (uint32_t t = 0; t < g->nTex; t++)
+        addSep += sep_step(g->tex[t].pixelsSize);
+    if (p->sepTotal + addSep > 0xFFFFFFFFull) {
+        snprintf(err, errsz, "pack exceeds 4 GiB .sep limit at '%s'", g->name);
+        return -1;
     }
 
     /* ---- mutate: nothing below can fail ---- */
@@ -227,10 +263,19 @@ int opk_pack_add_group(OpkPack *p, OpkGroup *g, char *err, size_t errsz) {
             e->envTarget = add_placeholder(p, OPK_TAG_TXMP,
                                            g->tex[t].envMap.name);
     }
+    p->sepTotal += addSep;
     return 0;
 }
 
 int opk_pack_count(const OpkPack *p) { return (int)p->n; }
+
+int opk_pack_count_textures(const OpkPack *p) {
+    int c = 0;
+    for (uint32_t i = 0; i < p->n; i++)
+        if (!p->e[i].isPlaceholder && !p->e[i].isTxan && !p->e[i].unnamed)
+            c++;
+    return c;
+}
 
 /* name-descriptor sort: byte-ordinal on tag-prefixed full name */
 static char full_name_buf[2][OPK_NAME_MAX + 8];
@@ -250,14 +295,18 @@ static int cmp_by_full_name(const void *a, const void *b) {
 static int write_file(const char *path, const uint8_t *data, size_t size,
                       char *err, size_t errsz) {
     char tmp[1024];
-    snprintf(tmp, sizeof tmp, "%s.tmp", path);
+    if (snprintf(tmp, sizeof tmp, "%s.tmp", path) >= (int)sizeof tmp)
+        return fail(err, errsz, "output path too long");
     FILE *f = fopen(tmp, "wb");
     if (!f) return fail(err, errsz, "cannot create output file");
     if (size && fwrite(data, 1, size, f) != size) {
         fclose(f); remove(tmp);
         return fail(err, errsz, "short write");
     }
-    fclose(f);
+    if (fclose(f) != 0) {          /* disk-full commonly surfaces at flush */
+        remove(tmp);
+        return fail(err, errsz, "write failed (flush)");
+    }
     if (rename(tmp, path) != 0) {
         remove(tmp);
         return fail(err, errsz, "rename failed");
@@ -285,29 +334,50 @@ int opk_pack_write(OpkPack *p, const char *outDir, char *err, size_t errsz) {
                        nName * OPK_NDESC_SIZE + nTempl * OPK_TDESC_SIZE;
     uint32_t dataOff = opk_align32(tables);
 
-    /* per-entry data offsets + name offsets + sep offsets */
-    uint32_t dataCur = 0, sepCur = OPK_BLOB_BASE, nameCur = 0;
+    /* per-entry data offsets + name offsets + sep offsets. Sums run in
+     * uint64_t and are capped BEFORE any allocation: the wire offsets are
+     * u32 by format, and a u32 sum could otherwise wrap and undersize the
+     * callocs below (heap corruption). The add-time sepTotal guard makes
+     * these caps unreachable in practice; impractical to exercise with
+     * real allocations in tests. */
+    uint64_t dataCur = 0, sepCur = OPK_BLOB_BASE, nameCur = 0;
     uint32_t *recOff  = calloc(p->n, 4);
     uint32_t *nameOff = calloc(p->n, 4);
     uint32_t *sepOff  = calloc(p->n, 4);
+    if (!recOff || !nameOff || !sepOff) {
+        free(recOff); free(nameOff); free(sepOff);
+        return fail(err, errsz, "out of memory");
+    }
     for (uint32_t i = 0; i < p->n; i++) {
         if (!p->e[i].unnamed) {
-            nameOff[i] = nameCur;
-            nameCur += 4 + (uint32_t)strlen(p->e[i].name) + 1;
+            nameOff[i] = (uint32_t)nameCur;
+            nameCur += 4 + strlen(p->e[i].name) + 1;
         }
         if (p->e[i].isPlaceholder) continue;
-        recOff[i] = dataCur + OPK_PREAMBLE;
+        recOff[i] = (uint32_t)(dataCur + OPK_PREAMBLE);
         if (p->e[i].isTxan) {
             dataCur += opk_align32(OPK_PREAMBLE + p->e[i].txanSize);
         } else {
             dataCur += opk_align32(OPK_PREAMBLE + OPK_TXMP_BODY);   /* 192 */
-            sepOff[i] = sepCur;
-            sepCur    = opk_align32(sepCur + p->e[i].pixelsSize);
+            sepOff[i] = (uint32_t)sepCur;
+            sepCur   += sep_step(p->e[i].pixelsSize);
         }
     }
-    uint32_t nameBlockOff = dataOff + dataCur;
-    size_t datSize = nameBlockOff + nameCur;
-    uint8_t *dat = calloc(1, datSize);
+    uint64_t nameBlockOff = dataOff + dataCur;
+    uint64_t datSize = nameBlockOff + nameCur;
+    if (sepCur > 0xFFFFFFFFull) {
+        free(recOff); free(nameOff); free(sepOff);
+        return fail(err, errsz, "pack exceeds 4 GiB .sep limit");
+    }
+    if (datSize > 0xFFFFFFFFull) {
+        free(recOff); free(nameOff); free(sepOff);
+        return fail(err, errsz, "pack exceeds 4 GiB .dat limit");
+    }
+    uint8_t *dat = calloc(1, (size_t)datSize);
+    if (!dat) {
+        free(recOff); free(nameOff); free(sepOff);
+        return fail(err, errsz, "out of memory");
+    }
 
     /* ---- header ---- */
     opk_wr64(dat + OPK_HDR_CHECKSUM, OPK_CHECKSUM_MAC);
@@ -320,9 +390,9 @@ int opk_pack_write(OpkPack *p, const char *outDir, char *err, size_t errsz) {
     opk_wr32(dat + OPK_HDR_NNAME, nName);
     opk_wr32(dat + OPK_HDR_NTEMPL, nTempl);
     opk_wr32(dat + OPK_HDR_DATAOFF, dataOff);
-    opk_wr32(dat + OPK_HDR_DATALEN, dataCur);
-    opk_wr32(dat + OPK_HDR_NAMEOFF, nameBlockOff);
-    opk_wr32(dat + OPK_HDR_NAMELEN, nameCur);
+    opk_wr32(dat + OPK_HDR_DATALEN, (uint32_t)dataCur);
+    opk_wr32(dat + OPK_HDR_NAMEOFF, (uint32_t)nameBlockOff);
+    opk_wr32(dat + OPK_HDR_NAMELEN, (uint32_t)nameCur);
 
     /* ---- instance descriptors + records + name table ---- */
     for (uint32_t i = 0; i < p->n; i++) {
@@ -357,7 +427,7 @@ int opk_pack_write(OpkPack *p, const char *outDir, char *err, size_t errsz) {
             }
         }
         if (!p->e[i].unnamed) {
-            char *nm = (char *)dat + nameBlockOff + nameOff[i];
+            char *nm = (char *)dat + (size_t)nameBlockOff + nameOff[i];
             nm[0] = (char)(p->e[i].tag >> 24); nm[1] = (char)(p->e[i].tag >> 16);
             nm[2] = (char)(p->e[i].tag >> 8);  nm[3] = (char)(p->e[i].tag);
             strcpy(nm + 4, p->e[i].name);
@@ -366,6 +436,10 @@ int opk_pack_write(OpkPack *p, const char *outDir, char *err, size_t errsz) {
 
     /* ---- name descriptors (named entries only, sorted) ---- */
     uint32_t *order = calloc(p->n, 4);
+    if (!order) {
+        free(recOff); free(nameOff); free(sepOff); free(dat);
+        return fail(err, errsz, "out of memory");
+    }
     uint32_t no = 0;
     for (uint32_t i = 0; i < p->n; i++)
         if (!p->e[i].unnamed) order[no++] = i;
@@ -387,7 +461,11 @@ int opk_pack_write(OpkPack *p, const char *outDir, char *err, size_t errsz) {
     }
 
     /* ---- .sep (real TXMPs only) ---- */
-    uint8_t *sep = calloc(1, sepCur);
+    uint8_t *sep = calloc(1, (size_t)sepCur);
+    if (!sep) {
+        free(recOff); free(nameOff); free(sepOff); free(order); free(dat);
+        return fail(err, errsz, "out of memory");
+    }
     for (uint32_t i = 0; i < p->n; i++)
         if (!p->e[i].isPlaceholder && !p->e[i].isTxan)
             memcpy(sep + sepOff[i], p->e[i].pixels, p->e[i].pixelsSize);
@@ -396,15 +474,24 @@ int opk_pack_write(OpkPack *p, const char *outDir, char *err, size_t errsz) {
     char path[1024];
     uint8_t rawStub[OPK_BLOB_BASE] = {0};
     int rc = 0;
-    snprintf(path, sizeof path, "%s/level%d_%s.raw", outDir, p->level, p->suffix);
-    rc = write_file(path, rawStub, sizeof rawStub, err, errsz);
+    if (snprintf(path, sizeof path, "%s/level%d_%s.raw",
+                 outDir, p->level, p->suffix) >= (int)sizeof path)
+        rc = fail(err, errsz, "output path too long");
+    if (rc == 0)
+        rc = write_file(path, rawStub, sizeof rawStub, err, errsz);
     if (rc == 0) {
-        snprintf(path, sizeof path, "%s/level%d_%s.sep", outDir, p->level, p->suffix);
-        rc = write_file(path, sep, sepCur, err, errsz);
+        if (snprintf(path, sizeof path, "%s/level%d_%s.sep",
+                     outDir, p->level, p->suffix) >= (int)sizeof path)
+            rc = fail(err, errsz, "output path too long");
+        else
+            rc = write_file(path, sep, (size_t)sepCur, err, errsz);
     }
     if (rc == 0) {
-        snprintf(path, sizeof path, "%s/level%d_%s.dat", outDir, p->level, p->suffix);
-        rc = write_file(path, dat, datSize, err, errsz);
+        if (snprintf(path, sizeof path, "%s/level%d_%s.dat",
+                     outDir, p->level, p->suffix) >= (int)sizeof path)
+            rc = fail(err, errsz, "output path too long");
+        else
+            rc = write_file(path, dat, (size_t)datSize, err, errsz);
     }
 
     free(recOff); free(nameOff); free(sepOff); free(order);

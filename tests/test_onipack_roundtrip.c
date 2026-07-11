@@ -422,6 +422,7 @@ static void test_writer(void) {
     CHECK(dataLen == 2 * 192, "two 192-byte records, placeholders dataless");
 
     /* preambles: {(idx<<8)|1, fileID} */
+    uint32_t seen = 0;
     for (uint32_t i = 0; i < nInst; i++) {
         const uint8_t *d = buf + 64 + i * OPK_IDESC_SIZE;
         uint32_t off = opk_rd32(d + 4);
@@ -436,7 +437,9 @@ static void test_writer(void) {
         CHECK(opk_rd32(body + OPK_TXMP_SEPOFF) >= OPK_BLOB_BASE &&
               opk_rd32(body + OPK_TXMP_SEPOFF) % 32 == 0, "sep offset aligned");
         CHECK(opk_rd32(body + OPK_TXMP_FLAGS) & OPK_TXMP_FLAG_LE, "LE flag");
+        seen++;
     }
+    CHECK(seen == 2, "exactly two real records walked");
 
     /* name descriptors sorted ordinal by tag-prefixed name */
     uint32_t ndescBase = 64 + nInst * OPK_IDESC_SIZE;
@@ -485,6 +488,13 @@ static void test_writer(void) {
     /* suffix contract */
     p = opk_pack_new(0, "Final");
     CHECK(p == NULL, "suffix 'Final' refused (overlay contract)");
+    p = opk_pack_new(0, "HD/1");
+    CHECK(p == NULL, "suffix with '/' refused");
+    p = opk_pack_new(0, "hd 1");
+    CHECK(p == NULL, "suffix with space refused");
+    p = opk_pack_new(0, "Hd9");
+    CHECK(p != NULL, "alphanumeric suffix accepted");
+    opk_pack_free(p);
 }
 
 static void test_writer_group(void) {
@@ -508,6 +518,8 @@ static void test_writer_group(void) {
           g.tex[2].pixels == NULL && g.txanBody == NULL,
           "group buffers owned by pack");
     CHECK(opk_pack_count(p) == 6, "pre + base + 2 frames + TXAN + placeholder");
+    CHECK(opk_pack_count_textures(p) == 2,
+          "texture count: pre + base only (frames/TXAN/placeholder excluded)");
     CHECK(opk_pack_write(p, "/tmp/opk_outg", err, sizeof err) == 0,
           "write group pack");
     opk_pack_free(p);
