@@ -49,32 +49,38 @@ static int desc_name(const uint8_t *buf, long fsize, uint32_t nameTabOff,
                      char out[OPK_NAME_MAX]) {
     if (descIdx >= nDescs) return -1;
     uint32_t nameOff = opk_rd32(buf + 64 + descIdx * OPK_IDESC_SIZE + 8);
-    uint32_t flags   = opk_rd32(buf + 64 + descIdx * OPK_IDESC_SIZE + 16);
+    uint32_t flags   = opk_rd32(buf + 64 + descIdx * OPK_IDESC_SIZE + 16) & 0xFFu;
     if (flags & OPK_FLAG_UNIQUE) return -1;         /* unnamed */
     if ((uint64_t)nameTabOff + nameTabLen > (uint64_t)fsize) return -1;
-    if (nameOff >= nameTabLen || nameTabLen - nameOff < 5) return -1;
+    if (nameOff >= nameTabLen) return -1;
     const char *full = (const char *)buf + nameTabOff + nameOff;
-    if (memchr(full, '\0', nameTabLen - nameOff) == NULL)
-        return -1;                                  /* unterminated name */
+    const char *nul  = memchr(full, '\0', nameTabLen - nameOff);
+    if (nul == NULL || nul < full + 4)
+        return -1;      /* unterminated, or NUL inside the 4CC tag prefix */
     snprintf(out, OPK_NAME_MAX, "%s", full + 4);    /* strip 4CC tag */
     return 0;
 }
 
 /* resolve one TXMP link slot into an OpkRef: 0 -> none; real in-file
- * instance -> local descriptor index; placeholder -> name-table name */
+ * instance -> local descriptor index; placeholder -> name-table name.
+ * The target descriptor's tag must equal wantTag either way. */
 static int resolve_ref(const uint8_t *buf, long fsize, uint32_t nameTabOff,
                        uint32_t nameTabLen, uint32_t nInst, uint32_t id,
-                       OpkRef *ref, char *err, size_t errsz,
-                       const char *noNameMsg) {
+                       uint32_t wantTag, OpkRef *ref, char *err, size_t errsz,
+                       const char *wrongTagMsg, const char *noNameMsg) {
     ref->local = -1;
     ref->name[0] = '\0';
-    if (!(id & 1u)) return 0;                       /* 0 == no link */
+    if (id == 0) return 0;                          /* no link */
+    if (!(id & 1u))
+        return fail(err, errsz, "malformed link id (nonzero, even)");
     uint32_t idx = id >> 8;
     if (idx >= nInst)
         return fail(err, errsz, "link target descriptor out of range");
     const uint8_t *d = buf + 64 + idx * OPK_IDESC_SIZE;
     uint32_t dataOff = opk_rd32(d + 4);
     uint32_t flags   = opk_rd32(d + 16) & 0xFFu;
+    if (opk_rd32(d) != wantTag)
+        return fail(err, errsz, wrongTagMsg);
     if (dataOff != 0 && !(flags & OPK_FLAG_PLACEHOLDER)) {
         ref->local = (int32_t)idx;                  /* intra-file ref */
         return 0;
@@ -127,7 +133,8 @@ int opk_oni_read_group(const char *path, OpkGroup *g, char *err, size_t errsz) {
         uint32_t tag = opk_rd32(d);
         if (tag == OPK_TAG_TXMP) {
             if (g->nTex >= OPK_GROUP_MAX) {
-                fail(err, errsz, "too many TXMP instances (limit 64)");
+                snprintf(err, errsz, "too many TXMP instances (limit %d)",
+                         OPK_GROUP_MAX);
                 goto bad;
             }
             g->tex[g->nTex++].localIdx = (int32_t)i;
@@ -182,12 +189,16 @@ int opk_oni_read_group(const char *path, OpkGroup *g, char *err, size_t errsz) {
         memcpy(gt->pixels, buf + rawTabOff + poff, gt->pixelsSize);
 
         if (resolve_ref(buf, fsize, nameTabOff, nameTabLen, nInst,
-                        opk_rd32(gt->body + OPK_TXMP_ANIM), &gt->anim,
-                        err, errsz, "anim link target has no name") != 0)
+                        opk_rd32(gt->body + OPK_TXMP_ANIM), OPK_TAG_TXAN,
+                        &gt->anim, err, errsz,
+                        "anim link target is not TXAN",
+                        "anim link target has no name") != 0)
             goto bad;
         if (resolve_ref(buf, fsize, nameTabOff, nameTabLen, nInst,
-                        opk_rd32(gt->body + OPK_TXMP_ENVMAP), &gt->envMap,
-                        err, errsz, "envmap link target has no name") != 0)
+                        opk_rd32(gt->body + OPK_TXMP_ENVMAP), OPK_TAG_TXMP,
+                        &gt->envMap, err, errsz,
+                        "envmap link target is not TXMP",
+                        "envmap link target has no name") != 0)
             goto bad;
     }
 
@@ -239,6 +250,30 @@ int opk_oni_read_group(const char *path, OpkGroup *g, char *err, size_t errsz) {
                 goto bad;
             }
         }
+
+        /* base identity: the base is the ONE TXMP whose anim slot references
+         * the TXAN — descriptor order is not reliable (24100-mod files put
+         * the TXAN at descriptor 1). Swap the carrier into tex[0]; localIdx
+         * values stay truthful. */
+        long baseT = -1;
+        for (uint32_t t = 0; t < g->nTex; t++) {
+            if (g->tex[t].anim.local == txanIdx) {
+                if (baseT >= 0) {
+                    fail(err, errsz, "multiple TXMPs reference the TXAN");
+                    goto bad;
+                }
+                baseT = (long)t;
+            }
+        }
+        if (baseT < 0) {
+            fail(err, errsz, "no TXMP references the TXAN (missing base)");
+            goto bad;
+        }
+        if (baseT != 0) {
+            OpkGroupTex tmp = g->tex[0];
+            g->tex[0] = g->tex[baseT];
+            g->tex[baseT] = tmp;
+        }
     }
 
     free(buf);
@@ -258,7 +293,7 @@ int opk_oni_read(const char *path, OpkTexture *out, char *err, size_t errsz) {
     if (g.nTex != 1 || g.hasTxan) {
         opk_group_free(&g);
         return fail(err, errsz,
-            "animated multi-instance file — use group ingest (#62 scope: TXMP/TXAN only)");
+            "multi-instance file — use group ingest (#62 scope: TXMP/TXAN only)");
     }
     memcpy(out->body, g.tex[0].body, sizeof out->body);
     out->pixels     = g.tex[0].pixels;              /* steal ownership */

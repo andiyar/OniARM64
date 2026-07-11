@@ -261,9 +261,108 @@ static void test_group_reader(void) {
     opk_group_free(&g);
 }
 
+/* overwrite 4 bytes at a fixed offset — corrupt-fixture helper */
+static void patch32(const char *path, long off, uint32_t v) {
+    FILE *f = fopen(path, "r+b");
+    uint8_t b[4];
+    opk_wr32(b, v);
+    fseek(f, off, SEEK_SET);
+    fwrite(b, 1, 4, f);
+    fclose(f);
+}
+
+/* fixed offsets inside the animated fixture (see write_fixture_oni_anim:
+ * descs @64, data @192, records base/f1/f2 @192/384/576, TXAN rec @768,
+ * name table @832) */
+enum {
+    FXA_DESC1_TAG   = 64 + 1 * 20,
+    FXA_BASE_ANIM   = 192 + 8 + OPK_TXMP_ANIM,
+    FXA_BASE_ENVMAP = 192 + 8 + OPK_TXMP_ENVMAP,
+    FXA_F1_ANIM     = 192 + 192 + 8 + OPK_TXMP_ANIM,
+    FXA_F2_ANIM     = 192 + 384 + 8 + OPK_TXMP_ANIM,
+    FXA_TXAN_BODY   = 192 + 584,
+    FXA_NUMFRAMES   = FXA_TXAN_BODY + OPK_TXAN_NUMFRAMES,
+    FXA_MAPS1       = FXA_TXAN_BODY + OPK_TXAN_MAPS + 4,
+    FXA_NAMETAB     = 192 + 640
+};
+
+static void test_group_negative(void) {
+    char err[256];
+    OpkGroup g;
+    const char *p = "/tmp/TXMPanimneg.oni";
+
+    write_fixture_oni_anim(p);
+    patch32(p, FXA_DESC1_TAG, OPK_TAG_TXAN);    /* frame 1 becomes a TXAN */
+    CHECK(opk_oni_read_group(p, &g, err, sizeof err) != 0 &&
+          strstr(err, "multiple TXAN"), "second TXAN rejected");
+
+    write_fixture_oni_anim(p);
+    patch32(p, FXA_MAPS1, (3u << 8) | 1u);      /* frame ref -> the TXAN */
+    CHECK(opk_oni_read_group(p, &g, err, sizeof err) != 0 &&
+          strstr(err, "frame ref"), "frame ref to TXAN rejected");
+
+    write_fixture_oni_anim(p);
+    patch32(p, FXA_MAPS1, 0);                   /* 0 only legal at index 0 */
+    CHECK(opk_oni_read_group(p, &g, err, sizeof err) != 0 &&
+          strstr(err, "frame ref"), "zero frame ref past index 0 rejected");
+
+    write_fixture_oni_anim(p);
+    patch32(p, FXA_NUMFRAMES, 0);
+    CHECK(opk_oni_read_group(p, &g, err, sizeof err) != 0 &&
+          strstr(err, "frame count"), "numFrames 0 rejected");
+
+    write_fixture_oni_anim(p);
+    patch32(p, FXA_NUMFRAMES, 300);
+    CHECK(opk_oni_read_group(p, &g, err, sizeof err) != 0 &&
+          strstr(err, "frame count"), "numFrames 300 rejected");
+
+    write_fixture_oni_anim(p);
+    patch32(p, FXA_BASE_ENVMAP, (3u << 8) | 1u); /* envmap -> the TXAN */
+    CHECK(opk_oni_read_group(p, &g, err, sizeof err) != 0 &&
+          strstr(err, "envmap link target is not TXMP"),
+          "envmap slot pointing at TXAN rejected");
+
+    write_fixture_oni_anim(p);
+    {   /* NUL the 'M' of "TXMPSKYENV" @ table byte 11: the placeholder's
+         * name entry (nameOff 9) now has its only reachable NUL inside the
+         * 4CC tag prefix — desc_name must refuse it */
+        FILE *f = fopen(p, "r+b");
+        fseek(f, FXA_NAMETAB + 11, SEEK_SET);
+        fputc(0, f);
+        fclose(f);
+    }
+    CHECK(opk_oni_read_group(p, &g, err, sizeof err) != 0 &&
+          strstr(err, "envmap link target has no name"),
+          "name entry with NUL inside tag prefix rejected");
+
+    write_fixture_oni_anim(p);
+    patch32(p, FXA_BASE_ANIM, 0);               /* nobody references the TXAN */
+    CHECK(opk_oni_read_group(p, &g, err, sizeof err) != 0 &&
+          strstr(err, "no TXMP references"), "TXAN without base rejected");
+
+    write_fixture_oni_anim(p);
+    patch32(p, FXA_F1_ANIM, (3u << 8) | 1u);    /* two anim carriers */
+    CHECK(opk_oni_read_group(p, &g, err, sizeof err) != 0 &&
+          strstr(err, "multiple TXMPs reference"), "two anim carriers rejected");
+
+    /* carrier NOT first in descriptor order: swap into tex[0] */
+    write_fixture_oni_anim(p);
+    patch32(p, FXA_BASE_ANIM, 0);
+    patch32(p, FXA_F2_ANIM, (3u << 8) | 1u);    /* carrier = desc 2 */
+    CHECK(opk_oni_read_group(p, &g, err, sizeof err) == 0,
+          "carrier-not-first accepted");
+    CHECK(g.nTex == 3 && g.tex[0].localIdx == 2 && g.tex[0].pixels &&
+          g.tex[0].pixels[0] == 0xC0 && g.tex[0].anim.local == 3,
+          "anim carrier swapped into base slot");
+    CHECK(g.tex[1].localIdx == 1 && g.tex[2].localIdx == 0,
+          "swap keeps localIdx truthful");
+    opk_group_free(&g);
+}
+
 int main(void) {
     test_reader();
     test_group_reader();
+    test_group_negative();
     printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail ? 1 : 0;
 }

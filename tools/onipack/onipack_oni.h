@@ -48,7 +48,10 @@ typedef struct {
 typedef struct {
     char        name[OPK_NAME_MAX]; /* base texture name (filename-derived) */
     uint32_t    nTex;
-    OpkGroupTex tex[OPK_GROUP_MAX]; /* tex[0] = base = FIRST real TXMP descriptor */
+    OpkGroupTex tex[OPK_GROUP_MAX]; /* tex[0] = base: the anim-carrier TXMP when
+                                       a TXAN is present (validated: exactly one
+                                       must reference it), else the first real
+                                       TXMP descriptor */
     int         hasTxan;
     int32_t     txanLocalIdx;
     uint8_t    *txanBody;           /* raw body incl maps[] (still file-local ids) */
@@ -59,7 +62,10 @@ typedef struct {
  * frames+timing, not a #62 hazard) and any number of placeholders; any other
  * real tag is rejected (#62). TXAN maps[] entries stay file-local in
  * txanBody; maps[0]==0 means "base texture" (engine convention, see
- * onipack_format.h). Returns 0 on success, -1 with reason in err. */
+ * onipack_format.h). Returns 0 on success, -1 with reason in err.
+ * Zeroes *g on entry: opk_group_free any previous group BEFORE reusing it.
+ * On success the caller owns pixels/txanBody; to keep a buffer past
+ * opk_group_free, NULL the field first (supported ownership transfer). */
 int  opk_oni_read_group(const char *path, OpkGroup *g, char *err, size_t errsz);
 void opk_group_free(OpkGroup *g);
 
