@@ -67,6 +67,7 @@
 #include "Oni_DataSetup_macOS.h"
 #include "Oni_UpdateCheck_macOS.h"
 #include "Oni_CrashReport_macOS.h"
+#include "BFW_LI_Gamepad_SDL.h"
 #endif
 
 #if DEBUGGING
@@ -973,6 +974,28 @@ static void KeyConfig(void)
 					"bind comma to kick",
 					"bind enter to walk",
 					"",
+					"# gamepad (positional names: pad_a=south/bottom, pad_y=north/top)",
+					"bind pad_ls_up to forward",
+					"bind pad_ls_down to backward",
+					"bind pad_ls_left to stepleft",
+					"bind pad_ls_right to stepright",
+					"bind pad_rs_x to aim_LR",
+					"bind pad_rs_y to aim_UD",
+					"bind pad_a to jump",
+					"bind pad_b to action",
+					"bind pad_x to punch",
+					"bind pad_y to kick",
+					"bind pad_zr to fire1",
+					"bind pad_zl to fire2",
+					"bind pad_r to reload",
+					"bind pad_l to swap",
+					"bind pad_up to hypo",
+					"bind pad_down to drop",
+					"bind pad_l3 to crouch",
+					"bind pad_start to escape",
+					"bind pad_back to pausescreen",
+					"# pad_r3 = dash (built in, not bindable)",
+					"",
 					NULL
 				};
 
@@ -988,6 +1011,36 @@ static void KeyConfig(void)
 		}
 
 		RunKeyConfigFile(key_config_path);
+
+#if defined(__APPLE__) && UUmSDL
+		// A pre-gamepad key_config only carries keyboard/mouse binds; its
+		// leading "unbindall" wiped the programmatic setup, so nothing on the
+		// pad is bound. If the file mentions no pad_ input, apply the built-in
+		// gamepad defaults now (after RunKeyConfigFile, so the unbindall can't
+		// clobber them). Fresh configs written above already carry pad_ lines,
+		// so they match here and are left alone (no double-binding).
+		{
+			FILE *pad_scan = fopen(key_config_path, "r");
+
+			if (NULL != pad_scan) {
+				char line[512];
+				UUtBool has_pad_binding = UUcFalse;
+
+				while (NULL != fgets(line, sizeof(line), pad_scan)) {
+					if (NULL != strstr(line, "pad_")) {
+						has_pad_binding = UUcTrue;
+						break;
+					}
+				}
+
+				fclose(pad_scan);
+
+				if (!has_pad_binding) {
+					LIrGamepad_BindDefaults();
+				}
+			}
+		}
+#endif
 	}
 
 	return;

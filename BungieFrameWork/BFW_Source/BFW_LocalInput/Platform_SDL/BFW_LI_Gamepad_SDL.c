@@ -4,6 +4,7 @@
 #include "BFW_LI_Gamepad_SDL.h"
 #include "BFW_LI_GamepadLogic.h"
 #include <stdlib.h>
+#include <string.h>
 
 static SDL_GameController *LIgPad = NULL;
 static UUtBool LIgPad_Disabled = UUcFalse;
@@ -45,7 +46,8 @@ UUtError LIrGamepad_Initialize(void)
 {
 	const char *env = getenv("ONI_GAMEPAD");
 	int i, n;
-	if (env != NULL && env[0] == '0') {
+	LIgPad_Disabled = UUcFalse;
+	if (env != NULL && strcmp(env, "0") == 0) {
 		LIgPad_Disabled = UUcTrue;
 		UUrStartupMessage("[pad] disabled via ONI_GAMEPAD=0");
 		return UUcError_None;
@@ -160,6 +162,9 @@ void LIrGamepad_BindDefaults(void)
 	};
 	UUtUns32 i;
 	for (i = 0; i < sizeof(defaults) / sizeof(defaults[0]); i++) {
-		LIrBinding_Add(defaults[i].code, defaults[i].action);
+		if (LIrBinding_Add(defaults[i].code, defaults[i].action) != UUcError_None) {
+			UUrStartupMessage("[pad] WARNING: binding add failed for '%s' (table full?)", defaults[i].action);
+		}
 	}
+	UUrStartupMessage("[pad] default bindings applied (%u)", (unsigned)(sizeof(defaults) / sizeof(defaults[0])));
 }
