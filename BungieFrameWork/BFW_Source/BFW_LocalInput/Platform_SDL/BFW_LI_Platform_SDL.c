@@ -12,6 +12,7 @@
 #include "BFW_Console.h"
 #include "BFW_WindowManager.h"
 #include "BFW_LI_Platform_SDL.h"
+#include "BFW_LI_Gamepad_SDL.h"
 #include "BFW_Timer.h"
 #include "BFW_ScriptLang.h"
 
@@ -608,6 +609,8 @@ LIiPlatform_Devices_GetData(
 	if (LIcMode_Game == LIgMode_Internal)
 	{
 		LIiPlatform_Mouse_GetData(outAction);
+		// gamepad buttons/triggers feed the same binding pipeline (#73)
+		LIrGamepad_GetData(outAction);
 	}
 
 	// get the keyboard data
@@ -984,6 +987,11 @@ LIrPlatform_Update(
 						LIrAutoPause_Cancel();
 					break;
 				}
+			break;
+			// gamepad hot-plug (#73)
+			case SDL_CONTROLLERDEVICEADDED:
+			case SDL_CONTROLLERDEVICEREMOVED:
+				LIrGamepad_HandleSDLEvent(&event);
 			break;
 		}
 	}

@@ -344,6 +344,33 @@ enum
 	LIcMouseCode_ZAxis			= 0x0007
 };
 
+// Gamepad input codes (#73) — 0x0100 block, clear of keyboard (max 0xC9)
+// and mouse (0x01-0x07). Names registered in BFW_LI_Translators.c.
+enum {
+	LIcGamepadCode_South      = 0x0100,  // pad_a
+	LIcGamepadCode_East       = 0x0101,  // pad_b
+	LIcGamepadCode_West       = 0x0102,  // pad_x
+	LIcGamepadCode_North      = 0x0103,  // pad_y
+	LIcGamepadCode_Back       = 0x0104,  // pad_back  (Select / minus)
+	LIcGamepadCode_Start      = 0x0105,  // pad_start (plus)
+	LIcGamepadCode_L3         = 0x0106,  // pad_l3
+	LIcGamepadCode_R3         = 0x0107,  // pad_r3 (dash — consumed internally)
+	LIcGamepadCode_LB         = 0x0108,  // pad_l
+	LIcGamepadCode_RB         = 0x0109,  // pad_r
+	LIcGamepadCode_ZL         = 0x010A,  // pad_zl (left trigger, digitalized)
+	LIcGamepadCode_ZR         = 0x010B,  // pad_zr (right trigger, digitalized)
+	LIcGamepadCode_DPadUp     = 0x010C,  // pad_up
+	LIcGamepadCode_DPadDown   = 0x010D,  // pad_down
+	LIcGamepadCode_DPadLeft   = 0x010E,  // pad_left
+	LIcGamepadCode_DPadRight  = 0x010F,  // pad_right
+	LIcGamepadCode_LSUp       = 0x0110,  // pad_ls_up    (quantized stick)
+	LIcGamepadCode_LSDown     = 0x0111,  // pad_ls_down
+	LIcGamepadCode_LSLeft     = 0x0112,  // pad_ls_left
+	LIcGamepadCode_LSRight    = 0x0113,  // pad_ls_right
+	LIcGamepadCode_RSX        = 0x0114,  // pad_rs_x     (aim axis delta)
+	LIcGamepadCode_RSY        = 0x0115   // pad_rs_y
+};
+
 enum
 {
 	LIcMouseState_None			= 0x0000,
