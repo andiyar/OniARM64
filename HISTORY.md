@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-07-11 — Session 63: crash-recovery UX (#74)
+
+- **feat(ux): crash sentinel + next-launch report dialog** (addresses #74): `.session-active` is written to App Support once the pre-window dialogs pass and removed at the end of clean teardown; if it survives to the next launch, a native alert offers **Report on GitHub…** (browser opens the new-issue compose page pre-filled with version, build stamp, renderer, macOS version and the last ~30 lines of `startup.txt`, capped ~7 KB encoded; the newest recent `Oni-*.ips` is revealed in Finder for one-drag attaching), **Show Logs**, or **Dismiss**, with a don't-ask-again suppression preference. No tokens, no auto-filing — the user sees the whole report in the compose page. New `Oni_CrashReport_macOS.mm` mirrors the update-notifier shell; hooks in `Oni.c` order the startup so the data picker's and update check's clean `exit(0)` paths can never arm the sentinel. Sentinel lifecycle verified headless (5-check standalone harness); dialog + report path await an in-game crash to confirm.
+
 ### 2026-07-10 — Session 62: Metal fogged-additive FX parity (#82)
 
 - **fix(render): Metal — force fog off for additive-blended draws** (addresses #82; user-verified in play next morning, level corrected to 10): the level-10 escape-shaft energy FX rendered as hard white rings + an opaque blocky "staircase" glow under Metal while the maintainer's same-install GL A/B showed the intended soft blue — GL forces fog off for every additive-blended primitive (`gl_utility.c:1901`, "force fog off!") and Metal bound its fog uniform unconditionally. The shader fogs RGB toward the 0.25-grey fog colour but leaves the alpha mask intact, so fogged additive glows became flat grey shapes whose stacked overlaps accumulated to stepped white — a one-line gate in `metal_select_textures` restores parity. A subagent GL-vs-Metal trace first refuted the tempting candidates (blend-factor plumbing, tint submission, converter failures, sampler filtering — all faithful to GL) before fog emerged as the sole divergence.

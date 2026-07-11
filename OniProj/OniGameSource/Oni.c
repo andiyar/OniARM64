@@ -66,6 +66,7 @@
 #if defined(__APPLE__) && UUmSDL
 #include "Oni_DataSetup_macOS.h"
 #include "Oni_UpdateCheck_macOS.h"
+#include "Oni_CrashReport_macOS.h"
 #endif
 
 #if DEBUGGING
@@ -231,10 +232,31 @@ ONiInitializeAll(
 
 #if defined(__APPLE__) && UUmSDL
 	// Game data is resolved and we're still pre-window on the main thread —
-	// the same safe point the first-run picker uses. Check GitHub for a newer
-	// release and, if one exists, offer it (throttled + opt-out; silent when
-	// offline). Non-fatal: any failure just continues into the game. (#40)
+	// the same safe point the first-run picker uses.
+	//
+	// Crash-recovery check FIRST (#74): a sentinel surviving from the last
+	// session means it died dirty — offer the pre-filled GitHub report before
+	// the update check, whose Download button exits this process.
+	{
+		char	crashSentinelPath[1024];
+
+		if (UUcError_None == ONiBundlePath_ResolveStateFile(".session-active",
+				crashSentinelPath, sizeof(crashSentinelPath))) {
+			ONrCrashReport_CheckAndPromptAtStartup(crashSentinelPath,
+				ONgCommandLine.useMetal ? "Metal" : "OpenGL");
+		}
+	}
+
+	// Check GitHub for a newer release and, if one exists, offer it (throttled
+	// + opt-out; silent when offline). Non-fatal: any failure just continues
+	// into the game. (#40)
 	ONrUpdateCheck_RunAtStartup();
+
+	// Session is now committed to launching: arm the sentinel. Deliberately
+	// AFTER the pre-window dialogs (their clean exit(0) paths must not leave a
+	// stale sentinel) and BEFORE engine init (a crash while loading corrupt
+	// game data is exactly the kind of thing worth reporting). (#74)
+	ONrCrashReport_MarkSessionActive();
 #endif
 
 	// Discover installed HD texture packs and register their directories as
@@ -1041,6 +1063,13 @@ void OniExit(
 	SLrScript_Terminate();
 
 	UUrMemory_Block_VerifyList();
+
+#if defined(__APPLE__) && UUmSDL
+	// Clean shutdown reached — disarm the crash sentinel. Kept at the very
+	// end of teardown so a crash anywhere above still counts as dirty. (#74)
+	ONrCrashReport_MarkCleanExit();
+#endif
+
 	UUrStartupMessage("oni exit complete, shutting down...");
 
 	// change this if we ever want to check for leaks

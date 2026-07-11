@@ -55,6 +55,11 @@ GitHub release notes and gets stamped with the version + date.
   crashing mid-load (#28, #66).
 
 ### Input & macOS
+- If Oni crashes or is force-quit, the next launch offers to file a bug:
+  one button opens a pre-filled GitHub issue (build, renderer, macOS version,
+  the tail of the log) and reveals the macOS crash report for drag-and-drop.
+  You see the whole report before submitting, and there's a "don't ask again"
+  checkbox (#74).
 - The macOS press-and-hold accent picker no longer pops up over gameplay when
   holding a movement key (#77).
 - Logs rotate at 10 MB instead of quietly growing to 90 MB, and diagnostic

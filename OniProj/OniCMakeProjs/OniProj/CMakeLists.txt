@@ -572,6 +572,8 @@ if(Platform_SDL)
                 ../../OniGameSource/Platform_SDL/Oni_RendererSelect_macOS.h
                 ../../OniGameSource/Platform_SDL/Oni_UpdateCheck_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_UpdateCheck_macOS.h
+                ../../OniGameSource/Platform_SDL/Oni_CrashReport_macOS.mm
+                ../../OniGameSource/Platform_SDL/Oni_CrashReport_macOS.h
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_draw.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_texture.mm
@@ -584,6 +586,7 @@ if(Platform_SDL)
                 ../../OniGameSource/Platform_SDL/Oni_DataSetup_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_RendererSelect_macOS.mm
                 ../../OniGameSource/Platform_SDL/Oni_UpdateCheck_macOS.mm
+                ../../OniGameSource/Platform_SDL/Oni_CrashReport_macOS.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_engine.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_draw.mm
                 ../../../BungieFrameWork/BFW_Source/BFW_Motoko/Engines/DrawEngine/Metal/metal_texture.mm
