@@ -129,7 +129,7 @@ Chapters 1–9 (through level 10) verified playable end-to-end: combat, AI, weap
 
    Prefer to place it yourself? Drop your `GameDataFolder` into `~/Library/Application Support/OniARM64/` - you'll likely need to create the folder first.
 
-   Optional: HD texture packs go in `~/Library/Application Support/OniARM64/TexturePacks/` — each pack's textures override the originals, your game data is untouched. A curated pack and a friendly installer are in the works ([#20](https://github.com/andiyar/OniARM64/issues/20)).
+   Optional: HD texture packs go in `~/Library/Application Support/OniARM64/TexturePacks/` — each pack's textures override the originals, your game data is untouched. Bring your own packs (the [oni2.net mod depot](https://mods.oni2.net/) is the place — no mod content is bundled or redistributed here); a friendlier installer is planned ([#20](https://github.com/andiyar/OniARM64/issues/20)).
 
 *tested but hey verify.
 
