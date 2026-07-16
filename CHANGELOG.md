@@ -8,7 +8,9 @@ are written for players; the per-commit developer detail lives in
 land. At each release cut, the Unreleased section becomes the body of the
 GitHub release notes and gets stamped with the version + date.
 
-## Unreleased (since 1.3.0r4, 2026-06-19)
+## Unreleased (since 1.3.0r5, 2026-07-17)
+
+## 1.3.0r5 — 2026-07-17
 
 ### Campaign progress
 - Chapters 1–9 (through *Truth and Consequences*) now verified playable
