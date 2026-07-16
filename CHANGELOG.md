@@ -23,6 +23,9 @@ GitHub release notes and gets stamped with the version + date.
 - Fixed glow effects (energy rings, light halos) washing out to hard white in
   fogged areas under Metal. Additive effects are now drawn fog-free, matching
   OpenGL (#82).
+- Still being chased: a sporadic mid-play freeze where a phantom Escape opens
+  the menu invisibly and seizes input (#78). Seen only under the opt-in Metal
+  renderer on development builds; tracing is in place.
 
 ### HD texture packs
 - Texture-pack support landed: drop a pack into
@@ -45,12 +48,16 @@ GitHub release notes and gets stamped with the version + date.
   break (#22).
 - Fixed two AI crashes from playtesting: patrol guards shooting at a waypoint,
   and disarmed guards running for an alarm console (#79, #80).
+- Fixed a crash waiting in the final boss fight — the boss's melee code
+  squeezed a 64-bit pointer through a 32-bit slot (#50).
 
 ### Stability
 - Roughly twenty crash-class fixes from playtests and code audits: 64-bit
   pointer truncation, buffer overruns in colliders/costumes/spawning, a sort
   routine corrupting memory, undersized render tables (#11, #51, #53–#58,
   #66, #68, #69, #71).
+- Combat sounds no longer risk lagging or playing wrong after several level
+  changes — the audio cache now clears between levels (#59).
 - Corrupt or incomplete game data now fails with a clear message instead of
   crashing mid-load (#28, #66).
 

@@ -25,7 +25,7 @@ Currently it's playable (I've run through the first 4 levels... too many times..
 
 ## Status
 
-Levels 1–5 playable end-to-end: combat, AI, weapons, particle effects, audio, save/load all working. Loads **both** (or either?) the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. New: an **experimental native Metal renderer** (hold Option at launch to pick it) now renders the menu and in-game world, but unclear how buggy it is going through. I mean, a bit of fun. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
+Chapters 1–9 (through level 10) verified playable end-to-end: combat, AI, weapons, particle effects, audio, save/load all working. Chapters 10–14 load and render but haven't had a full playthrough yet. Loads **both** (or either?) the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. The **native Metal renderer** (hold Option at launch to pick it) is now feature-complete with OpenGL and carried the whole chapter 1–9 run; OpenGL stays the default while it soaks, and one sporadic input-freeze bug under Metal is being chased ([#78](https://github.com/andiyar/OniARM64/issues/78)). **HD texture packs** are supported: drop a pack into `~/Library/Application Support/OniARM64/TexturePacks` and its textures override the originals without touching your game data. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
 
 <details>
 <summary><strong>Full milestone status</strong></summary>
@@ -74,13 +74,18 @@ Levels 1–5 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 - [x] Konoko engages NPCs in combat end-to-end across a full encounter
 - [x] Tutorial level completable to next-level transition
 - [x] Save / load works across runs
-- [x] Levels 2–5 playable with particle effects, combat, AI, level transitions
-- [ ] All 14 levels playable - yet to test
+- [x] Chapters 1–9 (levels 1–10) playable with particle effects, combat, AI, level transitions
+- [ ] All 14 chapters playable — 10–14 still to march ([#90](https://github.com/andiyar/OniARM64/issues/90))
 
 ### Phase 7 — Shippable artefact
 - [x] `.app` bundle + Developer-ID code signing
 - [x] Notarized + stapled DMG, Gatekeeper-clean, published to Releases
-- [ ] Anniversary Edition QoL improvements - HD compatibility (works but not well) and other ideas... very much TBD.
+- [x] HD texture-pack support — packs in `~/Library/Application Support/OniARM64/TexturePacks` override the originals; verified through the chapter 1–9 march ([#16](https://github.com/andiyar/OniARM64/issues/16), [#44](https://github.com/andiyar/OniARM64/issues/44), [#45](https://github.com/andiyar/OniARM64/issues/45), [#60](https://github.com/andiyar/OniARM64/issues/60), [#62](https://github.com/andiyar/OniARM64/issues/62), [#63](https://github.com/andiyar/OniARM64/issues/63))
+- [x] Crash-recovery dialog — after a crash, the next launch offers a pre-filled GitHub report + log reveal ([#74](https://github.com/andiyar/OniARM64/issues/74))
+- [x] Native texture-pack tooling (onipack) — pack build + verify with no Mono/OniSplit ([#88](https://github.com/andiyar/OniARM64/issues/88))
+- [ ] Mac-native pack installer (.zip drop → installed pack) ([#20](https://github.com/andiyar/OniARM64/issues/20))
+- [ ] Game-controller support — in progress on a branch ([#73](https://github.com/andiyar/OniARM64/issues/73))
+- [ ] Anniversary Edition QoL improvements — ongoing, ideas as they come... very much TBD.
 - [x] Mac retail `GameDataFolder` drop-and-play (original 2001 Mac disc) — loads + plays natively; engine auto-detects Mac vs PC data by checksum (Apple IMA4 SNDD; OSBD/BINA/TXMP verified through the shared layout) ([#37](https://github.com/andiyar/OniARM64/issues/37))
 - [x] First-run guided data-setup picker — locate + install your `GameDataFolder` with no Terminal/rename; resolver content-validates and accepts both folder names ([#38](https://github.com/andiyar/OniARM64/issues/38))
 - [x] Resolution menu lists the display's real modes (not a hardcoded table) — curated SDL enumeration; 16:10 / 1440p / ultrawide / 4K / 5K now selectable ([#39](https://github.com/andiyar/OniARM64/issues/39))
@@ -90,10 +95,10 @@ Levels 1–5 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 - [x] **M0 — scaffolding**: second Motoko draw engine selectable at launch (`-metal` / `ONI_RENDERER=metal` / hold-Option chooser); device + `CAMetalLayer` + clear/present; OpenGL stays the untouched default; non-Apple builds compile zero Metal code
 - [x] **M1 — textured geometry**: runtime-compiled shader pipeline, all eight Motoko primitives, full texture-format coverage, depth + alpha/additive blending, HiDPI drawable, mouse-accurate menu — main menu and in-game world render under Metal (user-verified on level 2: combat, particles, HUD, in-game text)
 - [x] In-session resolution change under Metal — logical render scale switches correctly (drawable stays native-res, same desktop-fullscreen behaviour as GL)
-- [ ] M2 — fog + in-game visual parity pass (incl. engine-agnostic particle fog query)
+- [x] M2 — fog + in-game visual parity (in-shader fog, engine-agnostic particle fog query; the additive-glow fog divergence found and fixed later was user-verified at the level-10 shaft, [#82](https://github.com/andiyar/OniARM64/issues/82); a matched-scene fog look-check rides the [#90](https://github.com/andiyar/OniARM64/issues/90) march)
 - [x] **M3 — env-map reflective combine**: shiny character armour reflects under Metal again (single-pass two-texture shader matching GL's two-pass `base + env·base_alpha`); verified firing + stable in a busy combat run (1.34M env-map triangle draws, no ring overflow, clean exit), no visual anomalies. Per-triangle env draw perf tracked separately ([#48](https://github.com/andiyar/OniARM64/issues/48))
 - [x] **M4 — feature-complete parity**: `screenCapture` made safe (descoped — the in-game screenshot key, superseded by macOS screenshots; no more garbage BMP), `pointVisible` parity confirmed (sun-flare soft-occlusion an accepted cosmetic outdoor-only delta), pixel-format soak clean (zero unsupported texels across 19 Metal sessions / ~15 levels incl. the final level), gamma + HiDPI verified — Metal declared feature-complete with OpenGL
-- [ ] M5 — batching, persisted renderer preference, in-game renderer menu
+- [ ] M5 — persisted renderer preference, in-game renderer menu ([#89](https://github.com/andiyar/OniARM64/issues/89); batching dropped — [#48](https://github.com/andiyar/OniARM64/issues/48) showed the sluggish feel is renderer-independent)
 
 </details>
 
@@ -123,6 +128,8 @@ Levels 1–5 playable end-to-end: combat, AI, weapons, particle effects, audio, 
 3. **Double-click `OniARM64.app`.** On first run, if it can't find your game data it pops up a dialog — click **Choose**, point it at your Oni `GameDataFolder`, and it copies it into place for you (no Terminal, no renaming). Either the original **Mac retail** or **Windows retail** data works — the engine auto-detects.*
 
    Prefer to place it yourself? Drop your `GameDataFolder` into `~/Library/Application Support/OniARM64/` - you'll likely need to create the folder first.
+
+   Optional: HD texture packs go in `~/Library/Application Support/OniARM64/TexturePacks/` — each pack's textures override the originals, your game data is untouched. A curated pack and a friendly installer are in the works ([#20](https://github.com/andiyar/OniARM64/issues/20)).
 
 *tested but hey verify.
 
