@@ -505,6 +505,13 @@ LIrMode_Set(
 
 void LIrGameIsActive(UUtBool inGameIsActive);
 
+// Focus-loss auto-pause handshake (#83): the SDL event pump requests a pause
+// on FOCUS_LOST/MINIMIZED and cancels it on regain; the game heartbeat fires
+// it through the same gates as a real Escape press (so never in cutscenes).
+void LIrAutoPause_Request(void);
+void LIrAutoPause_Cancel(void);
+UUtBool LIrAutoPause_Pending(void);
+
 // ----------------------------------------------------------------------
 void
 LIrTranslate_InputCode(

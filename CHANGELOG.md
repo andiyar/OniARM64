@@ -69,6 +69,10 @@ GitHub release notes and gets stamped with the version + date.
   checkbox (#74).
 - The macOS press-and-hold accent picker no longer pops up over gameplay when
   holding a movement key (#77).
+- Oni now behaves like a Mac app when you quit or switch away: Quit from the
+  Dock icon works, Cmd-Q works everywhere, and switching apps (Cmd-Tab) pauses
+  the game by opening the menu instead of letting the fight carry on without
+  you (#83). Set `ONI_AUTOPAUSE=0` if you preferred the old behaviour.
 - Logs rotate at 10 MB instead of quietly growing to 90 MB, and diagnostic
   spam is off by default (#70).
 

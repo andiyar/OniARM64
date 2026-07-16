@@ -10,6 +10,7 @@
 #include "BFW_LI_Platform.h"
 #include "BFW_LI_Private.h"
 #include "BFW_Console.h"
+#include "BFW_WindowManager.h"
 #include "BFW_LI_Platform_SDL.h"
 #include "BFW_Timer.h"
 #include "BFW_ScriptLang.h"
@@ -38,6 +39,18 @@ static UUtBool LIiInputTraceEnabled(void)
 	if (cached < 0) {
 		const char *v = getenv("ONI_INPUT_TRACE");
 		cached = (v != NULL && v[0] != '\0' && v[0] != '0') ? 1 : 0;
+	}
+	return (UUtBool)cached;
+}
+
+// #83 — focus-loss auto-pause; ONI_AUTOPAUSE=0 restores the old
+// keep-simulating-in-background behaviour.
+static UUtBool LIiAutoPauseEnabled(void)
+{
+	static int cached = -1;
+	if (cached < 0) {
+		const char *v = getenv("ONI_AUTOPAUSE");
+		cached = (v != NULL && v[0] == '0') ? 0 : 1;
 	}
 	return (UUtBool)cached;
 }
@@ -630,7 +643,8 @@ LIrPlatform_Update(
 						eventType = (event.button.state == SDL_PRESSED) ? LIcInputEvent_MMouseDown : LIcInputEvent_MMouseUp;
 					break;
 					default:
-						return UUcTrue;
+						// extra buttons: skip this event, keep draining the queue
+						continue;
 				}
 
 				{
@@ -668,6 +682,29 @@ LIrPlatform_Update(
 			break;
 			case SDL_APP_WILLENTERBACKGROUND:
 				LIrGameIsActive(UUcFalse);
+			break;
+			case SDL_QUIT:
+				// Dock-icon Quit / app-menu Cmd-Q — same terminate path as the
+				// WM Cmd-Q key command, so normal teardown runs (#83)
+				WMrMessage_Post(NULL, WMcMessage_Quit, 0, 0);
+			break;
+			case SDL_WINDOWEVENT:
+				switch (event.window.event)
+				{
+					case SDL_WINDOWEVENT_CLOSE:
+						WMrMessage_Post(NULL, WMcMessage_Quit, 0, 0);
+					break;
+					case SDL_WINDOWEVENT_FOCUS_LOST:
+					case SDL_WINDOWEVENT_MINIMIZED:
+						if (LIiAutoPauseEnabled()) {
+							LIrAutoPause_Request();
+						}
+					break;
+					case SDL_WINDOWEVENT_FOCUS_GAINED:
+					case SDL_WINDOWEVENT_RESTORED:
+						LIrAutoPause_Cancel();
+					break;
+				}
 			break;
 		}
 	}

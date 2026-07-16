@@ -3980,6 +3980,15 @@ static void ONiGameState_ProcessMiscActions(ONtGameState *ioGameState)
 			}
 		}
 
+		// #83 focus-loss auto-pause: open the same menu a real Escape would,
+		// through the same gates (can_escape keeps this out of cutscenes)
+		if (LIrAutoPause_Pending() && CanEscapeKey())
+		{
+			LIrAutoPause_Cancel();
+			OWrOniWindow_Toggle();
+			NoEscapeKeyForABit();
+		}
+
 		if (ioGameState->local.localInput.buttonWentDown & LIc_BitMask_PauseScreen)
 		{
 			NoEscapeKeyForABit();

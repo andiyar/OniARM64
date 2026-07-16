@@ -839,6 +839,32 @@ void LIrGameIsActive(UUtBool inGameIsActive)
 	return;
 }
 
+// #83 focus-loss auto-pause: pending until the heartbeat fires it or focus
+// returns. Deliberately does not touch LIgMode — mode flips outside the
+// engine's own paths are a live #78 suspect.
+static UUtBool LIgAutoPausePending = UUcFalse;
+
+void LIrAutoPause_Request(void)
+{
+	if (LIiTraceEnabled() && !LIgAutoPausePending) {
+		UUrStartupMessage("[input-trace] auto-pause requested (focus lost)");
+	}
+	LIgAutoPausePending = UUcTrue;
+}
+
+void LIrAutoPause_Cancel(void)
+{
+	if (LIiTraceEnabled() && LIgAutoPausePending) {
+		UUrStartupMessage("[input-trace] auto-pause cancelled");
+	}
+	LIgAutoPausePending = UUcFalse;
+}
+
+UUtBool LIrAutoPause_Pending(void)
+{
+	return LIgAutoPausePending;
+}
+
 // ======================================================================
 #if 0
 #pragma mark -
