@@ -3006,6 +3006,13 @@ ONiPS_HelpPage_Init(
 	{
 		inData->help[inData->num_help_pages] = pages[itr];
 		inData->num_help_pages++;
+
+		// issue #85: help[] is ONcIGU_MaxHelpPages entries; mirror the
+		// items/weapons/diary-loop guards
+		if (inData->num_help_pages >= ONcIGU_MaxHelpPages) {
+			UUmAssert(!"ONiPS_HelpPage_Init: too many help pages available!");
+			break;
+		}
 	}
 
 	// sort the help pages by page number
@@ -3026,6 +3033,10 @@ ONiPS_Paint_Diary(
 	WMtDrawItem					*inDrawItem)
 {
 	ONtDiaryPage				*page;
+
+	// issue #85: the diary list can be empty (stripped/custom data); the
+	// other ONiPS_Paint_* guard, this one didn't
+	if (inData->num_diary_pages == 0) { return; }
 
 	page = inData->diary[inData->diary_page_num];
 

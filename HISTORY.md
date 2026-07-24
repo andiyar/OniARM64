@@ -8,6 +8,7 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ### 2026-07-24 — Session 66: bug-hunt sweep — externally-spotted truncation fixed, queued hardening landed
 
+- **fix(ui): pause-screen hardening — help-page clamp + empty-diary guard** (addresses #85): `ONiPS_HelpPage_Init` copied up to 1024 HPge instances into the 10-slot `help[]` array with no clamp (its item/weapon/diary siblings all have one; `ONgPauseScreenData` is a static global, so the overrun corrupts adjacent globals); `ONiPS_Paint_Diary` dereferenced `diary[diary_page_num]` with no empty-list guard (the only unguarded `ONiPS_Paint_*`). Both inherited, mod/custom-data safety — stock data can't trigger either. Fixes mirror the sibling patterns.
 - **fix(64bit): drop pointer-truncating cast in OT_Furniture error path** (addresses #95): `UUrDebuggerMessage("failed to locate instance %s\n", (UUtUns32) furn_geom_name, ...)` truncated the `char*` to 32 bits before the varargs `%s` read, so a furn-geom lookup failure would dereference a truncated address instead of printing the name. Spotted via an external review of a downstream fork that had already fixed it. Tree-wide sweep confirmed it's the only game-compiled instance of the class — the `UUrError_ReportP_Internal` sink was widened in #68, and the remaining call-site casts live in files that don't build into the Mac target (TemplateManager monolith, OGL_Common, tool importers).
 
 ### 2026-07-17 — Session 65: project audit; macOS quit/focus citizenship (addresses #83)
