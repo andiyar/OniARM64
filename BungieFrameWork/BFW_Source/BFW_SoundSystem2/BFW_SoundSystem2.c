@@ -2745,7 +2745,7 @@ SSrPermutation_Play(
 {
 	float						play_volume;
 	float						play_pitch;
-	SStSoundChannel				*sound_channel;
+	SStSoundChannel				*sound_channel = NULL;	// unset for channel counts other than 1 or 2
 
 	UUmAssert(inPermutation);
 

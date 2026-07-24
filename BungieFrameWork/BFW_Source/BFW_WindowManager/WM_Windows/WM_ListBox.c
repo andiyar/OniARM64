@@ -1087,7 +1087,7 @@ WMiListBox_Paint(
 
 			if ((style & WMcListBoxStyle_Directory) == WMcListBoxStyle_Directory)
 			{
-				PStPartSpec			*icon;
+				PStPartSpec			*icon = NULL;
 
 				switch (items[i].data)
 				{
@@ -1100,6 +1100,8 @@ WMiListBox_Paint(
 					break;
 
 					case LBcDirItemType_Volume:
+					default:
+						// no icon for this item type
 					break;
 				}
 

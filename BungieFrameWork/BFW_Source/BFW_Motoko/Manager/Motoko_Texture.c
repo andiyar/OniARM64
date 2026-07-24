@@ -297,7 +297,7 @@ M3rTextureMap_New(
 	M3tTextureMap			*new_texture_map;
 	UUtUns16				width;
 	UUtUns16				height;
-	UUtError				error;
+	UUtError				error = UUcError_Generic;	// the assert-only else branch below leaves this unset
 	UUtUns32				size_of_texture;
 	IMtMipMap				hasMipMap;
 	TMtDynamicPool_Type		memPool= (inAllocMemory & M3cTexture_UseTempMem) ? TMcDynamicPool_Type_Temporary : TMcDynamicPool_Type_Permanent;

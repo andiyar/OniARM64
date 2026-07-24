@@ -3540,7 +3540,7 @@ void WPrPowerup_Delete(
 
 UUtBool WPrTryReload(ONtCharacter *inCharacter, WPtWeapon *inWeapon, UUtBool *outWeaponFull, UUtBool *outNoAmmo)
 {
-	UUtBool reloaded;
+	UUtBool reloaded = UUcFalse;		// every 'goto exit' path below leaves this unset
 	ONtActiveCharacter *active_character = ONrForceActiveCharacter(inCharacter);
 
 	UUmAssert(inCharacter != NULL);

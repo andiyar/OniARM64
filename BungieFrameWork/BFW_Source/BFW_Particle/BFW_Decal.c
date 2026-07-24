@@ -2110,7 +2110,7 @@ UUtError P3rCreateDecal(M3tTextureMap *inTexture, UUtUns32 inGQIndex, UUtUns32 i
 		// allocate buffer out of dynamic LRAR cache structure
 		sprintf(debug_name, "decal %d", global_decal_id++);
 		decal_block	= lrar_allocate(P3gDecalCache, decal_size, debug_name, (void *) inDecalData);
-		if ((decal_block == NONE) || (inDecalData->decal_header == NULL)) {
+		if ((decal_block == (UUtUns16) NONE) || (inDecalData->decal_header == NULL)) {
 			// could not allocate memory
 			return UUcError_OutOfMemory;
 		}

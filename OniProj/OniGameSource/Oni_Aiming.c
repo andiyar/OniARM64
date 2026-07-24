@@ -615,9 +615,13 @@ UUtBool AMrRaySphereIntersection(const M3tBoundingSphere *inSphere, const M3tPoi
 		if (dot < 0) {
 			intersection = UUcFalse;
 		}
-		else if (outIntersection != NULL) {
-			*outIntersection = intersectionPoint;
+		else {
+			// outIntersection is optional - the result must not depend on it
 			intersection = UUcTrue;
+
+			if (outIntersection != NULL) {
+				*outIntersection = intersectionPoint;
+			}
 		}
 	}
 

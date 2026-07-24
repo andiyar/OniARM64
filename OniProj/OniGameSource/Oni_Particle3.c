@@ -1321,7 +1321,7 @@ ONiParticle3_Debug_SpawnParticle(
 	ONtCharacter *player_character;
 	ONtActiveCharacter *active_character;
 	UUtError error;
-	float velocity;
+	float velocity = 0.f;
 
 	if (inParameterListLength < 1) {
 		COrConsole_Printf("usage: p3_spawn <particle class name> [particle velocity]");

@@ -579,8 +579,9 @@ WMiScrollbar_HandleMouseEvent(
 
 	WMtMessage					message;
 	UUtUns16					scrollbar_id;
-	UUtUns32					param1;
-	UUtUns32					param2;
+	UUtUns32					param1 = 0;
+	UUtUns32					param2 = 0;
+	UUtBool						send_notify;
 
 	WMtScrollbar_PrivateData	*private_data;
 
@@ -642,6 +643,10 @@ WMiScrollbar_HandleMouseEvent(
 				}
 
 				// set the message for the parts the mouse was in
+				// grabbing the thumb only starts the drag - the position notify is
+				// sent from the MouseMove case, so there is nothing to report here
+				send_notify = UUcTrue;
+
 				switch (mouse_over_part)
 				{
 					case WMcSBPart_Thumb:
@@ -651,6 +656,7 @@ WMiScrollbar_HandleMouseEvent(
 							private_data->mouse_x_offset = private_data->thumb_location.x - local_mouse.x;
 							private_data->mouse_y_offset = private_data->thumb_location.y - local_mouse.y;
 						}
+						send_notify = UUcFalse;
 					break;
 
 					case WMcSBPart_PageUp:
@@ -676,14 +682,21 @@ WMiScrollbar_HandleMouseEvent(
 						param2 = (uintptr_t)private_data->current_value;
 						private_data->mouse_down_part = WMcSBPart_LineDown;
 					break;
+
+					default:
+						send_notify = UUcFalse;
+					break;
 				}
 
 				// tell the parent of the thumb move
-				WMrMessage_Send(
-					WMrWindow_GetParent(inScrollbar),
-					message,
-					param1,
-					param2);
+				if (send_notify)
+				{
+					WMrMessage_Send(
+						WMrWindow_GetParent(inScrollbar),
+						message,
+						param1,
+						param2);
+				}
 			}
 		break;
 

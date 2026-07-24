@@ -3545,7 +3545,7 @@ void ONrGameState_HandleUtilityInput(const ONtInputState*	inInput)
 		// set the character's location to the camera's location
 		character = ONrGameState_GetPlayerCharacter();
 
-		if ((character == NULL) || (character->flags & ONcCharacterFlag_InUse == 0)) {
+		if ((character == NULL) || ((character->flags & ONcCharacterFlag_InUse) == 0)) {
 			// must create character
 			character = AI2rRecreatePlayer();
 

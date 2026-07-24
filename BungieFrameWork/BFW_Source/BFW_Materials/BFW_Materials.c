@@ -576,7 +576,7 @@ MAiMaterials_Traverse(
 {
 	MAtMaterial *material;
 	char *material_name;
-	UUtBool breakable;
+	UUtBool breakable = inParentBreakable;		// unnamed materials inherit
 
 	if (inMaterialData == NULL)
 		return;

@@ -93,19 +93,19 @@ OBJrObjectUtil_DrawRotationRings(
 
 	if (inDrawRings & OBJcDrawFlag_RingY)
 	{
-		shade = (inDrawRings & OBJcDrawFlag_Locked) ? shade = IMcShade_Gray50 : IMcShade_Red;
+		shade = (inDrawRings & OBJcDrawFlag_Locked) ? IMcShade_Gray50 : IMcShade_Red;
 		M3rGeometry_LineDraw(cNumPoints + 1, ring_XZ, shade);
 	}
 
 	if (inDrawRings & OBJcDrawFlag_RingZ)
 	{
-		shade = (inDrawRings & OBJcDrawFlag_Locked) ? shade = IMcShade_Gray50 : IMcShade_Yellow;
+		shade = (inDrawRings & OBJcDrawFlag_Locked) ? IMcShade_Gray50 : IMcShade_Yellow;
 		M3rGeometry_LineDraw(cNumPoints + 1, ring_XY, shade);
 	}
 
 	if (inDrawRings & OBJcDrawFlag_RingX)
 	{
-		shade = (inDrawRings & OBJcDrawFlag_Locked) ? shade = IMcShade_Gray50 : IMcShade_Green;
+		shade = (inDrawRings & OBJcDrawFlag_Locked) ? IMcShade_Gray50 : IMcShade_Green;
 		M3rGeometry_LineDraw(cNumPoints + 1, ring_YZ, shade);
 	}
 
@@ -118,7 +118,7 @@ OBJrObjectUtil_DrawRotationRings(
 
 		if (inDrawRings & OBJcDrawFlag_RingY)
 		{
-			shade = (inDrawRings & OBJcDrawFlag_Locked) ? shade = IMcShade_Gray50 : IMcShade_Red;
+			shade = (inDrawRings & OBJcDrawFlag_Locked) ? IMcShade_Gray50 : IMcShade_Red;
 			M3rGeometry_LineDraw(2, ticks, shade);
 		}
 
@@ -129,7 +129,7 @@ OBJrObjectUtil_DrawRotationRings(
 
 		if (inDrawRings & OBJcDrawFlag_RingZ)
 		{
-			shade = (inDrawRings & OBJcDrawFlag_Locked) ? shade = IMcShade_Gray50 : IMcShade_Yellow;
+			shade = (inDrawRings & OBJcDrawFlag_Locked) ? IMcShade_Gray50 : IMcShade_Yellow;
 			M3rGeometry_LineDraw(2, ticks, shade);
 		}
 
@@ -140,7 +140,7 @@ OBJrObjectUtil_DrawRotationRings(
 
 		if (inDrawRings & OBJcDrawFlag_RingX)
 		{
-			shade = (inDrawRings & OBJcDrawFlag_Locked) ? shade = IMcShade_Gray50 : IMcShade_Green;
+			shade = (inDrawRings & OBJcDrawFlag_Locked) ? IMcShade_Gray50 : IMcShade_Green;
 			M3rGeometry_LineDraw(2, ticks, shade);
 		}
 	}

@@ -1246,7 +1246,7 @@ WMrWindow_New(
 	uintptr_t				inCreationData)
 {
 	UUtError				error;
-	WMtWindow				*window;
+	WMtWindow				*window = NULL;		// the cleanup path can be reached before this is assigned
 	UUtUns32				index;
 	WMtWindowClass			*window_class;
 	UUtUns32				mem_size;

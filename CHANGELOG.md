@@ -29,6 +29,11 @@ GitHub release notes and gets stamped with the version + date.
   console, ambient-sound IDs, melee profiles and turret templates all got
   bounds checks where asserts used to compile away (#98).
 
+### Menus
+- Grabbing the scrollbar thumb in a list (save/load, options) no longer makes
+  the list jump to a random position. The click was sending an uninitialised
+  scroll position to the list (#102).
+
 ## 1.3.0r5 — 2026-07-17
 
 ### Campaign progress

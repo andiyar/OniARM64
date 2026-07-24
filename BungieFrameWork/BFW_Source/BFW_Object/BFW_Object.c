@@ -576,8 +576,8 @@ void OBrAnimation_GetMatrix(
 
 	const char *animation_name = TMrInstance_GetInstanceName(inAnimation);
 	UUtUns16 keyFrame;
-	OBtAnimationKeyFrame *start;
-	OBtAnimationKeyFrame *end;
+	OBtAnimationKeyFrame *start = NULL;
+	OBtAnimationKeyFrame *end = NULL;
 
 	M3tQuaternion quat;
 	M3tPoint3D translation;
@@ -601,11 +601,30 @@ void OBrAnimation_GetMatrix(
 			break;
 		}
 		else if (current->frame > inFrame) {
-			start = inAnimation->keyFrames + keyFrame - 1;
-			end = current;
+			if (keyFrame == 0) {
+				// inFrame sits before the first keyframe - hold it rather than
+				// stepping off the front of the array
+				start = current;
+				end = NULL;
+			} else {
+				start = inAnimation->keyFrames + keyFrame - 1;
+				end = current;
+			}
 
 			break;
 		}
+	}
+
+	if (start == NULL) {
+		// inFrame is at or past the last keyframe (or the animation has none) -
+		// hold the final keyframe rather than reading uninitialised pointers
+		if (inAnimation->numKeyFrames == 0) {
+			MUrMatrix_Identity((M3tMatrix4x3 *) outMatrix);
+			return;
+		}
+
+		start = inAnimation->keyFrames + (inAnimation->numKeyFrames - 1);
+		end = NULL;
 	}
 
 	UUmAssert(start->frame <= inFrame);

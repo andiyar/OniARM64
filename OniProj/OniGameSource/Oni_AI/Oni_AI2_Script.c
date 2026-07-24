@@ -3393,7 +3393,7 @@ static UUtError AI2iScript_Panic(SLtErrorContext *inErrorContext, UUtUns32 inPar
 										UUtBool *outStall, SLtParameter_Actual *ioReturnValue)
 {
 	ONtCharacter *character = AI2rScript_ParseAI(inParameterListLength, &inParameterList[0]);
-	UUtUns32 timer;
+	UUtUns32 timer = 0;		// the 'cancel panic' branch below never sets this
 
 	if (character == NULL) {
 		AI2rScript_NoCharacterError(inParameterList, "ai2_panic", inErrorContext);
