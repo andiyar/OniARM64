@@ -493,6 +493,17 @@ OBJiMelee_Read(
 
 		UUmAssert((technique->num_moves == 0) ||
 			((technique->start_index >= 0) && ((technique->start_index + technique->num_moves) <= profile->num_moves)));
+
+		// issue #98: the counts come raw from the data and the assert above
+		// compiles to nothing - a bad start_index/num_moves pair walks off
+		// the heap-sized move[] when the AI runs the technique. Disable it.
+		if ((technique->num_moves != 0) &&
+			((technique->start_index > profile->num_moves) ||
+			 (technique->num_moves > profile->num_moves - technique->start_index))) {
+			UUrStartupMessage("melee: technique %s moves exceed the profile's move array - technique disabled", technique->name);
+			technique->num_moves = 0;
+			technique->start_index = 0;
+		}
 	}
 
 	// read the move array

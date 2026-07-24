@@ -773,6 +773,10 @@ OSiPlayingAmbient_GetByID(
 
 	UUmAssert(inAmbientID < OScMaxPlayingAmbientHandles);
 
+	// issue #98: the assert compiles to nothing and the public entry points
+	// only reject SScInvalidID - a script can hand back an out-of-range ID
+	if (inAmbientID >= OScMaxPlayingAmbientHandles) { return NULL; }
+
 	playing_ambient = OSgPlayingAmbientHandles[inAmbientID];
 
 	return playing_ambient;
@@ -3537,7 +3541,7 @@ OSiNeutralInteractions_ListBrokenSounds(
 	OBJrObjectType_EnumerateObjects(
 		OBJcType_Neutral,
 		OSiNeutral_ListBrokenSounds,
-		(UUtUns32) inFile);
+		(uintptr_t) inFile);	// issue #87: was (UUtUns32), truncating the pointer
 }
 
 // ======================================================================
@@ -3716,7 +3720,7 @@ OSiObjects_WriteAiffList(
 	OBJrObjectType_EnumerateObjects(
 		inObjectType,
 		inAddSoundCallback,
-		(UUtUns32)string_array);
+		(uintptr_t)string_array);	// issue #87: was (UUtUns32), truncating the pointer
 
 	// set the file_name
 	sprintf(file_name, "L%d_%s_aiff.txt", ONrLevel_GetCurrentLevel(), inObjectName);

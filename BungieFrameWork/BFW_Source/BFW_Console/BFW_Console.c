@@ -1673,7 +1673,9 @@ COrProcessKeyDown(
 	switch (key)
 	{
 		case LIcKeyCode_RightArrow:
-			if(potentialNextIndex < COgNumCompletionNames)
+			// issue #98: guard the post-increment value - at the last entry
+			// this read one past the populated completion names
+			if(potentialNextIndex + 1 < COgNumCompletionNames)
 			{
 				potentialNextIndex += 1;
 

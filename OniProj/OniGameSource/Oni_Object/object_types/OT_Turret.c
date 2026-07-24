@@ -723,6 +723,15 @@ static void OBJiTurret_FindParticleClasses(OBJtTurretClass *inTurret)
 	UUtUns16 itr;
 	OBJtTurretParticleAttachment *attachment;
 
+	// issue #98: attachment[] and the OSD particle arrays are
+	// OBJcMaxTurretParticles (16) entries; every attachment loop trusts the
+	// template's count, so clamp a hand-built template once here (this runs
+	// before OBJiTurret_CreateParticles and the event loops)
+	if (inTurret->attachment_count > OBJcMaxTurretParticles) {
+		UUrStartupMessage("turret: attachment_count %d exceeds %d - clamped", inTurret->attachment_count, OBJcMaxTurretParticles);
+		inTurret->attachment_count = OBJcMaxTurretParticles;
+	}
+
 	for (itr = 0, attachment = inTurret->attachment; itr < inTurret->attachment_count; itr++, attachment++)
 	{
 		attachment->particle_class = P3rGetParticleClass(attachment->particle_class_name);

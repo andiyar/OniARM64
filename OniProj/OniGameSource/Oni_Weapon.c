@@ -1300,7 +1300,9 @@ void WPrDelete(
 		inWeapon->ai_firingspread_index = (UUtUns32) -1;
 	}
 
-	inWeapon->flags &=~WPcWeaponFlag_InUse;
+	// issue #98: HasParticles must not survive deletion - the debug
+	// particle-nuke recovery (WPrRecreateParticles) trusts it across all slots
+	inWeapon->flags &= ~(WPcWeaponFlag_InUse | WPcWeaponFlag_HasParticles);
 }
 
 // update a powerup for a game tick
