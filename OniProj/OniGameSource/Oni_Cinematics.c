@@ -508,6 +508,10 @@ OCrCinematic_Stop(
 	UUtUns32					i;
 	UUtUns32					index;
 
+	// issue #87: inEnd indexes ONgIndexPositions[26]; mirror the
+	// OCrCinematic_Start guard (Stop had none - script-data-driven OOB read)
+	if (inEnd > OCcNumStartPositions) { return; }
+
 	// get a pointer to the cinematics array
 	cinematics = (OCtCinematic*)UUrMemory_Array_GetMemory(ONgCinematics);
 	if (cinematics == NULL) { return; }

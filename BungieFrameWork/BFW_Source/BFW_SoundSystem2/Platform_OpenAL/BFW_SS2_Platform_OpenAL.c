@@ -169,6 +169,34 @@ void SS2rPlatform_BufferCache_FlushAll(void)
 static void
 SS2rPlatform_CheckALError(const char *fn, int line)
 {
+	// issue #87: this polled alcGetError only, so per-source al* errors
+	// (most call sites) were invisible - poll both error queues.
+	// alGetError needs a current context (the init/teardown call sites
+	// run without one), so guard it.
+	ALenum al_error = (alcGetCurrentContext() != NULL) ? alGetError() : AL_NO_ERROR;
+	switch (al_error)
+	{
+	case AL_NO_ERROR:
+	break;
+	case AL_INVALID_NAME:
+		UUrPrintWarning("%s (%d) -> AL_INVALID_NAME: a bad source or buffer name was passed to an OpenAL function\n", fn, line);
+	break;
+	case AL_INVALID_ENUM:
+		UUrPrintWarning("%s (%d) -> AL_INVALID_ENUM: an unknown enum value was passed to an OpenAL function\n", fn, line);
+	break;
+	case AL_INVALID_VALUE:
+		UUrPrintWarning("%s (%d) -> AL_INVALID_VALUE: an invalid value was passed to an OpenAL function\n", fn, line);
+	break;
+	case AL_INVALID_OPERATION:
+		UUrPrintWarning("%s (%d) -> AL_INVALID_OPERATION: the requested operation is not valid\n", fn, line);
+	break;
+	case AL_OUT_OF_MEMORY:
+		UUrPrintWarning("%s (%d) -> AL_OUT_OF_MEMORY: OpenAL is out of memory\n", fn, line);
+	break;
+	default:
+		UUrPrintWarning("%s (%d) -> UNKNOWN AL ERROR: %d\n", fn, line, al_error);
+	}
+
 	ALenum error = alcGetError(SSgDevice);
 	switch (error)
 	{
@@ -187,7 +215,7 @@ SS2rPlatform_CheckALError(const char *fn, int line)
 		UUrPrintWarning("%s (%d) -> ALC_INVALID_ENUM: an unknown enum value was passed to an OpenAL function\n", fn, line);
 	break;
 	case ALC_OUT_OF_MEMORY:
-		UUrPrintWarning("%s (%d) -> ALC_OUT_OF_MEMORY: an unknown enum value was passed to an OpenAL function\n", fn, line);
+		UUrPrintWarning("%s (%d) -> ALC_OUT_OF_MEMORY: OpenAL is out of memory\n", fn, line);
 	break;
 	default:
 		UUrPrintWarning("%s (%d) -> UNKNOWN ALC ERROR: %d\n", fn, line, error);
@@ -635,7 +663,7 @@ SS2rPlatform_Initialize(
 		ALC_STEREO_SOURCES, SScMaxSoundChannels * 2,
 		0
 	};
-	SSgContext = alcCreateContext(SSgDevice, &attrs);
+	SSgContext = alcCreateContext(SSgDevice, attrs);	// issue #87: was &attrs (ALCint(*)[] by-layout coincidence)
 	CHECK_AL_ERROR();
 	UUmError_ReturnOnNull(SSgContext);
 
