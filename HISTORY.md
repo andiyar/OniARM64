@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-07-24 — Session 66: bug-hunt sweep — externally-spotted truncation fixed, queued hardening landed
+
+- **fix(64bit): drop pointer-truncating cast in OT_Furniture error path** (addresses #95): `UUrDebuggerMessage("failed to locate instance %s\n", (UUtUns32) furn_geom_name, ...)` truncated the `char*` to 32 bits before the varargs `%s` read, so a furn-geom lookup failure would dereference a truncated address instead of printing the name. Spotted via an external review of a downstream fork that had already fixed it. Tree-wide sweep confirmed it's the only game-compiled instance of the class — the `UUrError_ReportP_Internal` sink was widened in #68, and the remaining call-site casts live in files that don't build into the Mac target (TemplateManager monolith, OGL_Common, tool importers).
+
 ### 2026-07-17 — Session 65: project audit; macOS quit/focus citizenship (addresses #83)
 
 - **fix(platform): handle SDL_QUIT / window-close / focus events** (addresses #83): the SDL pump dropped every non-input event — Dock-icon Quit did nothing, Cmd-Q only worked where the WM key-command pump ran, and Cmd-Tab left the game simulating at full CPU with audio playing. SDL_QUIT and SDL_WINDOWEVENT_CLOSE now post the same `WMcMessage_Quit` the Cmd-Q key command uses (normal teardown, so the #74 crash sentinel clears); focus-loss/minimise sets a pending auto-pause that the heartbeat fires through the exact Escape gates (`OWrOniWindow_Toggle` behind `can_escape` + `CanEscapeKey` — never during cutscenes, cancelled if focus returns first; `ONI_AUTOPAUSE=0` disables). Deliberately does not touch LI mode from focus events — `LIrGameIsActive` flips are a live #78 candidate mechanism. Bonus: a 4th mouse button no longer aborts the event drain mid-poll. Design and the cutscene-gate verification are recorded on #83.
