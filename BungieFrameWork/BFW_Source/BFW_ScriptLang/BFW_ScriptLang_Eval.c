@@ -174,13 +174,28 @@ SLrExpr_Eval(
 	return UUcError_None;
 }
 
+// issue #86: statementEval[] is SLcContext_StatementStack_MaxDepth (16)
+// entries, one push per nested 'if' with no bound. statementLevel keeps exact
+// count (so push/pop stay symmetric) but array access clamps to the last
+// slot instead of overwriting statement_TargetLevel/funcName.
+static UUtUns16
+SLiStatement_ClampIndex(
+	UUtUns16	inStatementLevel)
+{
+	if (inStatementLevel > SLcContext_StatementStack_MaxDepth) {
+		return SLcContext_StatementStack_MaxDepth;
+	}
+
+	return inStatementLevel;
+}
+
 UUtBool
 SLrStatement_Evaluate(
 	SLtContext*	inContext)
 {
 	UUmAssert(inContext->curFuncState->statementLevel > 0);
 
-	return inContext->curFuncState->statementEval[inContext->curFuncState->statementLevel - 1];
+	return inContext->curFuncState->statementEval[SLiStatement_ClampIndex(inContext->curFuncState->statementLevel) - 1];
 }
 
 void
@@ -190,7 +205,19 @@ SLrStatement_Level_Push(
 {
 	if(inContext->curFuncState->statementLevel > 0 && SLrStatement_Evaluate(inContext)) inContext->curFuncState->statement_TargetLevel = inContext->curFuncState->statementLevel + 1;
 
-	inContext->curFuncState->statementEval[inContext->curFuncState->statementLevel++] = inEval;
+	// issue #86: write only inside the array; deeper pushes still count the
+	// level so the matching pops unwind correctly
+	if (inContext->curFuncState->statementLevel < SLcContext_StatementStack_MaxDepth) {
+		inContext->curFuncState->statementEval[inContext->curFuncState->statementLevel] = inEval;
+	}
+	else {
+		static UUtBool SLgStatementDepthWarned = UUcFalse;
+		if (!SLgStatementDepthWarned) {
+			SLgStatementDepthWarned = UUcTrue;
+			UUrStartupMessage("bsl: 'if' nesting exceeds %d levels - evaluation clamped", SLcContext_StatementStack_MaxDepth);
+		}
+	}
+	inContext->curFuncState->statementLevel++;
 }
 
 void
@@ -208,7 +235,10 @@ SLrStatement_Level_Invert(
 {
 	if(inContext->curFuncState->statement_TargetLevel == inContext->curFuncState->statementLevel)
 	{
-		inContext->curFuncState->statementEval[inContext->curFuncState->statementLevel - 1] = !inContext->curFuncState->statementEval[inContext->curFuncState->statementLevel - 1];
+		// issue #86: clamp the index like SLrStatement_Evaluate does
+		UUtUns16	invertIndex = SLiStatement_ClampIndex(inContext->curFuncState->statementLevel) - 1;
+
+		inContext->curFuncState->statementEval[invertIndex] = !inContext->curFuncState->statementEval[invertIndex];
 	}
 }
 

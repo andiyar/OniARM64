@@ -395,6 +395,7 @@ SLrScheduler_Execute(
 					ioReturnValue,
 					inTimeDelta,
 					inNumberOfTimes);
+			if(error != UUcError_None) return error;	// issue #86: was silently discarded; the script branch above returns it
 			break;
 
 		default:

@@ -511,6 +511,17 @@ SLiParse_Stack_Push(
 {
 	UUmAssert(inContext->curFuncState->parseTOS < SLcContext_ParseStack_MaxDepth);
 
+	// issue #86: the assert above compiles to nothing in shipping builds;
+	// drop the push (with a one-shot warn) instead of overrunning parseStack
+	if (inContext->curFuncState->parseTOS >= SLcContext_ParseStack_MaxDepth) {
+		static UUtBool SLgParseDepthWarned = UUcFalse;
+		if (!SLgParseDepthWarned) {
+			SLgParseDepthWarned = UUcTrue;
+			UUrStartupMessage("bsl: parse stack overflow (depth %d) - script structure too deeply nested", SLcContext_ParseStack_MaxDepth);
+		}
+		return;
+	}
+
 	inContext->curFuncState->parseStack[inContext->curFuncState->parseTOS++] = inNewState;
 }
 
@@ -1032,6 +1043,14 @@ startOver:
 				break;
 
 			case SLcParseState_FuncDef_FormalParamList2:
+				// issue #86: funcDefParams[] is SLcScript_MaxNumParams (8)
+				// entries; the only other guard (Database.c) runs after
+				// these writes
+				if(funcDefParamIndex >= SLcScript_MaxNumParams)
+				{
+					SLrScript_Error_Semantic(inErrorContext, "function has too many parameters (max %d)", SLcScript_MaxNumParams);
+					return UUcError_Generic;
+				}
 				funcDefParams[funcDefParamIndex].name = curToken->lexem;
 				funcDefParams[funcDefParamIndex].type = typeSpec;
 				funcDefParamIndex++;

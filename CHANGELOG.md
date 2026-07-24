@@ -10,6 +10,15 @@ GitHub release notes and gets stamped with the version + date.
 
 ## Unreleased (since 1.3.0r5, 2026-07-17)
 
+### Mod safety
+- Hardened the script interpreter and pause screen against out-of-spec
+  community content: scripts nested deeper than the engine's limits, functions
+  with too many parameters, and data sets with extra help pages or no diary
+  pages no longer corrupt memory or crash — they now degrade gracefully with a
+  log warning (#85, #86). Stock game data was never affected.
+- Fixed a crash in the error path for missing furniture geometry — the log
+  message itself would crash instead of reporting the problem (#95).
+
 ## 1.3.0r5 — 2026-07-17
 
 ### Campaign progress

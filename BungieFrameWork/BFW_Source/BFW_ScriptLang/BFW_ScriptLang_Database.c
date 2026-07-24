@@ -36,6 +36,29 @@ UUtBool		SLgPermanentSymbolList_Dirty = UUcTrue;
 UUtUns32		SLgCompletionList_Length = 0;
 static const char*	SLgCompletionList[SLcCompletionList_MaxLength];
 
+// issue #86: symbolList[] is SLcMaxScopeLevel (8) entries but scopeLevel is
+// incremented once per nested {} block with no bound (stock scripts peak at
+// depth 6, one level below the cliff). Clamp every index into symbolList[] so
+// deeper nesting parks its symbols in the outermost slot instead of
+// overrunning into the adjacent FuncState fields; warn once so the script
+// author knows their script is beyond spec.
+static UUtUns16
+SLiScope_ClampIndex(
+	UUtUns16	inScopeLevel)
+{
+	static UUtBool SLgScopeDepthWarned = UUcFalse;
+
+	if (inScopeLevel >= SLcMaxScopeLevel) {
+		if (!SLgScopeDepthWarned) {
+			SLgScopeDepthWarned = UUcTrue;
+			UUrStartupMessage("bsl: script block nesting exceeds %d levels - symbol scoping clamped", SLcMaxScopeLevel - 1);
+		}
+		return SLcMaxScopeLevel - 1;
+	}
+
+	return inScopeLevel;
+}
+
 static SLtSymbol*
 SLiSymbol_Find(
 	SLtContext*		inContext,
@@ -47,7 +70,7 @@ SLiSymbol_Find(
 
 	if(inContext != NULL)
 	{
-		for(curLevel = inContext->curFuncState->scopeLevel + 1; curLevel-- > 0;)
+		for(curLevel = SLiScope_ClampIndex(inContext->curFuncState->scopeLevel) + 1; curLevel-- > 0;)
 		{
 			for(curSymbol = inContext->curFuncState->symbolList[curLevel]; curSymbol; curSymbol = curSymbol->next)
 			{
@@ -81,7 +104,7 @@ SLiSymbol_New_AddToScope(
 	UUtBool			makePerm;
 
     if (inContext)
-		scopeLevel = inContext->curFuncState->scopeLevel;
+		scopeLevel = SLiScope_ClampIndex(inContext->curFuncState->scopeLevel);	// issue #86
     else
 		scopeLevel = 0;
     makePerm = (inKind == SLcSymbolKind_Func_Command || inKind == SLcSymbolKind_Iterator || inKind == SLcSymbolKind_VarAddr);
@@ -175,7 +198,7 @@ SLiSymbol_Delete(
 		}
 		else
 		{
-			inContext->curFuncState->symbolList[inContext->curFuncState->scopeLevel] = inSymbol->next;
+			inContext->curFuncState->symbolList[SLiScope_ClampIndex(inContext->curFuncState->scopeLevel)] = inSymbol->next;	// issue #86
 		}
 	}
 	else
@@ -902,18 +925,24 @@ SLrScript_Database_Scope_Leave(
 
 	UUmAssert(inContext->curFuncState->scopeLevel > 0);
 
-	curSymbol = inContext->curFuncState->symbolList[inContext->curFuncState->scopeLevel];
-
-	while(curSymbol)
+	// issue #86: beyond-spec nesting parks its symbols in the outermost
+	// symbolList slot (see SLiScope_ClampIndex); leave that shared slot
+	// alone until the scope that actually owns it exits
+	if (inContext->curFuncState->scopeLevel < SLcMaxScopeLevel)
 	{
-		nextSymbol = curSymbol->next;
+		curSymbol = inContext->curFuncState->symbolList[inContext->curFuncState->scopeLevel];
 
-		SLiSymbol_Delete(inContext, curSymbol);
+		while(curSymbol)
+		{
+			nextSymbol = curSymbol->next;
 
-		curSymbol = nextSymbol;
+			SLiSymbol_Delete(inContext, curSymbol);
+
+			curSymbol = nextSymbol;
+		}
+
+		inContext->curFuncState->symbolList[inContext->curFuncState->scopeLevel] = NULL;
 	}
-
-	inContext->curFuncState->symbolList[inContext->curFuncState->scopeLevel] = NULL;
 
 	inContext->curFuncState->scopeLevel--;
 }
@@ -934,7 +963,7 @@ SLrScript_Database_Symbol_Get(
 
 	if(inContext != NULL && inContext->curFuncState != NULL)
 	{
-		for(curLevel = inContext->curFuncState->scopeLevel + 1; curLevel-- > 0;)
+		for(curLevel = SLiScope_ClampIndex(inContext->curFuncState->scopeLevel) + 1; curLevel-- > 0;)
 		{
 			for(curSymbol = inContext->curFuncState->symbolList[curLevel]; curSymbol; curSymbol = curSymbol->next)
 			{
