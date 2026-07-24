@@ -147,7 +147,7 @@ BFrFileRef_Set(
 			UUmError_ReturnOnErrorMsgP(
 				UUcError_Generic,
 				"Filename \"%s\" too long, max length is %d",
-				(UUtUns32)leaf_name, BFcMaxFileNameLength-1, 0);
+				(uintptr_t)leaf_name, BFcMaxFileNameLength-1, 0);
 		}
 	}
 
@@ -248,7 +248,7 @@ BFrFileRef_SetName(
 			UUmError_ReturnOnErrorMsgP(
 				UUcError_Generic,
 				"Filename \"%s\" too long, max length is %d",
-				(UUtUns32)leaf_name, BFcMaxFileNameLength-1, 0);
+				(uintptr_t)leaf_name, BFcMaxFileNameLength-1, 0);
 		}
 	}
 

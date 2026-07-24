@@ -17,7 +17,17 @@ GitHub release notes and gets stamped with the version + date.
   pages no longer corrupt memory or crash — they now degrade gracefully with a
   log warning (#85, #86). Stock game data was never affected.
 - Fixed a crash in the error path for missing furniture geometry — the log
-  message itself would crash instead of reporting the problem (#95).
+  message itself would crash instead of reporting the problem (#95). The same
+  fault existed in the "filename too long" report, reachable with long
+  HD-pack filenames (#99).
+- A scripted film playback that aborts because the character is too far away
+  no longer snaps the character's facing or swaps the film mid-play, and a
+  new film no longer inherits the previous one's leftover position drift
+  (#96).
+- More out-of-spec content hardening: character classes missing their Stand
+  animation are refused instead of crashing on spawn (#97), and the dev
+  console, ambient-sound IDs, melee profiles and turret templates all got
+  bounds checks where asserts used to compile away (#98).
 
 ## 1.3.0r5 — 2026-07-17
 
