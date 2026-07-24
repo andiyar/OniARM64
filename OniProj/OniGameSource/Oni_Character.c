@@ -1772,6 +1772,13 @@ void ONrCharacter_SetCharacterClass(
 			COrConsole_Printf("%s had a NULL body set", instance_name);
 			return;
 		}
+
+		// issue #97: mirror the spawn-path guard - a collection missing the
+		// Stand entry leaves animation NULL after ONrCharacter_ResetAnimation
+		if (NULL == TRrCollection_Lookup(inClass->animations, ONcAnimType_Stand, ONcAnimState_Standing, 0)) {
+			COrConsole_Printf("%s has no Stand animation", instance_name);
+			return;
+		}
 	}
 
 	ONiCharacterClass_PrepareForUse(inClass);
@@ -2660,8 +2667,13 @@ ONrGameState_NewCharacter(
 			// :1756-1774) guards them, the spawn path must too. A class with no body
 			// or animations cannot spawn; a NULL variant only forbids costume logic.
 			if ((thisCharacter->characterClass->body == NULL) ||
-				(thisCharacter->characterClass->animations == NULL)) {
-				UUrStartupMessage("spawn: character class %s has NULL body/animations - spawn refused",
+				(thisCharacter->characterClass->animations == NULL) ||
+				// issue #97: a non-NULL collection can still lack the Stand
+				// entry; activation would then leave animation NULL and crash
+				// on the first unguarded deref
+				(TRrCollection_Lookup(thisCharacter->characterClass->animations,
+					ONcAnimType_Stand, ONcAnimState_Standing, 0) == NULL)) {
+				UUrStartupMessage("spawn: character class %s has NULL/incomplete body or animations - spawn refused",
 					char_osd->character_class);
 				return UUcError_Generic;
 			}
