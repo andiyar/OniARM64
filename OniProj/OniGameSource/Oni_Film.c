@@ -103,10 +103,20 @@ void ONrFilm_GetFrame(const ONtFilmState *inFilmState, ONtInputState *outInputSt
 
 	film = inFilmState->film;
 
+	// issue #87: a keyless film left key uninitialized (stock films always
+	// key frame 0) - hand back neutral input instead
+	if ((film == NULL) || (film->numKeys == 0)) {
+		UUrMemory_Clear(outInputState, sizeof(*outInputState));
+		return;
+	}
+
 	for(itr = 0; itr < film->numKeys; itr++) {
 		key = film->keys + itr;
 
 		if (key->time > inFilmState->curFrame) {
+			// issue #87: don't step in front of the first key when curFrame
+			// precedes it - hold the first key's state instead
+			if (itr == 0) { break; }
 			key -= 1;
 			break;
 		}
@@ -195,12 +205,30 @@ UUtBool ONrFilm_Start(ONtCharacter *ioCharacter, ONtFilm *inFilm, UUtUns32 inMod
 	if (active_character == NULL)
 		return UUcFalse;
 
+	// issue #96: validate the interp distance before committing any film
+	// state - the abort used to leave filmState.film/curFrame and the
+	// facing snap behind (stock-reachable via 'playback <chr> <film>
+	// interp' with the character >80 units away)
+	if (inMode == ONcFilmMode_Interp) {
+		M3tVector3D check_delta;
+
+		MUmVector_Subtract(check_delta, inFilm->initialLocation, ioCharacter->location);
+		if (MUmVector_GetLengthSquared(check_delta) > UUmSQR(ONcFilm_MaxInterpDist)) {
+			// we cannot play this film, we are too far away! abort!
+			return UUcFalse;
+		}
+	}
+
 	// clear the sprint varient so we don't mess up the film
 	ONrCharacter_SetSprintVarient(ioCharacter, UUcFalse);
 	active_character->last_forward_tap = 0;
 
 	active_character->filmState.film = inFilm;
 	active_character->filmState.curFrame =0;
+
+	// issue #96: a previous film's unfinished interp countdown must not
+	// carry into this one (a Normal start used to inherit the stale drift)
+	active_character->filmState.flags &= ~ONcFilmFlag_Interp;
 
 	// snap the character's facing and aiming
 	ioCharacter->facing			= active_character->filmState.film->initialFacing;
@@ -222,10 +250,7 @@ UUtBool ONrFilm_Start(ONtCharacter *ioCharacter, ONtFilm *inFilm, UUtUns32 inMod
 		active_character->filmState.interp_frames = UUmMax(inInterpFrames, 1);
 		MUmVector_Subtract(active_character->filmState.interp_delta, active_character->filmState.film->initialLocation, ioCharacter->location);
 
-		if (MUmVector_GetLengthSquared(active_character->filmState.interp_delta) > UUmSQR(ONcFilm_MaxInterpDist)) {
-			// we cannot play this film, we are too far away! abort!
-			return UUcFalse;
-		}
+		// (distance validated up top, before any state was committed)
 
 		MUmVector_Scale(active_character->filmState.interp_delta, 1.0f / active_character->filmState.interp_frames);
 
