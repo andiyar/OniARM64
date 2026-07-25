@@ -41,8 +41,13 @@ run_config() {  # $1 = label, $2... = extra defines
 		-c OniProj/OniGameSource/Oni_Sweep_Report.c -o "$TMP/report_$label.o" \
 		|| { echo "build failed ($label, report)"; STATUS=1; return; }
 
-	cc $cflags $DEF "$@" $INC \
+	# test_sweep_engine_stubs.c satisfies the engine symbols the sweep phases
+	# call. These tests do not exercise the phases, but Oni_Sweep.c is linked
+	# whole, so every external it has must resolve. The phases themselves are
+	# tested in tests/test_sweep_phases.sh.
+	cc $cflags $DEF "$@" $INC -Itests \
 		tests/test_sweep_core.c \
+		tests/test_sweep_engine_stubs.c \
 		OniProj/OniGameSource/Oni_Sweep.c \
 		"$TMP/report_$label.o" \
 		OniProj/OniGameSource/Oni_Sweep_Normalize.c \

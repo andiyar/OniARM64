@@ -35,6 +35,17 @@
 /* Phase a record carries before any phase has set its own context. */
 #define ONcSweep_PhaseInit			"init"
 
+/*
+	Phase tags. Named rather than spelled inline because they are baseline
+	identity: sweep_diff matches a report line against a baseline line on
+	(level, phase, subject, key), so a typo in one of the two call sites that
+	emit a phase would gate as a permanent regression plus a permanent stale
+	entry. None may contain whitespace — see tools/sweep_diff.h.
+*/
+#define ONcSweep_PhaseLoad			"load"
+#define ONcSweep_PhaseCharacters	"characters"
+#define ONcSweep_PhaseDone			"done"
+
 extern UUtBool	ONgSweep_Active;
 
 /*
@@ -98,7 +109,12 @@ void ONrSweep_SeedRandom(void);
 */
 void ONrSweep_Tick(UUtUns32 inTicks);
 
-/* Phase driver — filled in by the per-phase tasks. */
+/*
+	Phase driver. Runs every phase for one cell and always emits a terminal
+	record, so a report that reached the end of the run is distinguishable
+	from one whose process died partway — sweep_diff treats a report with no
+	records at all as "no evidence" rather than as a clean run.
+*/
 void ONrSweep_RunAllPhases(UUtUns16 inLevel);
 
 /* One-time module setup, called during engine init. */
