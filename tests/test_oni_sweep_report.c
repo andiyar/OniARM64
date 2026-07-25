@@ -46,15 +46,59 @@ static void check_true(const char *label, int cond)
 // --- minimal JSON well-formedness check --------------------------------
 //
 // Not a full parser — it checks exactly the properties a truncated line can
-// lose: the object opens and closes, every string closes, and no escape
-// sequence is cut in half (a trailing '\' or a short '\uXXXX'). A byte-wise
-// clamp in the escaper instead of a piece-atomic one fails this.
+// lose: the object opens and closes, every string closes, no escape sequence
+// is cut in half (a trailing '\' or a short '\uXXXX'), and the whole line is
+// valid UTF-8. A byte-wise clamp in the escaper instead of a piece-atomic one
+// fails this, and so does a cap that cuts a multi-byte character in half.
 
 static int is_hex(char inChar)
 {
 	return (inChar >= '0' && inChar <= '9') ||
 		(inChar >= 'a' && inChar <= 'f') ||
 		(inChar >= 'A' && inChar <= 'F');
+}
+
+// Decode-based UTF-8 validation: build each code point, then reject overlong
+// encodings, surrogates and anything past U+10FFFF. Deliberately structured
+// differently from the range table the implementation uses, so a shared
+// misreading of the spec cannot make both agree on something wrong.
+static int utf8_valid(const char *inText)
+{
+	const unsigned char *bytes = (const unsigned char *)inText;
+
+	while (*bytes != '\0') {
+		unsigned long	codePoint;
+		int				extra;
+		int				k;
+
+		if (*bytes < 0x80) {
+			bytes++;
+			continue;
+		} else if ((*bytes & 0xE0) == 0xC0) {
+			codePoint = (unsigned long)(*bytes & 0x1F); extra = 1;
+		} else if ((*bytes & 0xF0) == 0xE0) {
+			codePoint = (unsigned long)(*bytes & 0x0F); extra = 2;
+		} else if ((*bytes & 0xF8) == 0xF0) {
+			codePoint = (unsigned long)(*bytes & 0x07); extra = 3;
+		} else {
+			return 0;					/* continuation byte or bad lead byte */
+		}
+
+		bytes++;
+		for (k = 0; k < extra; k++) {
+			if ((*bytes & 0xC0) != 0x80) return 0;	/* truncated or bad continuation */
+			codePoint = (codePoint << 6) | (unsigned long)(*bytes & 0x3F);
+			bytes++;
+		}
+
+		if (codePoint > 0x10FFFFuL) return 0;
+		if (codePoint >= 0xD800uL && codePoint <= 0xDFFFuL) return 0;	/* surrogate */
+		if (extra == 1 && codePoint < 0x80uL) return 0;					/* overlong */
+		if (extra == 2 && codePoint < 0x800uL) return 0;
+		if (extra == 3 && codePoint < 0x10000uL) return 0;
+	}
+
+	return 1;
 }
 
 static int json_wellformed(const char *inLine)
@@ -67,6 +111,7 @@ static int json_wellformed(const char *inLine)
 	len = strlen(inLine);
 	if (len < 2) return 0;
 	if (inLine[0] != '{' || inLine[len - 1] != '}') return 0;
+	if (!utf8_valid(inLine)) return 0;
 
 	for (i = 1; i + 1 < len; i++) {
 		char c = inLine[i];
@@ -104,22 +149,42 @@ static int json_wellformed(const char *inLine)
 	return inString == 0;
 }
 
-// Build a string of inLen bytes cycling through characters with different
-// escaped widths (1, 2 and 6). inPhase rotates the starting point of the
-// cycle: without it every input escapes to the same widths in the same order
-// and the buffer cap always falls in the same place, so a mid-escape clamp
-// can hide. Sweeping length and phase together walks the cap across every
-// alignment. (A phase-less version of this test passed a clamp mutation.)
+// Fill outBuffer with up to inLen bytes, cycling through units that occupy
+// different widths on the way in AND on the way out: 1-byte ASCII, characters
+// that escape to 2 or 6 bytes, and multi-byte UTF-8 that must survive whole.
+//
+// inPhase rotates the starting point. Without it every input escapes to the
+// same widths in the same order and the buffer cap always falls in the same
+// place, so a mid-escape clamp can hide — a phase-less version of this
+// function passed the clamp mutation. Sweeping length and phase together
+// walks the cap across every alignment, against escape sequences and against
+// character boundaries alike.
+//
+// Only whole units are written, so the input is always valid UTF-8. Malformed
+// input is tested separately and deliberately.
 static void fill_pattern(char *outBuffer, size_t inLen, size_t inPhase)
 {
-	static const char kCycle[] = { 'a', '"', '\\', 'b', '\n', 'c', '\001', 'd' };
-	const size_t kCycleLen = sizeof(kCycle) / sizeof(kCycle[0]);
-	size_t i;
+	static const char *const kUnits[] = {
+		"a", "\"", "\\", "b", "\n", "c", "\001", "d",
+		"\xc3\xa9",					/* U+00E9  2 bytes */
+		"\xe2\x9c\x93",				/* U+2713  3 bytes */
+		"\xf0\x9f\x98\x80"			/* U+1F600 4 bytes */
+	};
+	const size_t	kUnitCount = sizeof(kUnits) / sizeof(kUnits[0]);
+	size_t			len = 0;
+	size_t			i = 0;
 
-	for (i = 0; i < inLen; i++) {
-		outBuffer[i] = kCycle[(i + inPhase) % kCycleLen];
+	for (;;) {
+		const char	*unit = kUnits[(i + inPhase) % kUnitCount];
+		size_t		unitLen = strlen(unit);
+
+		if (len + unitLen > inLen) break;
+		memcpy(outBuffer + len, unit, unitLen);
+		len += unitLen;
+		i++;
 	}
-	outBuffer[inLen] = '\0';
+
+	outBuffer[len] = '\0';
 }
 
 int main(void)
@@ -162,8 +227,8 @@ int main(void)
 	check("severity warn",    ONrSweep_Report_SeverityName(ONcSweepSeverity_Warn),    "warn");
 	check("severity skipped", ONrSweep_Report_SeverityName(ONcSweepSeverity_Skipped), "skipped");
 	check("severity leak",    ONrSweep_Report_SeverityName(ONcSweepSeverity_Leak),    "leak");
-	check_true("out-of-range severity still returns a name",
-		ONrSweep_Report_SeverityName((ONtSweepSeverity)99) != NULL);
+	check("out-of-range severity",
+		ONrSweep_Report_SeverityName((ONtSweepSeverity)99), "error");
 
 	// --- key buffer size ---------------------------------------------------
 	//
@@ -214,7 +279,7 @@ int main(void)
 
 		for (n = 1; n < 400; n++) {
 			size_t phase;
-			for (phase = 0; phase < 8; phase++) {
+			for (phase = 0; phase < 11; phase++) {
 				fill_pattern(subject, n, phase);
 				ONrSweep_Report_FormatLine(wide, sizeof(wide),
 					"gl", 3, "characters", subject, ONcSweepSeverity_Warn, "short message");
@@ -226,7 +291,7 @@ int main(void)
 
 		for (n = 1; n < 1500; n++) {
 			size_t phase;
-			for (phase = 0; phase < 8; phase++) {
+			for (phase = 0; phase < 11; phase++) {
 				fill_pattern(message, n, phase);
 				ONrSweep_Report_FormatLine(wide, sizeof(wide),
 					"gl", 3, "characters", "subj", ONcSweepSeverity_Warn, message);
@@ -309,12 +374,111 @@ int main(void)
 		}
 		check_true("small outLine does not write past inLineSize", !clobbered);
 		check_true("small outLine stays NUL-terminated in range", strlen(guarded) < 40);
-		check_true("small outLine still starts the record", guarded[0] == '{');
+		// All or nothing: a record that will not fit must not be emitted as a
+		// fragment. snprintf on its own leaves things like
+		// {"renderer":"gl","level":2,"phase — one torn line poisons the whole
+		// merged report, so a dropped finding is the better failure.
+		check("outLine too small yields nothing, not a fragment", guarded, "");
+
+		// Every size from 1 byte up to comfortably past the full record: each
+		// must give either the complete record or the empty string.
+		{
+			char	sized[2048];
+			size_t	size;
+			int		torn = -1;
+			int		completed = 0;
+
+			for (size = 1; size < 400; size++) {
+				ONrSweep_Report_FormatLine(sized, size,
+					"gl", 2, "particles", "w10_sni_p01", ONcSweepSeverity_Warn,
+					"Particle class 'w10_sni_p01' is too large (268)!");
+				if (sized[0] == '\0') continue;
+				if (!json_wellformed(sized) && torn < 0) torn = (int)size;
+				else completed++;
+			}
+			check_true("no inLineSize yields a torn record", torn < 0);
+			if (torn >= 0) printf("  first torn at inLineSize %d\n", torn);
+			check_true("large enough inLineSize does yield the record", completed > 0);
+		}
 
 		memset(guarded, (int)0xAA, sizeof(guarded));
 		ONrSweep_Report_FormatLine(guarded, 0,
 			"gl", 2, "particles", "subj", ONcSweepSeverity_Warn, "msg");
 		check_true("zero inLineSize writes nothing", guarded[0] == (char)0xAA);
+	}
+
+	// --- UTF-8 ------------------------------------------------------------
+	//
+	// Engine messages are not guaranteed UTF-8, and a cap that splits a
+	// multi-byte character emits a lone lead byte — invalid UTF-8, therefore
+	// invalid JSON, and json_wellformed() above rejects it.
+	{
+		char	utf8[2048];
+		size_t	i;
+
+		// Well-formed multi-byte characters pass through untouched.
+		ONrSweep_Report_FormatLine(line, sizeof(line),
+			"gl", 1, "load", "sub", ONcSweepSeverity_Warn,
+			"check \xe2\x9c\x93 ok");
+		check("valid UTF-8 passes through", line,
+			"{\"renderer\":\"gl\",\"level\":1,\"phase\":\"load\","
+			"\"subject\":\"sub\",\"severity\":\"warn\","
+			"\"key\":\"check-ok\","
+			"\"msg\":\"check \xe2\x9c\x93 ok\"}");
+
+		// 900 bytes of U+2713 overruns the 512-byte message buffer. Cutting a
+		// character in half here leaves a bare \xe2 before the closing quote.
+		for (i = 0; i + 3 <= 900; i += 3) memcpy(utf8 + i, "\xe2\x9c\x93", 3);
+		utf8[900] = '\0';
+		ONrSweep_Report_FormatLine(line, sizeof(line),
+			"gl", 1, "load", "sub", ONcSweepSeverity_Warn, utf8);
+		check_true("truncated multi-byte message stays valid UTF-8", utf8_valid(line));
+		check_true("truncated multi-byte message stays well formed", json_wellformed(line));
+
+		// Same against the 128-byte subject buffer, with a 4-byte character so
+		// the cap can land at three different offsets inside it.
+		for (i = 0; i + 4 <= 400; i += 4) memcpy(utf8 + i, "\xf0\x9f\x98\x80", 4);
+		utf8[400] = '\0';
+		ONrSweep_Report_FormatLine(line, sizeof(line),
+			"gl", 1, "load", utf8, ONcSweepSeverity_Warn, "short");
+		check_true("truncated multi-byte subject stays valid UTF-8", utf8_valid(line));
+		check_true("truncated multi-byte subject stays well formed", json_wellformed(line));
+
+		// Pad an ASCII prefix so the cap walks across a multi-byte character
+		// one byte at a time, hitting every possible split point.
+		{
+			int bad = -1;
+
+			for (i = 0; i < 8; i++) {
+				size_t n = 0;
+				size_t k;
+
+				for (k = 0; k < i; k++) utf8[n++] = 'a';
+				while (n + 4 <= 700) { memcpy(utf8 + n, "\xf0\x9f\x98\x80", 4); n += 4; }
+				utf8[n] = '\0';
+
+				ONrSweep_Report_FormatLine(line, sizeof(line),
+					"gl", 1, "load", "sub", ONcSweepSeverity_Warn, utf8);
+				if (!json_wellformed(line) && bad < 0) bad = (int)i;
+			}
+			check_true("cap splitting a character at any offset stays well formed", bad < 0);
+			if (bad >= 0) printf("  first bad prefix length: %d\n", bad);
+		}
+
+		// Malformed input: a lone lead byte, a stray continuation byte, an
+		// overlong encoding, a surrogate and an out-of-range lead. None may
+		// reach the output raw — each is escaped as its Latin-1 code point, so
+		// the record stays valid UTF-8 and the byte value stays legible.
+		ONrSweep_Report_FormatLine(line, sizeof(line),
+			"gl", 1, "load", "sub", ONcSweepSeverity_Warn,
+			"lead\xe2 cont\x80 over\xc0\x80 surr\xed\xa0\x80 hi\xf5 end\xe2\x9c");
+		check("malformed bytes escaped, not passed through", line,
+			"{\"renderer\":\"gl\",\"level\":1,\"phase\":\"load\","
+			"\"subject\":\"sub\",\"severity\":\"warn\","
+			"\"key\":\"lead-cont-over-surr-hi-end\","
+			"\"msg\":\"lead\\u00e2 cont\\u0080 over\\u00c0\\u0080 "
+			"surr\\u00ed\\u00a0\\u0080 hi\\u00f5 end\\u00e2\\u009c\"}");
+		check_true("malformed-byte record is valid UTF-8", utf8_valid(line));
 	}
 
 	// --- NULL tolerance ----------------------------------------------------
@@ -331,10 +495,11 @@ int main(void)
 		"{\"renderer\":\"\",\"level\":-1,\"phase\":\"\","
 		"\"subject\":\"\",\"severity\":\"abort\",\"key\":\"boom\",\"msg\":\"boom\"}");
 
-	/* must not crash */
+	// A NULL outLine must be ignored, not dereferenced. There is nothing to
+	// assert about the result — the crash is the failure signal, and the
+	// ASan/UBSan build in the header's compile line makes it a loud one.
 	ONrSweep_Report_FormatLine(NULL, 1024,
 		"gl", 0, "load", "subj", ONcSweepSeverity_Error, "msg");
-	check_true("NULL outLine survives", 1);
 
 	printf("%d passed, %d failed\n", g_pass, g_fail);
 	return g_fail == 0 ? 0 : 1;

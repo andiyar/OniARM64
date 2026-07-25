@@ -35,10 +35,15 @@ const char *ONrSweep_Report_SeverityName(ONtSweepSeverity inSeverity);
 	Format one NDJSON record (no trailing newline) into outLine. The key field
 	is derived from inMessage via ONrSweep_NormalizeKey. Always NUL-terminates.
 
-	Oversized fields are truncated internally, never cut mid-escape, so the
-	record stays parseable whatever comes in. A record cannot exceed 958 bytes
-	plus the NUL — give this a 1024-byte buffer and the line is never clipped.
-	A smaller buffer is safe but can lose the closing brace.
+	Oversized fields are truncated internally, never cut mid-escape and never
+	mid-character, so the record stays parseable whatever comes in. Output is
+	always valid UTF-8: bytes that are not part of a well-formed sequence are
+	escaped as \u00XX rather than passed through.
+
+	If the whole record will not fit in inLineSize, outLine is set to the empty
+	string rather than a truncated fragment, so a mis-sized caller drops the
+	finding instead of writing a corrupt line. A record cannot exceed 958 bytes
+	plus the NUL, so a 1024-byte buffer always holds one.
 */
 void ONrSweep_Report_FormatLine(
 	char				*outLine,
