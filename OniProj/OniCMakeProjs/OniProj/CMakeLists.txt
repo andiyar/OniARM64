@@ -758,6 +758,19 @@ get_target_property(ONI_SWEEP_INCLUDES Oni INCLUDE_DIRECTORIES)
 get_target_property(ONI_SWEEP_LIBS Oni LINK_LIBRARIES)
 get_target_property(ONI_SWEEP_DEFINES Oni COMPILE_DEFINITIONS)
 
+# get_target_property yields <var>-NOTFOUND for an unset property, and passing
+# that on would become a bogus include path, library name or define. SOURCES is
+# never unset for a target that exists, so its absence means the clone is
+# looking at something other than what it thinks.
+if(NOT ONI_SWEEP_SOURCES)
+	message(FATAL_ERROR "OniSweep clone: target Oni reported no SOURCES")
+endif()
+foreach(_prop ONI_SWEEP_INCLUDES ONI_SWEEP_LIBS ONI_SWEEP_DEFINES)
+	if(${_prop} STREQUAL "${_prop}-NOTFOUND" OR "${${_prop}}" MATCHES "NOTFOUND")
+		set(${_prop} "")
+	endif()
+endforeach()
+
 add_executable(OniSweep EXCLUDE_FROM_ALL ${ONI_SWEEP_SOURCES})
 
 set(ONI_SWEEP_MAP_PATH $<TARGET_FILE_DIR:OniSweep>/$<TARGET_FILE_NAME:OniSweep>.map)
@@ -797,3 +810,28 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU")
 			"-Wl,-Map=${ONI_SWEEP_MAP_PATH}"
 	)
 endif()
+
+# Tripwire for the clone. The block above copies four properties by hand and
+# mirrors two more per toolchain; anything else added to Oni later is dropped
+# in silence, and a sweep binary that quietly differs from the shipping one in
+# optimisation or link flags produces findings nobody can trust.
+#
+# The check is presence, not equality — some of these legitimately hold
+# different values (each target names its own .map). If Oni has the property
+# set and OniSweep does not, the clone has fallen behind: fail the configure so
+# whoever added it has to decide, rather than discovering it from a confusing
+# sweep result months later.
+foreach(_prop COMPILE_OPTIONS LINK_OPTIONS COMPILE_FEATURES LINK_DIRECTORIES
+		INTERFACE_LINK_LIBRARIES PRECOMPILE_HEADERS)
+	get_target_property(_oni_val Oni ${_prop})
+	get_target_property(_sweep_val OniSweep ${_prop})
+	if(_oni_val AND NOT _sweep_val)
+		message(FATAL_ERROR
+			"OniSweep clone is out of date: target Oni sets ${_prop} (${_oni_val}) "
+			"but OniSweep does not. Mirror it onto OniSweep next to the other "
+			"per-toolchain blocks above, or the sweep binary will differ from the "
+			"shipping one in ways nothing reports.")
+	endif()
+endforeach()
+unset(_oni_val)
+unset(_sweep_val)

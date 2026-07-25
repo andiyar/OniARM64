@@ -13,6 +13,16 @@ check() { if eval "$1"; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); echo "FAIL
 if [ -z "$DIFF" ]; then
 	DIFF="$TMP/sweep_diff"
 	cc -Wall -Wextra -o "$DIFF" tools/sweep_diff.c || { echo "build failed"; exit 1; }
+elif [ ! -x "$DIFF" ] || [ -d "$DIFF" ]; then
+	# The other sweep runners (test_sweep_core.sh, test_sweep_console_tap.sh)
+	# take a BUILD DIRECTORY; this one takes a BINARY. Handing it the wrong one
+	# used to run every case against an unrunnable path and report "3 passed,
+	# 56 failed", which reads like a broken tool rather than a mistyped
+	# argument. Say so instead.
+	echo "usage: $0 [path-to-sweep_diff]     (a binary, not a build directory)"
+	echo "  got: $DIFF"
+	rm -rf "$TMP"
+	exit 2
 fi
 
 rec() { # rec <renderer> <level> <phase> <subject> <severity> <key> <msg>

@@ -21,6 +21,7 @@
 
 #include "Oni_Sweep.h"
 #include "Oni_GameState.h"
+#include "Oni_GameStatePrivate.h"
 #include "BFW_Console.h"
 
 #include <stdio.h>
@@ -64,7 +65,41 @@ void COrConsole_SetTap(COtConsoleTap inTap)
 {
 	g_registered_console_tap = inTap;
 }
+
 #endif
+
+/*
+	Re-entrancy seam. ONrSweep_Record's only outbound call is
+	ONrSweep_Report_FormatLine, so the runner compiles Oni_Sweep_Report.c with
+	that name macro-renamed and this wrapper takes its place. Setting
+	g_reenter_once makes a console line arrive from inside the writer — the one
+	shape ONgSweep_InTap exists to survive, and otherwise unreachable from a
+	test. In the shipping configuration the wrapper is a plain pass-through.
+*/
+static UUtBool g_reenter_once = UUcFalse;
+
+void ONrSweep_Report_FormatLine_real(
+	char *outLine, size_t inLineSize, const char *inRenderer, int inLevel,
+	const char *inPhase, const char *inSubject, ONtSweepSeverity inSeverity,
+	const char *inMessage);
+
+void ONrSweep_Report_FormatLine(
+	char *outLine, size_t inLineSize, const char *inRenderer, int inLevel,
+	const char *inPhase, const char *inSubject, ONtSweepSeverity inSeverity,
+	const char *inMessage)
+{
+	if (g_reenter_once) {
+		g_reenter_once = UUcFalse;
+#ifdef ONI_SWEEP_CONSOLE
+		if (g_registered_console_tap != NULL) {
+			g_registered_console_tap("re-entrant console line");
+		}
+#endif
+	}
+
+	ONrSweep_Report_FormatLine_real(outLine, inLineSize, inRenderer, inLevel,
+		inPhase, inSubject, inSeverity, inMessage);
+}
 
 void UUrRandom_SetSeed(UUtUns32 seed)
 {
@@ -83,13 +118,50 @@ void UUcArglist_Call UUrStartupMessage(const char *format, ...)
 	(void) format;
 }
 
+/*
+	Models the real ONrGameState_Update's tick accounting, which is the whole
+	point of this stub. Faithfully reproduced from Oni_GameState.c:
+
+	  iComputeDeltaTicks   delta = serverTime - gameTime, clamped to
+	                       cMaxTicksPerFrame (6), then serverTime = gameTime + delta
+	  heartbeat loop       gameTime += 1, delta times
+	  on exit              *outTicksUpdated = delta
+
+	The consequence that matters: serverTime ends up equal to gameTime, so a
+	caller that does not advance serverTime itself gets delta == 0 on every
+	subsequent call and no simulation runs at all. A stub that just returned 1
+	would hide exactly that.
+*/
+static ONtGameState		g_game_state;
+ONtGameState			*ONgGameState = NULL;
+
+#define kMaxTicksPerFrame	6
+
+static UUtUns32	g_forced_delta = 0;		/* non-zero models ONgFastMode / cutscene skip */
+static UUtBool	g_force_zero = UUcFalse;	/* models ONgSingleStep */
+
 UUtError ONrGameState_Update(UUtUns16 numActionsInBuffer, LItAction *actionBuffer, UUtUns32 *outTicksUpdated)
 {
+	UUtUns32 delta;
+
 	(void) numActionsInBuffer;
 	(void) actionBuffer;
 
 	g_update_calls++;
-	if (outTicksUpdated != NULL) *outTicksUpdated = 1;
+
+	if (g_force_zero) {
+		if (outTicksUpdated != NULL) *outTicksUpdated = 0;
+		return g_update_result;
+	}
+
+	delta = ONgGameState->serverTime - ONgGameState->gameTime;
+	if (delta > kMaxTicksPerFrame) delta = kMaxTicksPerFrame;
+	if (g_forced_delta != 0) delta = g_forced_delta;
+
+	ONgGameState->gameTime += delta;
+	ONgGameState->serverTime = ONgGameState->gameTime;
+
+	if (outTicksUpdated != NULL) *outTicksUpdated = delta;
 
 	return g_update_result;
 }
@@ -114,18 +186,42 @@ static int count_lines(const char *inPath)
 	return lines;
 }
 
+/*
+	Streams the whole file rather than reading a fixed prefix. The bulk-console
+	case writes a few hundred KB, and a prefix search silently reported "absent"
+	for everything after it — a false pass waiting to happen for any assertion
+	placed late in the run.
+*/
 static int file_contains(const char *inPath, const char *inNeedle)
 {
 	char	buffer[65536];
 	FILE	*f = fopen(inPath, "r");
-	size_t	got;
+	size_t	needle = strlen(inNeedle);
+	size_t	keep = (needle > 0) ? needle - 1 : 0;
+	size_t	held = 0;
+	int		found = 0;
 
 	if (f == NULL) return 0;
-	got = fread(buffer, 1, sizeof(buffer) - 1, f);
-	fclose(f);
-	buffer[got] = '\0';
+	if (needle == 0 || needle >= sizeof(buffer)) { fclose(f); return 0; }
 
-	return strstr(buffer, inNeedle) != NULL;
+	for (;;) {
+		size_t got = fread(buffer + held, 1, sizeof(buffer) - 1 - held, f);
+
+		if (got == 0) break;
+		held += got;
+		buffer[held] = '\0';
+
+		if (strstr(buffer, inNeedle) != NULL) { found = 1; break; }
+
+		/* carry the tail over so a match spanning two reads is not missed */
+		if (held > keep) {
+			memmove(buffer, buffer + held - keep, keep);
+			held = keep;
+		}
+	}
+
+	fclose(f);
+	return found;
 }
 
 // --- tests ------------------------------------------------------------
@@ -139,6 +235,9 @@ int main(void)
 	snprintf(g_report_path, sizeof(g_report_path), "%ssweep_core_test_%d.ndjson",
 		(tmpdir != NULL) ? tmpdir : "/tmp/", (int) getpid());
 	remove(g_report_path);
+
+	memset(&g_game_state, 0, sizeof(g_game_state));
+	ONgGameState = &g_game_state;
 
 #ifdef ONI_SWEEP_CONSOLE
 	printf("(ONI_SWEEP_CONSOLE on - console tap is checked)\n");
@@ -161,6 +260,15 @@ int main(void)
 #ifdef ONI_SWEEP_CONSOLE
 	check_true("begin: console tap registered", g_registered_console_tap != NULL);
 #endif
+
+	check_true("begin: seeded both RNG streams", g_seed_calls == 1 && g_local_seed_calls == 1);
+
+	/* 2b. Records before any phase sets its own context belong to "init", not
+	   to an empty bucket in the merged report. */
+	ONrSweep_Record(NULL, NULL, ONcSweepSeverity_Warn, "something during startup");
+	expect++;
+	check_true("init phase: default phase recorded",
+		file_contains(g_report_path, "\"phase\":\"init\""));
 
 	/* 3. Beginning twice must not leak the handle or split the report. */
 	check_true("begin twice: rejected",
@@ -226,6 +334,23 @@ int main(void)
 			count_lines(g_report_path) == expect);
 	}
 
+	/* 6d. Re-entrancy: a console line raised from inside the writer must be
+	   dropped, not recursed on. One record comes out, not two, and the process
+	   is still here to assert it. */
+	{
+		int before = count_lines(g_report_path);
+
+		g_reenter_once = UUcTrue;
+		g_registered_tap("outer warning that prints from inside the writer");
+		g_reenter_once = UUcFalse;
+
+		check_true("reentrancy: exactly one record, nested one dropped",
+			count_lines(g_report_path) == before + 1);
+		check_true("reentrancy: nested text absent",
+			!file_contains(g_report_path, "re-entrant console line"));
+		expect = before + 1;
+	}
+
 	/* Keep a copy: after End the module hands back NULL, but the function is
 	   still there and a late console print would still reach it. */
 	g_console_tap_saved = g_registered_console_tap;
@@ -239,12 +364,91 @@ int main(void)
 	check_true("seed: global value", g_global_seed == ONcSweep_RandomSeed);
 	check_true("seed: local value", g_local_seed == ONcSweep_RandomSeed);
 
-	/* 8. Tick runs the simulation the requested number of times. */
-	g_update_calls = 0;
-	g_update_result = UUcError_None;
-	ONrSweep_Tick(ONcSweep_SettleCharacter);
-	check_true("tick: ran every tick", g_update_calls == ONcSweep_SettleCharacter);
-	check_true("tick: nothing recorded on success", count_lines(g_report_path) == expect);
+	/* 8. GAME TIME actually elapses.
+	   This is the assertion the harness lives or dies on. Counting calls to
+	   ONrGameState_Update proves nothing: the bug this replaced made 600 calls
+	   that advanced one tick between them, so every phase would have reported a
+	   clean level having simulated essentially nothing. Assert the clock. */
+	{
+		UUtUns32 before = ONgGameState->gameTime;
+
+		g_update_calls = 0;
+		g_update_result = UUcError_None;
+		ONrSweep_Tick(ONcSweep_SettleCharacter);
+
+		check_true("tick: 60 ticks of game time elapsed",
+			ONgGameState->gameTime - before == ONcSweep_SettleCharacter);
+		/* One heartbeat per Update call, by design: ONrSweep_Tick advances
+		   serverTime by exactly 1 each time round. Batching six at a time would
+		   reach the same game time but run the per-call work outside the
+		   heartbeat loop — P3rUpdate, CArUpdate, the sound manager — a sixth as
+		   often, which is not what the real frame loop does. */
+		check_true("tick: one heartbeat per update call",
+			g_update_calls == ONcSweep_SettleCharacter);
+		check_true("tick: nothing recorded on success", count_lines(g_report_path) == expect);
+	}
+
+	/* 8b. The long settles too — a particle settle that silently advanced no
+	   time is the failure mode with the least chance of being noticed. */
+	{
+		UUtUns32 before = ONgGameState->gameTime;
+
+		ONrSweep_Tick(ONcSweep_SettleParticle);
+		check_true("tick: 600 ticks of game time elapsed",
+			ONgGameState->gameTime - before == ONcSweep_SettleParticle);
+	}
+
+	/* 8c. Repeatable. Two identical settles advance identically — no wall clock
+	   anywhere in the loop, which is what lets the fixed seeding mean anything. */
+	{
+		UUtUns32 first, second, mark;
+
+		mark = ONgGameState->gameTime;
+		ONrSweep_Tick(ONcSweep_SettleScript);
+		first = ONgGameState->gameTime - mark;
+
+		mark = ONgGameState->gameTime;
+		ONrSweep_Tick(ONcSweep_SettleScript);
+		second = ONgGameState->gameTime - mark;
+
+		check_true("tick: two identical settles advance identically", first == second);
+		check_true("tick: and by the requested amount", first == ONcSweep_SettleScript);
+	}
+
+	/* 8d. When the engine hands back more ticks per call than asked for
+	   (ONgFastMode gives 24, cutscene skipping 32), the settle still measures
+	   game time rather than multiplying it by the batch size. */
+	{
+		UUtUns32 before = ONgGameState->gameTime;
+		UUtUns32 advanced;
+
+		g_forced_delta = 24;
+		ONrSweep_Tick(ONcSweep_SettleCharacter);
+		g_forced_delta = 0;
+
+		advanced = ONgGameState->gameTime - before;
+		check_true("tick: fast batches do not overshoot wildly",
+			advanced >= ONcSweep_SettleCharacter && advanced < ONcSweep_SettleCharacter + 24);
+	}
+
+	/* 8e. An update that never advances time ends the settle as a finding
+	   rather than spinning forever. Reachable for real: iComputeDeltaTicks
+	   zeroes the delta under ONgSingleStep. */
+	{
+		UUtUns32 before = ONgGameState->gameTime;
+
+		g_update_calls = 0;
+		g_force_zero = UUcTrue;
+		ONrSweep_Tick(ONcSweep_SettleAI);
+		g_force_zero = UUcFalse;
+
+		expect++;
+		check_true("tick: stall gave up rather than hanging", g_update_calls < 100);
+		check_true("tick: stall advanced no time", ONgGameState->gameTime == before);
+		check_true("tick: stall recorded", count_lines(g_report_path) == expect);
+		check_true("tick: stall message present",
+			file_contains(g_report_path, "advanced no game time"));
+	}
 
 	/* 9. A failing update records once and stops rather than spinning. */
 	g_update_calls = 0;

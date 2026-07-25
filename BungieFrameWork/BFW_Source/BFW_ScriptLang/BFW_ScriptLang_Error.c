@@ -35,7 +35,9 @@ static void UUcArglist_Call SLrScript_DisplayError(char *logText,	...)
 
 
 	va_start(ap,logText);
-	vsprintf(buffer,logText,ap);
+	/* #103 — bounded. BSL error text embeds script, function and file names
+	   taken from level content, so the length is not ours to assume. */
+	vsnprintf(buffer,sizeof(buffer),logText,ap);
 	va_end(ap);
 
 	COrConsole_Printf("%s", buffer);
@@ -70,10 +72,13 @@ SLrScript_ReportError(
 	int return_value;
 
 	va_start(arglist, inMsg);
-	return_value= vsprintf(buffer, inMsg, arglist);
+	return_value= vsnprintf(buffer, sizeof(buffer), inMsg, arglist);	/* #103 — bounded */
 	va_end(arglist);
 
-	sprintf(buffer2, "Func \"%s\", File \"%s\", Line %d: %s",
+	/* Also bounded, and this one could overflow on its own: buffer may already
+	   be 2047 characters, and the funcName / fileName prefix is added on top of
+	   it into a buffer of the same size. */
+	snprintf(buffer2, sizeof(buffer2), "Func \"%s\", File \"%s\", Line %d: %s",
 		inErrorContext->funcName,
 		inErrorContext->fileName,
 		inErrorContext->line,

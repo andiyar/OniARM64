@@ -24,6 +24,7 @@
 #include "Oni_Sweep.h"
 #include "Oni_Sweep_Report.h"
 #include "Oni_GameState.h"
+#include "Oni_GameStatePrivate.h"	/* serverTime / gameTime; see ONrSweep_Tick */
 
 // === constants ========================================================
 
@@ -33,6 +34,11 @@
 #define ONcSweep_RendererSize		32
 #define ONcSweep_PhaseSize			64
 #define ONcSweep_SubjectSize		128
+
+/* Consecutive ONrGameState_Update calls that may advance no game time before
+   ONrSweep_Tick gives up. A settle that is not settling has to end as a
+   finding, not as a spin. */
+#define ONcSweep_TickStallLimit		16
 
 // === state ============================================================
 
@@ -186,13 +192,46 @@ void ONrSweep_SeedRandom(void)
 
 // === simulation =======================================================
 
+/*
+	Advance inTicks of GAME time — heartbeats actually executed, not calls to
+	ONrGameState_Update.
+
+	The two are not the same, and assuming they were is a silent way to make the
+	whole harness useless. ONrGameState_Update runs its heartbeat loop
+	iComputeDeltaTicks(serverTime - gameTime) times and then leaves serverTime
+	equal to gameTime, so a second call with nothing else in between computes a
+	delta of zero and runs no heartbeat at all. Calling Update 600 times would
+	advance one tick and report a level where particles never settled and AI
+	never ran as clean.
+
+	The main loop keeps serverTime ahead by calling ONrGameState_UpdateServerTime,
+	which reads UUrMachineTime_Sixtieths(). That is wall clock, so it would hand
+	a different number of heartbeats to every run and undo the fixed seeding this
+	module exists to provide. We advance serverTime ourselves instead: one tick
+	per iteration, no clock anywhere.
+
+	Ticks are counted from what Update reports it ran, not from the iteration
+	count, so a run with ONgFastMode or cutscene-skipping set — where a single
+	call executes 24 or 32 heartbeats — still settles for the requested amount of
+	game time rather than 24x too much.
+*/
 void ONrSweep_Tick(UUtUns32 inTicks)
 {
-	UUtUns32 itr;
+	UUtUns32	elapsed = 0;
+	UUtUns32	stalls = 0;
 
-	for (itr = 0; itr < inTicks; itr++) {
+	if (ONgGameState == NULL) {
+		ONrSweep_Record(NULL, NULL, ONcSweepSeverity_Error,
+			"sweep tick with no game state");
+		return;
+	}
+
+	while (elapsed < inTicks) {
 		UUtUns32	gameTicks = 0;
 		UUtError	error;
+
+		/* One heartbeat's worth of pending time, deterministically. */
+		ONgGameState->serverTime = ONgGameState->gameTime + 1;
 
 		error = ONrGameState_Update(0, NULL, &gameTicks);
 		if (error != UUcError_None) {
@@ -200,6 +239,23 @@ void ONrSweep_Tick(UUtUns32 inTicks)
 				"ONrGameState_Update returned an error during sweep tick");
 			return;
 		}
+
+		if (gameTicks == 0) {
+			/* iComputeDeltaTicks zeroes the delta under ONgSingleStep, so this
+			   is reachable. Bail rather than spin, and say so — a phase that
+			   silently did not settle is exactly the failure this loop exists
+			   to prevent. */
+			stalls++;
+			if (stalls >= ONcSweep_TickStallLimit) {
+				ONrSweep_Record(NULL, NULL, ONcSweepSeverity_Error,
+					"sweep tick advanced no game time; settle abandoned");
+				return;
+			}
+			continue;
+		}
+
+		stalls = 0;
+		elapsed += gameTicks;
 	}
 }
 
@@ -225,7 +281,10 @@ UUtError ONrSweep_Begin(const char *inOutputPath, const char *inRenderer, UUtUns
 
 	ONiSweep_CopyField(ONgSweep_Renderer, ONcSweep_RendererSize, inRenderer);
 	ONgSweep_Level = (int) inLevel;
-	ONgSweep_Phase[0] = '\0';
+	/* Anything recorded before the first phase sets its own context belongs to
+	   startup, and "init" says so. An empty phase would drop those records into
+	   an unattributed bucket in the merged report. */
+	ONiSweep_CopyField(ONgSweep_Phase, ONcSweep_PhaseSize, ONcSweep_PhaseInit);
 	ONgSweep_Subject[0] = '\0';
 	ONgSweep_InTap = UUcFalse;
 
@@ -236,6 +295,12 @@ UUtError ONrSweep_Begin(const char *inOutputPath, const char *inRenderer, UUtUns
 #if THE_DAY_IS_MINE || defined(ONI_SWEEP_CONSOLE)
 	COrConsole_SetTap(ONiSweep_ConsoleTap);
 #endif
+
+	/* A floor, not the guarantee. The per-phase reseed is the load-bearing one,
+	   because level load runs sky init and Oni_Sky.c reseeds UUrRandom from the
+	   sky template's star_seed on the way through. Seeding here only makes the
+	   window between Begin and the first phase reproducible. */
+	ONrSweep_SeedRandom();
 
 	UUrStartupMessage("[sweep] begin renderer=%s level=%d report=%s",
 		ONgSweep_Renderer, ONgSweep_Level, inOutputPath);
@@ -262,6 +327,11 @@ void ONrSweep_End(void)
 
 	ONgSweep_Phase[0] = '\0';
 	ONgSweep_Subject[0] = '\0';
+
+	/* Cleared here as well as in Begin: a crash inside the writer would leave
+	   the flag set, and the next Begin in the same process would then drop
+	   every tapped record without a word. */
+	ONgSweep_InTap = UUcFalse;
 }
 
 // === phase driver =====================================================

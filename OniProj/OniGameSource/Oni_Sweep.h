@@ -32,6 +32,9 @@
 /* Fixed seed for both RNG streams at the start of every phase. */
 #define ONcSweep_RandomSeed			0x4F4E4931
 
+/* Phase a record carries before any phase has set its own context. */
+#define ONcSweep_PhaseInit			"init"
+
 extern UUtBool	ONgSweep_Active;
 
 /*
@@ -54,13 +57,45 @@ void ONrSweep_End(void);
 void ONrSweep_Record(const char *inPhase, const char *inSubject,
 					 ONtSweepSeverity inSeverity, const char *inMessage);
 
-/* Set the phase / subject that NULL-argument records inherit. */
+/*
+	Set the phase / subject that NULL-argument records inherit.
+
+	READ THIS BEFORE WRITING A PHASE — console records are unclassified.
+
+	In the OniSweep binary the console tap turns every COrConsole_Print into a
+	record at ONcSweepSeverity_Warn. That is 404 live call sites, and most of
+	them are routine chatter, command echoes and progress messages, not
+	findings. Nothing here distinguishes "AI error: no path to target" from
+	"loading level 4".
+
+	This is deliberate, not an oversight. Severity is a claim about how bad a
+	thing is, and inventing a taxonomy before anyone has seen the real corpus
+	would bake a guess into fifteen levels of committed baseline. It is also
+	survivable as it stands: sweep_diff gates on identity against the baseline,
+	so chatter enters the baseline once and then only *changes* to it gate. New
+	console output failing the gate is correct behaviour.
+
+	What it costs you: the first baseline for each level will be large and
+	mostly noise, and reading a fresh report means skimming past it. When the
+	corpus exists (Task 13), classify then — from real messages, and
+	retroactively over the reports already collected.
+
+	Phase and subject are the only handles triage has. Set them tightly around
+	anything that prints, so console records land attributed rather than in
+	whatever context happened to be current.
+*/
 void ONrSweep_SetContext(const char *inPhase, const char *inSubject);
 
 /* Reset both RNG streams to ONcSweep_RandomSeed. Call at the top of a phase. */
 void ONrSweep_SeedRandom(void);
 
-/* Advance the simulation inTicks times with no input and no drawing. */
+/*
+	Advance inTicks of game time with no input and no drawing.
+
+	Ticks are heartbeats actually executed, not calls to ONrGameState_Update —
+	those are not the same thing, and the difference decides whether a settle
+	settles at all. See the comment on the implementation.
+*/
 void ONrSweep_Tick(UUtUns32 inTicks);
 
 /* Phase driver — filled in by the per-phase tasks. */

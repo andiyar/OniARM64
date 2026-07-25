@@ -1942,7 +1942,7 @@ void UUcArglist_Call COrConsole_Printf(const char *format, ...)
 	int return_value;
 
 	va_start(arglist, format);
-	return_value= vsprintf(buffer, format, arglist);
+	return_value= vsnprintf(buffer, sizeof(buffer), format, arglist);	/* #103 — bounded; see below */
 	va_end(arglist);
 
 	COrConsole_Print(COcPriority_Console, COgDefaultTextShade, COgDefaultTextShadowShade, buffer);
@@ -1958,7 +1958,7 @@ void UUcArglist_Call COrConsole_Printf_Color(COtPriority inPriority, IMtShade in
 	int return_value;
 
 	va_start(arglist, format);
-	return_value= vsprintf(buffer, format, arglist);
+	return_value= vsnprintf(buffer, sizeof(buffer), format, arglist);	/* #103 — bounded; see below */
 	va_end(arglist);
 
 	COrConsole_Print(inPriority, inTextColor, inTextShadow, buffer);
@@ -2151,6 +2151,16 @@ void COrConsole_StatusLine_LevelEnd(void)
 
 	return;
 }
+
+// ======================================================================
+// Both console printf variants above format into char[2048] and were using a
+// bare vsprintf, so a long enough %s argument smashed the stack. That mattered
+// little while COrConsole_Printf compiled away to nothing in the shipping
+// build; it matters a lot in OniSweep, where ~400 of those call sites become
+// live in a binary whose whole job is to feed the engine content that may be
+// malformed. Bounded now: identical output below 2047 characters, truncation
+// instead of corruption above it.
+// ======================================================================
 
 // ======================================================================
 // Sweep console tap (issue #103). Deliberately at the very bottom of the file:

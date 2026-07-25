@@ -30,13 +30,21 @@ STATUS=0
 run_config() {  # $1 = label, $2... = extra defines
 	local label="$1"; shift
 	local bin="$TMP/test_sweep_core_$label"
+	local cflags="-std=gnu11 -Wno-multichar -Wno-incompatible-pointer-types
+		-Wno-incompatible-function-pointer-types"
 
-	cc -std=gnu11 -Wno-multichar -Wno-incompatible-pointer-types \
-		-Wno-incompatible-function-pointer-types \
-		$DEF "$@" $INC \
+	# Oni_Sweep_Report.c is compiled with its entry point renamed so the test can
+	# wrap it. That wrapper is the only seam inside ONrSweep_Record's call graph,
+	# and without it the re-entrancy guard cannot be exercised at all.
+	cc $cflags $DEF "$@" $INC \
+		-DONrSweep_Report_FormatLine=ONrSweep_Report_FormatLine_real \
+		-c OniProj/OniGameSource/Oni_Sweep_Report.c -o "$TMP/report_$label.o" \
+		|| { echo "build failed ($label, report)"; STATUS=1; return; }
+
+	cc $cflags $DEF "$@" $INC \
 		tests/test_sweep_core.c \
 		OniProj/OniGameSource/Oni_Sweep.c \
-		OniProj/OniGameSource/Oni_Sweep_Report.c \
+		"$TMP/report_$label.o" \
 		OniProj/OniGameSource/Oni_Sweep_Normalize.c \
 		-o "$bin" || { echo "build failed ($label)"; STATUS=1; return; }
 
