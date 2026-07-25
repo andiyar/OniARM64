@@ -154,6 +154,48 @@ int main(void)
 	checkInt("duplicates leave nothing stale",      result.numStale,       0);
 	checkInt("duplicates covered exit",             SWrExitCode(&result),  0);
 
+	/*
+		Dedupe must collapse repeats WITHIN an identity and nothing else. Its
+		failure mode is hiding real regressions, so these cases assert exact
+		counts over sets whose entries genuinely differ — every case above
+		this point uses all-identical or report-equals-baseline sets, where
+		collapsing everything to one still scores 0/0 and reads as a pass.
+	*/
+	freshSets(&report, &baseline);
+	SWrFindingSet_Add(report, 2,  "particles", "class_a",      "too-large",  0);
+	SWrFindingSet_Add(report, 7,  "textures",  "wall_01",      "not-square", 0);
+	SWrFindingSet_Add(report, 12, "scripts",   "spawn_guards", "null-deref", 0);
+	SWrDiff(report, baseline, &result);
+	checkInt("three distinct regressions all counted", result.numRegressions, 3);
+
+	/* ...and still three when each one is reported several times over */
+	freshSets(&report, &baseline);
+	for (itr = 0; itr < 3; itr++) {
+		SWrFindingSet_Add(report, 2,  "particles", "class_a",      "too-large",  0);
+		SWrFindingSet_Add(report, 7,  "textures",  "wall_01",      "not-square", 0);
+		SWrFindingSet_Add(report, 12, "scripts",   "spawn_guards", "null-deref", 0);
+	}
+	SWrDiff(report, baseline, &result);
+	checkInt("distinct regressions survive interleaved duplicates",
+		result.numRegressions, 3);
+
+	/* distinct aborts are not collapsed into one either */
+	freshSets(&report, &baseline);
+	SWrFindingSet_Add(report, 4, "load", "level4", "crash", 1);
+	SWrFindingSet_Add(report, 9, "load", "level9", "crash", 1);
+	SWrDiff(report, baseline, &result);
+	checkInt("distinct aborts all counted", result.numAborts, 2);
+
+	/* and the stale direction: one of three baselined identities came back */
+	freshSets(&report, &baseline);
+	SWrFindingSet_Add(report,   2,  "particles", "class_a",      "too-large",  0);
+	SWrFindingSet_Add(baseline, 2,  "particles", "class_a",      "too-large",  0);
+	SWrFindingSet_Add(baseline, 7,  "textures",  "wall_01",      "not-square", 0);
+	SWrFindingSet_Add(baseline, 12, "scripts",   "spawn_guards", "null-deref", 0);
+	SWrDiff(report, baseline, &result);
+	checkInt("distinct stale entries all counted", result.numStale,       2);
+	checkInt("matched entry not stale",            result.numRegressions, 0);
+
 	/* duplicate aborts are one abort */
 	freshSets(&report, &baseline);
 	SWrFindingSet_Add(report, 9, "load", "level9", "crash", 1);

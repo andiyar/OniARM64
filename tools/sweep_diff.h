@@ -5,6 +5,15 @@
 #define SWcMaxFindings		4096
 #define SWcMaxFieldChars	128
 
+/*
+	phase, subject and key must not contain whitespace. The baseline file is
+	whitespace-delimited, so a subject like "my class" can be written into a
+	report but can never be written into a baseline line that matches it —
+	it would gate as a permanent regression plus a permanent stale entry,
+	with no way to accept it. Current subjects (level%u, setup_%d, particle
+	class names) have no spaces; a future emitter that wants them needs a
+	quoted baseline format first.
+*/
 typedef struct SWtFinding {
 	int		level;
 	char	phase[SWcMaxFieldChars];
@@ -14,8 +23,8 @@ typedef struct SWtFinding {
 } SWtFinding;
 
 /*
-	~1.5 MB. Declare instances static or heap-allocated, never as an
-	ordinary local — two of these on the stack is 3.2 MB, which fits an
+	1.53 MB. Declare instances static or heap-allocated, never as an
+	ordinary local — two of these on the stack is 3.06 MB, which fits an
 	8 MB main thread but not a default 512 KB pthread stack.
 */
 typedef struct SWtFindingSet {

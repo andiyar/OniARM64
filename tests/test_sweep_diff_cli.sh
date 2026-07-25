@@ -20,8 +20,8 @@ rec() { # rec <renderer> <level> <phase> <subject> <severity> <key> <msg>
 		"$1" "$2" "$3" "$4" "$5" "$6" "$7"
 }
 
-: > "$TMP/empty.ndjson"   # no findings at all
-: > "$TMP/empty.txt"      # nothing baselined
+: > "$TMP/empty.ndjson"   # no records at all — rejected, see the exit-3 block
+: > "$TMP/empty.txt"      # nothing baselined, which is the legitimate start state
 
 # ---------------------------------------------------------------- exit 0
 rec gl 2 particles w10_sni_p01 warn too-large "x" > "$TMP/clean.ndjson"
@@ -35,10 +35,12 @@ check 'grep -q "0 regression(s), 0 stale, 0 abort(s)" "$TMP/out"' "clean summary
 check '"$DIFF" "$TMP/clean.ndjson" "$TMP/comments.txt" >/dev/null 2>&1; [ $? -eq 0 ]' "comments and blanks ignored"
 
 # a comment sitting where the fourth field would be must not be read as a key.
-# Empty report, so a bogus entry would show up as stale (exit 2) instead of 0 —
-# the trailing-comment case above passes either way, since sscanf stops at four.
+# The line is then short a field, so it is rejected outright (exit 3) rather
+# than quietly accepting "#" as the key — the trailing-comment case above
+# passes either way, since sscanf stops after four fields.
 printf '2 particles w10_sni_p01 # too-large\n' > "$TMP/comment_as_field.txt"
-check '"$DIFF" "$TMP/empty.ndjson" "$TMP/comment_as_field.txt" >/dev/null 2>&1; [ $? -eq 0 ]' "comment in field position is not a key"
+check '"$DIFF" "$TMP/clean.ndjson" "$TMP/comment_as_field.txt" 2>"$TMP/err" >/dev/null; [ $? -eq 3 ]' "comment in field position is not a key"
+check 'grep -q "is not a baseline entry" "$TMP/err"' "short baseline line explained"
 
 # the baseline holds no renderer, so the same file gates either renderer
 rec metal 2 particles w10_sni_p01 warn too-large "x" > "$TMP/metal.ndjson"
@@ -80,9 +82,24 @@ check 'grep -q "0 regression(s), 0 stale, 1 abort(s)" "$TMP/out"' "abort not dou
 check '"$DIFF" "$TMP/dup.ndjson" "$TMP/empty.txt" > "$TMP/out" 2>&1; [ $? -eq 1 ]' "duplicates exit 1"
 check 'grep -q "1 regression(s), 0 stale, 0 abort(s)" "$TMP/out"' "duplicates counted once"
 check '[ "$(grep -c REGRESSION "$TMP/out")" = "1" ]' "duplicates printed once"
+# the count is dropped but the volume is not: multiplicity rides along as a suffix
+check 'grep -q "^REGRESSION level 2  particles  dup  too-large  x3$" "$TMP/out"' "multiplicity suffix printed"
+check '! grep -q "x1$" "$TMP/out"' "no suffix on a singleton"
+
+# distinct findings must each be counted — dedupe collapses repeats within an
+# identity, never across identities. This is the failure mode that hides bugs.
+{ rec gl 2  particles class_a      warn  too-large  "x"
+  rec gl 7  textures  wall_01      warn  not-square "x"
+  rec gl 12 scripts   spawn_guards error null-deref "x"
+  rec gl 2  particles class_a      warn  too-large  "x"; } > "$TMP/distinct.ndjson"
+check '"$DIFF" "$TMP/distinct.ndjson" "$TMP/empty.txt" > "$TMP/out" 2>&1; [ $? -eq 1 ]' "distinct findings exit 1"
+check 'grep -q "3 regression(s), 0 stale, 0 abort(s)" "$TMP/out"' "distinct findings all counted"
+check '[ "$(grep -c REGRESSION "$TMP/out")" = "3" ]' "distinct findings all printed"
 
 # ---------------------------------------------------------------- exit 2
-check '"$DIFF" "$TMP/empty.ndjson" "$TMP/clean.txt" > "$TMP/out" 2>&1; [ $? -eq 2 ]' "stale-only exits 2"
+# a report of nothing but skipped/leak records parses fine and gates on nothing,
+# so the baseline it does not cover comes back stale
+check '"$DIFF" "$TMP/nogate.ndjson" "$TMP/clean.txt" > "$TMP/out" 2>&1; [ $? -eq 2 ]' "stale-only exits 2"
 check 'grep -q "^STALE      level 2  particles  w10_sni_p01  too-large$" "$TMP/out"' "stale line printed"
 
 # a skipped cell drops its records, so that level's baseline reads as stale.
@@ -91,11 +108,61 @@ check 'grep -q "^STALE      level 2  particles  w10_sni_p01  too-large$" "$TMP/o
 rec gl 2 load level2 skipped no-data "skipped" > "$TMP/skip.ndjson"
 check '"$DIFF" "$TMP/skip.ndjson" "$TMP/clean.txt" >/dev/null 2>&1; [ $? -eq 2 ]' "skipped cell leaves its baseline stale"
 
-# malformed baseline lines (fewer than four fields) are skipped, not fatal
-printf '2 particles w10_sni_p01\nnot a baseline line\n2 particles w10_sni_p01 too-large\n' > "$TMP/malformed.txt"
-check '"$DIFF" "$TMP/clean.ndjson" "$TMP/malformed.txt" >/dev/null 2>&1; [ $? -eq 0 ]' "malformed baseline lines skipped"
-
 # ---------------------------------------------------------------- exit 3
+# A malformed baseline line is a typo in a hand-edited file. Skipping it would
+# leave the maintainer believing they accepted a finding while the gate keeps
+# reporting it, so it is named and fatal.
+printf '2 particles w10_sni_p01 too-large\nnot a baseline line\n' > "$TMP/malformed.txt"
+check '"$DIFF" "$TMP/clean.ndjson" "$TMP/malformed.txt" 2>"$TMP/err" >/dev/null; [ $? -eq 3 ]' "malformed baseline line is fatal"
+check 'grep -q "malformed.txt:2 is not a baseline entry" "$TMP/err"' "malformed baseline names the line"
+
+# A report that parses to nothing must never read as clean. fopen succeeds on a
+# directory and an empty file has no records, so without these the gate would
+# wave through exactly the runs it exists to catch: a runner that died early.
+check '"$DIFF" "$TMP/empty.ndjson" "$TMP/empty.txt" 2>"$TMP/err" >/dev/null; [ $? -eq 3 ]' "empty report is fatal"
+check 'grep -q "holds no sweep records" "$TMP/err"' "empty report explained"
+check '"$DIFF" "$TMP" "$TMP/empty.txt" 2>"$TMP/err" >/dev/null; [ $? -eq 3 ]' "directory as report is fatal"
+check 'grep -q "cannot read report" "$TMP/err"' "directory as report explained"
+check '"$DIFF" "$TMP/clean.ndjson" "$TMP" 2>"$TMP/err" >/dev/null; [ $? -eq 3 ]' "directory as baseline is fatal"
+
+# an unparseable line is a truncated or interleaved write, not something to skip
+printf 'total 48\ndrwxr-xr-x  5 me  staff  160 Jul 25 10:00 .\n' > "$TMP/garbage.ndjson"
+check '"$DIFF" "$TMP/garbage.ndjson" "$TMP/empty.txt" 2>"$TMP/err" >/dev/null; [ $? -eq 3 ]' "garbage report is fatal"
+check 'grep -q "garbage.ndjson:1 is not a sweep record" "$TMP/err"' "garbage report names the line"
+
+# one good record followed by a half-written one: the run cannot be trusted
+{ rec gl 2 particles w10_sni_p01 warn too-large "x"
+  printf '{"renderer":"gl","level":2,"phase":"particles","subj\n'; } > "$TMP/partial.ndjson"
+check '"$DIFF" "$TMP/partial.ndjson" "$TMP/clean.txt" 2>"$TMP/err" >/dev/null; [ $? -eq 3 ]' "half-written record is fatal"
+check 'grep -q "partial.ndjson:2 is not a sweep record" "$TMP/err"' "half-written record names the line"
+
+# a non-numeric level must be rejected, not silently read as level 0 (a real
+# level — the main menu — so atoi would have gated it against level 0's baseline)
+printf '{"renderer":"gl","level":x2,"phase":"p","subject":"s","severity":"warn","key":"k","msg":"m"}\n' > "$TMP/badlevel.ndjson"
+check '"$DIFF" "$TMP/badlevel.ndjson" "$TMP/empty.txt" 2>/dev/null >/dev/null; [ $? -eq 3 ]' "non-numeric level is fatal"
+
+# a level outside any plausible range is corruption too, and strtol would
+# otherwise hand back a negative or a clamped LONG_MAX as if it were a level
+printf '{"renderer":"gl","level":-5,"phase":"p","subject":"s","severity":"warn","key":"k","msg":"m"}\n' > "$TMP/neglevel.ndjson"
+check '"$DIFF" "$TMP/neglevel.ndjson" "$TMP/empty.txt" 2>/dev/null >/dev/null; [ $? -eq 3 ]' "negative level is fatal"
+printf '{"renderer":"gl","level":99999999999999,"phase":"p","subject":"s","severity":"warn","key":"k","msg":"m"}\n' > "$TMP/biglevel.ndjson"
+check '"$DIFF" "$TMP/biglevel.ndjson" "$TMP/empty.txt" 2>/dev/null >/dev/null; [ $? -eq 3 ]' "out-of-range level is fatal"
+
+# blank lines in the middle of a report are tolerated (trailing newlines from
+# concatenating per-cell files), they just are not records
+{ rec gl 2 particles w10_sni_p01 warn too-large "x"; echo ""; echo "   "; } > "$TMP/blanks.ndjson"
+check '"$DIFF" "$TMP/blanks.ndjson" "$TMP/clean.txt" >/dev/null 2>&1; [ $? -eq 0 ]' "blank lines in the report tolerated"
+
+# the line buffer only has to cover the prefix through "key" — msg comes last,
+# so a record far longer than the buffer still parses, and its overflow must not
+# come back as a phantom extra line
+MSG=$(awk 'BEGIN{for(i=0;i<3000;i++)printf "z"}')
+rec gl 2 particles w10_sni_p01 warn too-large "$MSG" > "$TMP/longmsg.ndjson"
+check '[ "$(wc -c < "$TMP/longmsg.ndjson")" -gt 2048 ]' "long-msg record exceeds the line buffer"
+check '"$DIFF" "$TMP/longmsg.ndjson" "$TMP/clean.txt" > "$TMP/out" 2>&1; [ $? -eq 0 ]' "record longer than the line buffer still parses"
+check 'grep -q "0 regression(s), 0 stale, 0 abort(s)" "$TMP/out"' "long-msg overflow is not a phantom line"
+
+
 check '"$DIFF" >/dev/null 2>&1; [ $? -eq 3 ]' "no arguments exits 3"
 check '"$DIFF" "$TMP/clean.ndjson" >/dev/null 2>&1; [ $? -eq 3 ]' "one argument exits 3"
 check '"$DIFF" a b c >/dev/null 2>&1; [ $? -eq 3 ]' "three arguments exits 3"
@@ -116,7 +183,8 @@ check 'grep -q "finding limit 4096 exceeded" "$TMP/err"' "overflow reported on s
 check '! grep -q "regression(s)" "$TMP/err"' "overflow reports no verdict"
 
 awk 'BEGIN{for(i=0;i<4097;i++)printf "2 particles s%d too-large\n", i}' > "$TMP/huge.txt"
-check '"$DIFF" "$TMP/empty.ndjson" "$TMP/huge.txt" 2>/dev/null >/dev/null; [ $? -eq 3 ]' "baseline overflow exits 3"
+check '"$DIFF" "$TMP/clean.ndjson" "$TMP/huge.txt" 2>"$TMP/err" >/dev/null; [ $? -eq 3 ]' "baseline overflow exits 3"
+check 'grep -q "finding limit 4096 exceeded" "$TMP/err"' "baseline overflow reported on stderr"
 
 # exactly at the limit is fine
 awk 'BEGIN{for(i=0;i<4096;i++)printf "{\"renderer\":\"gl\",\"level\":2,\"phase\":\"particles\",\"subject\":\"s%d\",\"severity\":\"warn\",\"key\":\"too-large\",\"msg\":\"x\"}\n", i}' \
