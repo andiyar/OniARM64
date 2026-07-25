@@ -36,6 +36,60 @@ UUtBool		SLgPermanentSymbolList_Dirty = UUcTrue;
 UUtUns32		SLgCompletionList_Length = 0;
 static const char*	SLgCompletionList[SLcCompletionList_MaxLength];
 
+/* Sweep support - see BFW_ScriptLang_Database.h */
+static SLtRecordedScriptFunction	SLgRecordedScriptFunctions[SLcMaxRecordedScriptFunctions];
+static UUtUns32					SLgNumRecordedScriptFunctions = 0;
+
+void SLrScript_Database_RecordedFunctions_Reset(void)
+{
+	SLgNumRecordedScriptFunctions = 0;
+}
+
+UUtUns32 SLrScript_Database_RecordedFunctions_Count(void)
+{
+	return SLgNumRecordedScriptFunctions;
+}
+
+const SLtRecordedScriptFunction *SLrScript_Database_RecordedFunctions_Get(UUtUns32 inIndex)
+{
+	if (inIndex >= SLgNumRecordedScriptFunctions) return NULL;
+	return &SLgRecordedScriptFunctions[inIndex];
+}
+
+static void SLiScript_Database_RecordScriptFunction(const char *inName, UUtUns16 inNumParams)
+{
+	/* both caps drop data silently, so warn once each rather than lie by omission */
+	static UUtBool				SLgRecordOverflowWarned = UUcFalse;
+	static UUtBool				SLgRecordTruncateWarned = UUcFalse;
+	SLtRecordedScriptFunction	*slot;
+
+	if (inName == NULL) return;
+
+	if (SLgNumRecordedScriptFunctions >= SLcMaxRecordedScriptFunctions)
+	{
+		if (!SLgRecordOverflowWarned)
+		{
+			SLgRecordOverflowWarned = UUcTrue;
+			UUrStartupMessage("bsl: script function record table full at %d entries - sweep enumeration is incomplete",
+				SLcMaxRecordedScriptFunctions);
+		}
+		return;
+	}
+
+	if (strlen(inName) >= SLcMaxScriptFunctionNameChars && !SLgRecordTruncateWarned)
+	{
+		SLgRecordTruncateWarned = UUcTrue;
+		UUrStartupMessage("bsl: script function name \"%s\" is longer than %d chars - recorded name truncated",
+			inName, SLcMaxScriptFunctionNameChars - 1);
+	}
+
+	slot = &SLgRecordedScriptFunctions[SLgNumRecordedScriptFunctions];
+	strncpy(slot->name, inName, SLcMaxScriptFunctionNameChars - 1);
+	slot->name[SLcMaxScriptFunctionNameChars - 1] = '\0';
+	slot->numParams = inNumParams;
+	SLgNumRecordedScriptFunctions++;
+}
+
 // issue #86: symbolList[] is SLcMaxScopeLevel (8) entries but scopeLevel is
 // incremented once per nested {} block with no bound (stock scripts peak at
 // depth 6, one level below the cliff). Clamp every index into symbolList[] so
@@ -218,6 +272,8 @@ void
 SLrScript_Database_Internal_Reset(
 	void)
 {
+	SLrScript_Database_RecordedFunctions_Reset();
+
 	UUrMemory_Heap_Reset(SLgDatabaseHeap);
 
 	SLgGlobalSymbolList = NULL;
@@ -235,6 +291,8 @@ SLrScript_Database_FunctionScript_Add(
 {
 	SLtSymbol*					newSymbol;
 	SLtToken*					newTokens;
+
+	SLiScript_Database_RecordScriptFunction(inName, inNumParams);
 
 	if(inNumParams > SLcScript_MaxNumParams)
 	{

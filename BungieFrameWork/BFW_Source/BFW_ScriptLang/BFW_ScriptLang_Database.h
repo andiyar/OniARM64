@@ -125,4 +125,26 @@ UUtBool
 SLrDatabase_IsFunctionCall(
 	const char*	inName);
 
+/*
+	Sweep support: record the name and arity of every script-defined function as
+	it is registered, so the sweep harness can enumerate and invoke them. Engine
+	commands register through FunctionEngine_Add and are deliberately excluded.
+*/
+#define SLcMaxRecordedScriptFunctions	2048
+#define SLcMaxScriptFunctionNameChars	64
+
+typedef struct SLtRecordedScriptFunction {
+	char		name[SLcMaxScriptFunctionNameChars];
+	UUtUns16	numParams;
+} SLtRecordedScriptFunction;
+
+/* Clear the recording table. Called when the script database is reset. */
+void SLrScript_Database_RecordedFunctions_Reset(void);
+
+/* Number of script-defined functions recorded since the last reset. */
+UUtUns32 SLrScript_Database_RecordedFunctions_Count(void);
+
+/* Returns NULL if inIndex is out of range. */
+const SLtRecordedScriptFunction *SLrScript_Database_RecordedFunctions_Get(UUtUns32 inIndex);
+
 #endif /* BFW_SCRIPTLANG_DATABASE_H */
