@@ -3393,7 +3393,7 @@ static UUtError AI2iScript_Panic(SLtErrorContext *inErrorContext, UUtUns32 inPar
 										UUtBool *outStall, SLtParameter_Actual *ioReturnValue)
 {
 	ONtCharacter *character = AI2rScript_ParseAI(inParameterListLength, &inParameterList[0]);
-	UUtUns32 timer = 0;		// the 'cancel panic' branch below never sets this
+	UUtUns32 timer = 0;
 
 	if (character == NULL) {
 		AI2rScript_NoCharacterError(inParameterList, "ai2_panic", inErrorContext);
@@ -3403,9 +3403,11 @@ static UUtError AI2iScript_Panic(SLtErrorContext *inErrorContext, UUtUns32 inPar
 			timer = 1000000;		// approximation to forever
 
 		} else if (inParameterList[1].val.i == 0) {
+			// timer of zero cancels an existing panic; don't fall through and re-enter it
 			if (character->ai2State.currentGoal == AI2cGoal_Panic) {
 				AI2rReturnToJob(character, UUcTrue, UUcTrue);
 			}
+			return UUcError_None;
 		} else {
 			timer = inParameterList[1].val.i;
 		}

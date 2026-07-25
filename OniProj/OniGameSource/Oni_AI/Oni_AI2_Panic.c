@@ -412,7 +412,7 @@ void AI2rCharacter_Panic(ONtCharacter *ioCharacter, AI2tKnowledgeEntry *inEntry,
 		panic_state = &ioCharacter->ai2State.currentStateBuffer.state.panic;
 	}
 
-	if (inEntry->priority >= AI2cContactPriority_Hostile_NoThreat) {
+	if ((inEntry != NULL) && (inEntry->priority >= AI2cContactPriority_Hostile_NoThreat)) {
 		panic_state->panicked_by_hostile = UUcTrue;
 #if AI_VERBOSE_PANIC
 		COrConsole_Printf("%s: panicked by hostile %s", ioCharacter->player_name, (inEntry->enemy == NULL) ? "none" : inEntry->enemy->player_name);

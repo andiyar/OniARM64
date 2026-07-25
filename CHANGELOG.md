@@ -28,6 +28,10 @@ GitHub release notes and gets stamped with the version + date.
   animation are refused instead of crashing on spawn (#97), and the dev
   console, ambient-sound IDs, melee profiles and turret templates all got
   bounds checks where asserts used to compile away (#98).
+- The `ai2_panic` script command no longer crashes the game, and its cancel
+  form (timer 0) no longer puts the character straight back into panic
+  (#104). No stock script uses the command, so this matters for the dev
+  console and mod scripts.
 
 ### Menus
 - Grabbing the scrollbar thumb in a list (save/load, options) no longer makes
