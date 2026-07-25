@@ -154,7 +154,12 @@ COrCommand_Execute(char	*inCommandLine);
 extern IMtShade COgDefaultTextShade;
 extern IMtShade COgDefaultTextShadowShade;
 
-#if THE_DAY_IS_MINE
+// ONI_SWEEP_CONSOLE (issue #103) is defined only for the OniSweep target. The
+// shipping build sets SHIPPING_VERSION=1, which makes THE_DAY_IS_MINE 0 and
+// compiles COrConsole_Printf away to the inline no-op below at all ~1170 call
+// sites — including SLrScript_ReportError, so BSL script errors would vanish
+// during a sweep. The sweep binary needs the real thing.
+#if THE_DAY_IS_MINE || defined(ONI_SWEEP_CONSOLE)
 void UUcArglist_Call COrConsole_Printf(const char *format, ...);
 #else
 static UUcInline void UUcArglist_Call COrConsole_Printf(const char *format, ...)
@@ -164,6 +169,33 @@ static UUcInline void UUcArglist_Call COrConsole_Printf(const char *format, ...)
 #endif
 
 void UUcArglist_Call COrConsole_Printf_Color(COtPriority inPriority, IMtShade inTextColor, IMtShade inTextShadow, const char *format, ...);
+
+// Console tap, the sweep harness's second output tap (issue #103). It hangs off
+// COrConsole_Print rather than the printf functions because that is the single
+// sink both variants feed; tapping COrConsole_Printf alone would miss
+// COrConsole_Printf_Color, which is what the AI error path uses.
+//
+// Observe-only, and the void return says so: unlike the warning tap there is
+// nothing harmful downstream to suppress, so the message always continues to the
+// console ring buffer and consoleLog.txt.
+//
+// COmConsole_SweepTap is a macro, and COrConsole_RunTap lives at the bottom of
+// BFW_Console.c, for one reason: BFW_Console.c bakes __LINE__ into its
+// UUmError_Return* call sites, so inserting even one physical line above them
+// changes the shipping binary. The macro sits on an existing line and the
+// definitions sit past the last __LINE__ use, which keeps that binary
+// bit-for-bit what it was. Header line numbers are free — nothing here uses
+// __LINE__.
+#if THE_DAY_IS_MINE || defined(ONI_SWEEP_CONSOLE)
+	typedef void (*COtConsoleTap)(const char *inString);
+
+	void COrConsole_SetTap(COtConsoleTap inTap);
+	void COrConsole_RunTap(const char *inString);
+
+	#define COmConsole_SweepTap(s)	COrConsole_RunTap(s)
+#else
+	#define COmConsole_SweepTap(s)
+#endif
 
 
 #if defined(DEBUGGING) && DEBUGGING

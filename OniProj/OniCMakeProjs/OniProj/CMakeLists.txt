@@ -730,3 +730,70 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU")
 			"-Wl,-Map=${ONI_MAP_PATH}"
 	)
 endif()
+
+# ======================================================================
+# OniSweep — the level sweep harness binary (issue #103).
+#
+# Same sources, same defines, plus ONI_SWEEP_CONSOLE=1. That one define
+# restores the real COrConsole_Printf, which SHIPPING_VERSION=1 otherwise
+# compiles away to an inline no-op at ~1170 call sites — including
+# SLrScript_ReportError, so a sweep built from the shipping target would
+# report no BSL script errors at all.
+#
+# Cloned from the Oni target rather than given its own source list: the lists
+# are platform-branched above and a second copy would drift. EXCLUDE_FROM_ALL
+# keeps `make` costing exactly what it did before; the sweep driver asks for it
+# by name with `make OniSweep`. That is a full second compile of the tree
+# (~240 objects, its own PCH) because the define reaches every translation unit
+# through BFW_Console.h — there is no useful subset to share.
+#
+# The clone copies SOURCES, INCLUDE_DIRECTORIES, LINK_LIBRARIES and
+# COMPILE_DEFINITIONS. Anything else added to Oni later — target_compile_options,
+# link options, further target_sources outside this file — has to be mirrored
+# here by hand or OniSweep will quietly diverge from the binary it is meant to
+# be a copy of.
+# ======================================================================
+get_target_property(ONI_SWEEP_SOURCES Oni SOURCES)
+get_target_property(ONI_SWEEP_INCLUDES Oni INCLUDE_DIRECTORIES)
+get_target_property(ONI_SWEEP_LIBS Oni LINK_LIBRARIES)
+get_target_property(ONI_SWEEP_DEFINES Oni COMPILE_DEFINITIONS)
+
+add_executable(OniSweep EXCLUDE_FROM_ALL ${ONI_SWEEP_SOURCES})
+
+set(ONI_SWEEP_MAP_PATH $<TARGET_FILE_DIR:OniSweep>/$<TARGET_FILE_NAME:OniSweep>.map)
+
+# ONI_MAP_FILE points at the Oni target's map; OniSweep needs its own or the
+# two builds would fight over one path.
+list(FILTER ONI_SWEEP_DEFINES EXCLUDE REGEX "^ONI_MAP_FILE=")
+
+target_include_directories(OniSweep PRIVATE ${ONI_SWEEP_INCLUDES})
+target_link_libraries(OniSweep PRIVATE ${ONI_SWEEP_LIBS})
+target_compile_definitions(OniSweep
+	PRIVATE
+		${ONI_SWEEP_DEFINES}
+		ONI_MAP_FILE="${ONI_SWEEP_MAP_PATH}"
+		ONI_SWEEP_CONSOLE=1
+)
+target_precompile_headers(OniSweep PRIVATE ../../../BungieFrameWork/BFW_Headers/BFW_MasterHeader.h)
+
+if(WIN32)
+	set_target_properties(OniSweep PROPERTIES WIN32_EXECUTABLE $<TARGET_PROPERTY:Oni,WIN32_EXECUTABLE>)
+endif()
+
+if(MSVC)
+	target_compile_options(OniSweep
+		PRIVATE
+			/FI../../../BungieFrameWork/BFW_Headers/BFW_MasterHeader.h
+	)
+	target_link_options(OniSweep
+		PRIVATE
+			"/MAP:${ONI_SWEEP_MAP_PATH}"
+	)
+endif()
+
+if(CMAKE_C_COMPILER_ID MATCHES "GNU")
+	target_link_options(OniSweep
+		PRIVATE
+			"-Wl,-Map=${ONI_SWEEP_MAP_PATH}"
+	)
+endif()

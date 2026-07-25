@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "BFW.h"
+#include "BFW_Console.h"
 
 #include "Oni_Sweep.h"
 #include "Oni_Sweep_Report.h"
@@ -45,7 +46,8 @@ static char		ONgSweep_Subject[ONcSweep_SubjectSize] = "";
 
 /* Guards against a warning raised from inside the record path re-entering it.
    Nothing in ONrSweep_Record warns today; the flag keeps that from becoming a
-   recursion the moment something in the write path starts to. */
+   recursion the moment something in the write path starts to. Shared with the
+   console tap, so a print from inside the writer cannot recurse across them. */
 static UUtBool	ONgSweep_InTap = UUcFalse;
 
 // === helpers ==========================================================
@@ -142,6 +144,35 @@ static UUtBool ONiSweep_WarningTap(const char *inMessage)
 	return UUcTrue;
 }
 
+// === console tap ======================================================
+
+#if THE_DAY_IS_MINE || defined(ONI_SWEEP_CONSOLE)
+/*
+	Observe-only. COrConsole_Print continues to the ring buffer and
+	consoleLog.txt whatever happens here, so the console stays a second,
+	independent record of the run — there is no modal to suppress, so nothing
+	justifies consuming. This is the path BSL script errors travel
+	(SLrScript_ReportError -> COrConsole_Printf) and the one AI errors travel
+	(Oni_AI2_Error.c -> COrConsole_Printf_Color).
+
+	The guard sequence is spelled out rather than shared with the warning tap
+	above: factoring the two into a common helper would change the warning tap's
+	emitted code, and the shipping binary has to stay as it was. ONgSweep_InTap
+	is shared, which is what actually matters — it stops a print raised from
+	inside the writer recursing across the two taps.
+*/
+static void ONiSweep_ConsoleTap(const char *inString)
+{
+	if (!ONgSweep_Active || ONgSweep_InTap) {
+		return;
+	}
+
+	ONgSweep_InTap = UUcTrue;
+	ONrSweep_Record(NULL, NULL, ONcSweepSeverity_Warn, inString);
+	ONgSweep_InTap = UUcFalse;
+}
+#endif
+
 // === determinism ======================================================
 
 void ONrSweep_SeedRandom(void)
@@ -202,6 +233,9 @@ UUtError ONrSweep_Begin(const char *inOutputPath, const char *inRenderer, UUtUns
 
 	/* Registered last: until this point a warning takes the stock path. */
 	UUrError_SetWarningTap(ONiSweep_WarningTap);
+#if THE_DAY_IS_MINE || defined(ONI_SWEEP_CONSOLE)
+	COrConsole_SetTap(ONiSweep_ConsoleTap);
+#endif
 
 	UUrStartupMessage("[sweep] begin renderer=%s level=%d report=%s",
 		ONgSweep_Renderer, ONgSweep_Level, inOutputPath);
@@ -214,6 +248,9 @@ void ONrSweep_End(void)
 	/* Unregistered first, so nothing raised during teardown reaches a file
 	   that is about to close. */
 	UUrError_SetWarningTap(NULL);
+#if THE_DAY_IS_MINE || defined(ONI_SWEEP_CONSOLE)
+	COrConsole_SetTap(NULL);
+#endif
 
 	ONgSweep_Active = UUcFalse;
 

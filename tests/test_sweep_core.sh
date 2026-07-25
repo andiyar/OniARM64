@@ -22,18 +22,30 @@ INC=$(grep -m1 '^C_INCLUDES' "$FLAGS" | sed 's/^C_INCLUDES = //')
 DEF=$(grep -m1 '^C_DEFINES' "$FLAGS" | sed 's/^C_DEFINES = //' | tr ' ' '\n' | grep -v '\\"' | tr '\n' ' ')
 
 TMP=$(mktemp -d)
-BIN="$TMP/test_sweep_core"
+STATUS=0
 
-cc -std=gnu11 -Wno-multichar -Wno-incompatible-pointer-types \
-	-Wno-incompatible-function-pointer-types \
-	$DEF $INC \
-	tests/test_sweep_core.c \
-	OniProj/OniGameSource/Oni_Sweep.c \
-	OniProj/OniGameSource/Oni_Sweep_Report.c \
-	OniProj/OniGameSource/Oni_Sweep_Normalize.c \
-	-o "$BIN" || { echo "build failed"; rm -rf "$TMP"; exit 1; }
+# Run twice: once with the shipping target's defines (console tap compiled out,
+# which is what the Oni binary gets) and once with ONI_SWEEP_CONSOLE=1, which is
+# what OniSweep gets. Both configurations ship, so both are tested.
+run_config() {  # $1 = label, $2... = extra defines
+	local label="$1"; shift
+	local bin="$TMP/test_sweep_core_$label"
 
-"$BIN"
-STATUS=$?
+	cc -std=gnu11 -Wno-multichar -Wno-incompatible-pointer-types \
+		-Wno-incompatible-function-pointer-types \
+		$DEF "$@" $INC \
+		tests/test_sweep_core.c \
+		OniProj/OniGameSource/Oni_Sweep.c \
+		OniProj/OniGameSource/Oni_Sweep_Report.c \
+		OniProj/OniGameSource/Oni_Sweep_Normalize.c \
+		-o "$bin" || { echo "build failed ($label)"; STATUS=1; return; }
+
+	echo "--- $label"
+	"$bin" || STATUS=1
+}
+
+run_config shipping
+run_config sweep -DONI_SWEEP_CONSOLE=1
+
 rm -rf "$TMP"
 exit $STATUS

@@ -892,7 +892,7 @@ COrConsole_Print(
 	IMtShade				inTextColor,
 	IMtShade				inTextShadow,
 	const char				*inString)
-{
+{	COmConsole_SweepTap(inString);	/* #103 — on this line on purpose; see BFW_Console.h */
 	if (NULL != COgConsoleLines) {
 		COrTextArea_Print(COgConsoleLines, inPriority, inTextColor, inTextShadow, inString, NULL, COgFadeTimeValue);
 	}
@@ -1934,7 +1934,7 @@ COrCommand_CycleDown(
 #endif
 // ======================================================================
 // ----------------------------------------------------------------------
-#if THE_DAY_IS_MINE
+#if THE_DAY_IS_MINE || defined(ONI_SWEEP_CONSOLE)	/* #103 — see BFW_Console.h */
 void UUcArglist_Call COrConsole_Printf(const char *format, ...)
 {
 	char buffer[2048];
@@ -2151,3 +2151,32 @@ void COrConsole_StatusLine_LevelEnd(void)
 
 	return;
 }
+
+// ======================================================================
+// Sweep console tap (issue #103). Deliberately at the very bottom of the file:
+// every UUmError_Return* call site above bakes __LINE__ into the object code,
+// so anything added higher up would change the shipping Oni binary. Nothing
+// follows, so nothing shifts.
+//
+// Compiled out of the shipping build along with COrConsole_Printf itself.
+// ======================================================================
+#if THE_DAY_IS_MINE || defined(ONI_SWEEP_CONSOLE)
+
+static COtConsoleTap COgConsoleTap = NULL;
+
+void COrConsole_SetTap(COtConsoleTap inTap)
+{
+	COgConsoleTap = inTap;
+}
+
+// Called from the top of COrConsole_Print, before the ring buffer: if
+// COrTextArea_Print is what dies, the sweep has already written down the line
+// that was being printed.
+void COrConsole_RunTap(const char *inString)
+{
+	if (COgConsoleTap != NULL) {
+		COgConsoleTap(inString);
+	}
+}
+
+#endif
