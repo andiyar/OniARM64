@@ -56,6 +56,7 @@
 #include "Oni_Persistance.h"
 #include "Oni_Weapon.h"
 #include "Oni_InGameUI.h"
+#include "Oni_Sweep.h"
 
 #include "Oni_Bink.h"
 #include "gl_engine.h"
@@ -97,6 +98,9 @@ OniParseCommandLine(
 	ONgCommandLine.useGlide = UUcFalse;
 	ONgCommandLine.useMetal = UUcFalse;
 	ONgCommandLine.useSound = UUcTrue;
+	ONgCommandLine.sweepMode = UUcFalse;
+	ONgCommandLine.sweepLevel = 0;
+	ONgCommandLine.sweepOutPath[0] = '\0';
 
 	for(itr = 1; itr < argc; itr++)
 	{
@@ -149,6 +153,60 @@ OniParseCommandLine(
 				itr++;
 				ONgCommandLine.useMetal = (0 == strcmp(argv[itr], "metal"));
 			}
+		}
+		else if (0 == strcmp(current_parameter, "-sweep"))
+		{
+			char	*sweep_end;
+			long	sweep_level;
+
+			itr++;
+			if (itr >= argc)
+			{
+				fprintf(stderr, "-sweep needs a level number\n");
+				return UUcError_Generic;
+			}
+
+			/*
+			 * atoi() would turn "-sweep foo" into a silent sweep of level 0,
+			 * and level 0 is a real level (the menu) — so the driver would get
+			 * a plausible-looking report for a level it never asked for.
+			 * Reject anything that isn't a whole number in range instead.
+			 */
+			sweep_level = strtol(argv[itr], &sweep_end, 10);
+			if ((sweep_end == argv[itr]) || (*sweep_end != '\0') ||
+				(sweep_level < 0) || (sweep_level > (long) UUcMaxUns16))
+			{
+				fprintf(stderr, "-sweep: '%s' is not a level number\n", argv[itr]);
+				return UUcError_Generic;
+			}
+
+			ONgCommandLine.sweepMode = UUcTrue;
+			ONgCommandLine.sweepLevel = (UUtUns16) sweep_level;
+		}
+		else if (0 == strcmp(current_parameter, "-sweepout"))
+		{
+			itr++;
+			if (itr >= argc)
+			{
+				fprintf(stderr, "-sweepout needs a file path\n");
+				return UUcError_Generic;
+			}
+
+			/*
+			 * A truncated path would quietly write the report somewhere the
+			 * driver never looks at, which reads downstream as "level produced
+			 * no findings". Refuse it.
+			 */
+			if ((argv[itr][0] == '\0') ||
+				(strlen(argv[itr]) >= sizeof(ONgCommandLine.sweepOutPath)))
+			{
+				fprintf(stderr, "-sweepout: path is empty or too long\n");
+				return UUcError_Generic;
+			}
+
+			strncpy(ONgCommandLine.sweepOutPath, argv[itr],
+				sizeof(ONgCommandLine.sweepOutPath) - 1);
+			ONgCommandLine.sweepOutPath[sizeof(ONgCommandLine.sweepOutPath) - 1] = '\0';
 		}
 		else if (strcmp(current_parameter, "-noswitch") == 0)
 		{
@@ -451,6 +509,12 @@ ONiInitializeAll(
 	error = ONrInGameUI_Initialize();
 	UUmError_ReturnOnError(error);
 
+	/* Level sweep harness (#103). Last, because it registers console commands
+	   and so needs COrInitialize (above) to have run. */
+	UUrStartupMessage("initializing the level sweep harness");
+	error = ONrSweep_Initialize();
+	UUmError_ReturnOnError(error);
+
 	CLrInitialize();
 
 	UUrStartupMessage("finished oni initializing");
@@ -601,7 +665,21 @@ ONiRunGame(
 
 		#endif
 
-		if (ONgGameState->local.pending_splash_screen[0] != '\0') {
+		if (ONgSweep_Active) {
+			/*
+			 * Level sweep harness (#103): no drawing, and no splash screen
+			 * either — ONrGameState_SplashScreen runs its own draw+wait loop,
+			 * which would stall an unattended run. The pending flag is left
+			 * alone rather than consumed, so nothing about the game state
+			 * changes just because we skipped a frame's rendering.
+			 *
+			 * Both branches below are display-only. The simulation advances in
+			 * ONrGameState_Update above, and nothing it reads is written here
+			 * (see M3cDrawStateIntType_Time and P3gSkyVisible, both consumed
+			 * only by draw-side code).
+			 */
+		}
+		else if (ONgGameState->local.pending_splash_screen[0] != '\0') {
 			if (rg_log) UUrStartupMessage("[RG1] pre SplashScreen (pending)");
 			ONrGameState_SplashScreen(ONgGameState->local.pending_splash_screen, NULL, UUcFalse);
 
@@ -1197,8 +1275,16 @@ ONiMain(
 #ifndef USE_OPENGL_WITH_BINK
 	/*
 	 * play movie before OpenGL takes over
+	 *
+	 * Skipped under -sweep (#103): ONrMovie_Play goes to AVFoundation on macOS
+	 * and blocks fullscreen until the movie finishes or someone presses a key.
+	 * An unattended sweep has nobody to press it, and it would take over the
+	 * display once per cell.
 	 */
-		ONrMovie_Play("intro.bik", BKcScale_Fill_Window);
+		if (!ONgCommandLine.sweepMode)
+		{
+			ONrMovie_Play("intro.bik", BKcScale_Fill_Window);
+		}
 #endif
 
 	/*
@@ -1246,12 +1332,63 @@ ONiMain(
 		KeyConfig();
 
 	/*
-	 * run the main menu
+	 * run the level sweep, or the main menu — never both
+	 *
+	 * This has to come BEFORE OWrOniWindow_Startup, not after it. That call
+	 * spins `while (OWgRunStartup && !ONgTerminateGame)` on the out-of-game UI
+	 * (Oni_Windows.c) and only returns once someone picks a menu item, so a
+	 * sweep placed after it would sit at the main menu forever with nobody to
+	 * click. Everything the sweep needs is already up at this point: engine
+	 * init (ONiInitializeAll), level zero, the drawing context and window,
+	 * console variables and COrConfigure.
+	 *
+	 * oni_config.txt is deliberately not run for a sweep — it is a developer's
+	 * personal console script, and letting it change engine state would make
+	 * findings depend on whose machine the sweep ran on.
 	 */
+	if (ONgCommandLine.sweepMode)
+	{
+		const char *renderer = ONgCommandLine.useMetal ? "metal" : "gl";
+		const char *outPath = (ONgCommandLine.sweepOutPath[0] != '\0')
+			? ONgCommandLine.sweepOutPath : "sweep-report.ndjson";
+
+		UUrStartupMessage("engine startup complete, running level sweep for level %u -> %s",
+			(unsigned) ONgCommandLine.sweepLevel, outPath);
+
+		if (ONrSweep_Begin(outPath, renderer, ONgCommandLine.sweepLevel) == UUcError_None)
+		{
+			ONrSweep_RunAllPhases(ONgCommandLine.sweepLevel);
+			ONrSweep_End();
+		}
+		else
+		{
+			/* No report file means the driver has nothing to parse. Say so on
+			   stderr — it is the only channel it can still see. */
+			fprintf(stderr, "sweep: could not open report file '%s'\n", outPath);
+		}
+
+		/*
+		 * A phase that loaded a level leaves it loaded, and OniExit only ever
+		 * unloads level zero. Drop it the same way the normal exit path below
+		 * does, so a sweep does not die in teardown and hand the driver a
+		 * crash that has nothing to do with the level it was testing.
+		 */
+		if (NULL != ONgLevel)
+		{
+			UUrStartupMessage("sweep finished, unloading level...");
+			ONrLevel_Unload();
+		}
+
+		ONgTerminateGame = UUcTrue;
+	}
+	else
+	{
 		UUrStartupMessage("engine startup complete, launch the out-of-game UI...");
 		OWrOniWindow_Startup();
 
 		UUrStartupMessage("out-of-game UI exited...");
+	}
+
 	if (ONgTerminateGame == UUcFalse)
 	{
 		/*

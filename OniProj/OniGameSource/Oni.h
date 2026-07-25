@@ -38,6 +38,13 @@ typedef struct
 	UUtBool						useGlide;
 	UUtBool						useMetal;
 	UUtBool						useSound;
+
+	/* Level sweep harness (#103). sweepMode is what makes sweepLevel
+	   meaningful — level 0 is a real level, so a zero here is ambiguous
+	   with the default on its own. */
+	UUtBool						sweepMode;
+	UUtUns16					sweepLevel;
+	char						sweepOutPath[512];
 } ONtCommandLine;
 
 extern ONtCommandLine	ONgCommandLine;
