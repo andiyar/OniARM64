@@ -14,7 +14,11 @@
 //   * both RNG streams are reset to a fixed seed at the start of every
 //     phase, so two runs of the same cell produce the same findings.
 //
-// Phases themselves are not here yet.
+// The phases run in one fixed order — load, characters, particles, AI,
+// scripts — and every one after the load is gated on it having succeeded.
+// See the comment on ONrSweep_RunAllPhases for why that order and not
+// another; it is not arbitrary and the script phase in particular has to
+// stay last.
 // ======================================================================
 #pragma once
 #ifndef ONI_SWEEP_H
@@ -44,6 +48,9 @@
 */
 #define ONcSweep_PhaseLoad			"load"
 #define ONcSweep_PhaseCharacters	"characters"
+#define ONcSweep_PhaseParticles		"particles"
+#define ONcSweep_PhaseAI			"ai"
+#define ONcSweep_PhaseScripts		"scripts"
 #define ONcSweep_PhaseDone			"done"
 
 extern UUtBool	ONgSweep_Active;

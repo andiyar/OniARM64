@@ -28,8 +28,25 @@
 #include "Oni_Level.h"				/* ONgLevel, ONrLevel_Load, ONrLevel_Flag_ID_To_Flag */
 #include "Oni_Character.h"			/* TRcTemplate_CharacterClass, ONrGameState_NewCharacter */
 #include "Oni_AI_Setup.h"			/* AItCharacterSetup / AItCharacterSetupArray */
+#include "Oni_AI2.h"				/* AI2rDeleteAllCharacters, AI2rStartAllCharacters */
+#include "Oni_AI2_Error.h"			/* AI2_ERROR_REPORT, AI2rError_SetReportLevel */
 #include "BFW_Akira.h"				/* AKrNodeFromPoint */
 #include "BFW_Totoro.h"				/* TRrCollection_Lookup */
+#include "BFW_Particle3.h"			/* P3gClassTable, P3rGetParticleClass, P3rSendEvent */
+#include "BFW_EnvParticle.h"		/* EPrEnumerateAllParticles, EPrNewParticle */
+#include "BFW_ScriptLang.h"			/* SLrScript_ExecuteOnce */
+#include "ONi_BundlePath.h"			/* ONiBundlePath_ResolveStateFile — see the script phase */
+
+/*
+	The recorded-function table (task 4) lives in the script language's private
+	headers, and BFW_Source/BFW_ScriptLang is not on the include path. Reached
+	by relative path rather than by re-declaring SLtRecordedScriptFunction here:
+	a local copy of the struct that drifted from the real one would be read at
+	the wrong offsets with nothing to catch it. Private.h has to come first —
+	Database.h names SLtSymbol and SLtToken, which only Private.h defines.
+*/
+#include "../../BungieFrameWork/BFW_Source/BFW_ScriptLang/BFW_ScriptLang_Private.h"
+#include "../../BungieFrameWork/BFW_Source/BFW_ScriptLang/BFW_ScriptLang_Database.h"
 
 // === constants ========================================================
 
@@ -63,6 +80,14 @@
 	4 KB of stack at 64-bit pointer width.
 */
 #define ONcSweep_MaxCharacterClasses	512
+
+/*
+	Buffer the script phase resolves persist.dat into. Comfortably past the
+	$HOME/Library/Application Support/OniARM64/persist.dat case; a path that
+	somehow does not fit makes ONiBundlePath_ResolveStateFile return an error,
+	which the caller reads as "not sandboxed" and refuses to run on.
+*/
+#define ONcSweep_StatePathSize			512
 
 // === state ============================================================
 
@@ -687,8 +712,618 @@ static void ONiSweep_Phase_Characters(UUtUns16 inLevel, UUtBool inLoaded)
 	ONiSweep_SpawnCharacterSetups();
 }
 
+// === phases: particles ================================================
+
+/*
+	Task 9a: every particle class the cell can see must be findable by its own
+	name.
+
+	This is not the tautology it looks like. P3rGetParticleClass does a binary
+	search over P3gClassLookupTable, a separate array of pointers into
+	P3gClassTable that P3rLoad_PostProcess builds by qsorting the class table by
+	kind, walking it into the lookup table and qsorting that alphabetically
+	(BFW_Particle3.c:2963-2976). Every emitter link in the game is then resolved
+	through that lookup — a class that the table holds but the lookup cannot find
+	is a class whose particles no other class can ever emit. The engine's own
+	consistency check on this is inside `#if DEBUGGING`, so a shipping build says
+	nothing about it at all.
+
+	Subjects are class names, so a finding names the class that is wrong rather
+	than saying "particles".
+
+	Worth knowing before reading fifteen reports: particle classes are GLOBAL,
+	not per-level. Every PAR3 binary-data instance in the shipped game lives in
+	level0_Final.dat, which engine init loads before any sweep runs; the fourteen
+	gameplay level files contain none. So this audit sees the same class table in
+	every cell and any finding it produces repeats identically across all of them.
+	That is the correct behaviour for a per-level gate — the alternative is a
+	global class table that only one arbitrary cell checks — but it does mean one
+	broken class costs fifteen baseline lines, not one.
+*/
+static void ONiSweep_AuditParticleClasses(void)
+{
+	UUtUns16	itr;
+
+	ONrSweep_SetContext(ONcSweep_PhaseParticles, "particle_classes");
+
+	if (P3gNumClasses == 0) {
+		ONrSweep_Record(ONcSweep_PhaseParticles, "particle_classes", ONcSweepSeverity_Skipped,
+			"no particle classes are loaded");
+		return;
+	}
+
+	/*
+		P3rLoadParticleDefinition counts every class it had to drop into
+		P3gOverflowedClasses, but that counter is not declared in
+		BFW_Particle3.h and this file may not add a declaration for it. A full
+		table is the observable half of the same condition: the load stops
+		admitting classes at exactly this point, so a cell that reaches the cap
+		is a cell whose class set may be a prefix of the real one.
+	*/
+	if (P3gNumClasses >= P3cMaxParticleClasses) {
+		ONrSweep_Record(ONcSweep_PhaseParticles, "particle_classes", ONcSweepSeverity_Error,
+			"particle class table is full; some classes may not have loaded");
+	}
+
+	for (itr = 0; itr < P3gNumClasses; itr++) {
+		P3tParticleClass	*particleClass = &P3gClassTable[itr];
+		char				subject[ONcSweep_SubjectSize];
+
+		if (particleClass->classname[0] == '\0') {
+			/* Enumeration order is fixed for fixed data, so the index is a
+			   stable identity even though it is not a readable one. */
+			snprintf(subject, sizeof(subject), "p3class_%u", (unsigned) itr);
+			ONrSweep_SetContext(ONcSweep_PhaseParticles, subject);
+			ONrSweep_Record(ONcSweep_PhaseParticles, subject, ONcSweepSeverity_Error,
+				"particle class has no name");
+			continue;
+		}
+
+		ONiSweep_CopyField(subject, sizeof(subject), particleClass->classname);
+		ONiSweep_SanitiseSubject(subject);
+		ONrSweep_SetContext(ONcSweep_PhaseParticles, subject);
+
+		if (particleClass->definition == NULL) {
+			ONrSweep_Record(ONcSweep_PhaseParticles, subject, ONcSweepSeverity_Error,
+				"particle class has no definition");
+			continue;
+		}
+
+		/*
+			Identity, not merely non-NULL. Names in the lookup table are unique
+			and strictly ascending (the DEBUGGING assert at BFW_Particle3.c:2985
+			is on strcmp < 0), so the lookup is a bijection over the table and
+			the only correct answer is this very class. A lookup that returns
+			some other class for this name is a sorted-table bug, which is
+			exactly the shape a 32->64 pointer-stride error takes here.
+		*/
+		if (P3rGetParticleClass(particleClass->classname) != particleClass) {
+			ONrSweep_Record(ONcSweep_PhaseParticles, subject, ONcSweepSeverity_Error,
+				"particle class is not findable by its own name");
+		}
+	}
+}
+
+/* Shared by the start and stop passes over the level's env particles. */
+typedef struct ONtSweepEnvParticleData {
+	UUtUns32	tick;
+	float		time;
+	UUtUns16	event;
+	UUtUns32	index;
+	UUtBool		report;		/* only the start pass records findings */
+} ONtSweepEnvParticleData;
+
+/*
+	Set the sweep context to the env particle about to be touched.
+
+	The class name is the handle worth having: several env particles usually
+	share one class, so findings collapse onto the class that is actually broken
+	rather than onto one placement of it. The tag is a level-authoring label and
+	is empty for most of them.
+*/
+static void ONiSweep_EnvParticleSubject(const EPtEnvParticle *inParticle,
+										UUtUns32 inIndex, char *outSubject, UUtUns32 inSize)
+{
+	if (inParticle->classname[0] != '\0') {
+		ONiSweep_CopyField(outSubject, inSize, inParticle->classname);
+		ONiSweep_SanitiseSubject(outSubject);
+	} else {
+		snprintf(outSubject, inSize, "envparticle_%u", (unsigned) inIndex);
+	}
+}
+
+/*
+	Create (if it has not been created yet) and start one environmental particle.
+
+	Mirrors ONiParticle3_EnumerateAllCallback in Oni_Particle3.c, which is what
+	p3_startall drives, with attribution and a finding added. No settle happens
+	in here — this runs inside EPrEnumerateAllParticles' walk of the global env
+	particle list, and ticking the game from inside that walk would let the
+	simulation delete list entries under the enumeration.
+*/
+static void ONiSweep_EnvParticleCallback(EPtEnvParticle *inParticle, uintptr_t inUserData)
+{
+	ONtSweepEnvParticleData	*userData = (ONtSweepEnvParticleData *) inUserData;
+	char					subject[ONcSweep_SubjectSize];
+
+	ONiSweep_EnvParticleSubject(inParticle, userData->index, subject, sizeof(subject));
+	userData->index++;
+
+	ONrSweep_SetContext(ONcSweep_PhaseParticles, subject);
+
+	if (inParticle->particle == NULL) {
+		EPrNewParticle(inParticle, userData->tick);
+	}
+
+	if (inParticle->particle == NULL) {
+		if (userData->report) {
+			/*
+				One reported cause only. EPrNewParticle returns UUcFalse for a
+				missing class, for a refused P3rCreateParticle, and for a decal
+				whose own creation declined — and a decal leaves particle NULL
+				on the perfectly ordinary path where it drew a decal instead. A
+				NULL particle_class is the one case that is unambiguously broken
+				content: the level places a particle whose class does not exist.
+			*/
+			if (inParticle->particle_class == NULL) {
+				ONrSweep_Record(ONcSweep_PhaseParticles, subject, ONcSweepSeverity_Error,
+					"environmental particle names a class that does not exist");
+			}
+		}
+		return;
+	}
+
+	P3rSendEvent(inParticle->particle_class, inParticle->particle,
+		(UUtUns16) userData->event, userData->time);
+}
+
+/*
+	Task 9b: start every environmental particle the level places, let them run,
+	then stop them.
+
+	This is the per-level half of the phase. Environmental particles are level
+	content (EPtEnvParticleArray comes out of the level's own templates), unlike
+	the class table above, and starting them is what p3_startall exists for:
+	particles flagged NotInitiallyCreated are never created during ordinary play
+	until something triggers them, so a broken one can sit in a level unnoticed.
+
+	Started as one pass and settled once, rather than one settle per particle.
+	Per-particle settling would multiply ONcSweep_SettleParticle by the number of
+	placements in the level for no gain — attribution is set at creation time,
+	which is where the per-particle findings are, and a shared settle is exactly
+	as attributable as a per-particle one is for anything the simulation prints
+	afterwards, since by then every class is emitting anyway.
+
+	Stopped afterwards but deliberately not killed. P3rKillAll (what p3_killall
+	calls) destroys every particle in the game including the ones belonging to
+	characters and weapons, which is a much larger change to the level than this
+	phase made; sending Stop leaves emitters quiet and lets what is already alive
+	expire on its own.
+
+	The stop pass is not an exact undo, and the difference is worth knowing when
+	reading a report. It sends Stop to every environmental particle, including
+	the ones the level itself had running before this phase touched anything, so
+	the AI phase inherits a level slightly quieter than the load produced. That
+	is the deliberate trade: three thousand AI ticks underneath every emitter in
+	the level would attribute a great deal of particle-system output to the AI
+	phase, and this harness buys attribution with realism everywhere else too.
+*/
+static void ONiSweep_StartEnvParticles(void)
+{
+	ONtSweepEnvParticleData	userData;
+
+	ONrSweep_SetContext(ONcSweep_PhaseParticles, "environment");
+
+	userData.tick = ONrGameState_GetGameTime();
+	userData.time = ((float) userData.tick) / UUcFramesPerSecond;
+	userData.event = P3cEvent_Start;
+	userData.index = 0;
+	userData.report = UUcTrue;
+
+	EPrEnumerateAllParticles(ONiSweep_EnvParticleCallback, (uintptr_t) &userData);
+
+	if (userData.index == 0) {
+		ONrSweep_Record(ONcSweep_PhaseParticles, "environment", ONcSweepSeverity_Skipped,
+			"level places no environmental particles");
+		return;
+	}
+
+	ONrSweep_SetContext(ONcSweep_PhaseParticles, "environment");
+	ONrSweep_Tick(ONcSweep_SettleParticle);
+
+	userData.tick = ONrGameState_GetGameTime();
+	userData.time = ((float) userData.tick) / UUcFramesPerSecond;
+	userData.event = P3cEvent_Stop;
+	userData.index = 0;
+	userData.report = UUcFalse;
+
+	EPrEnumerateAllParticles(ONiSweep_EnvParticleCallback, (uintptr_t) &userData);
+}
+
+static void ONiSweep_Phase_Particles(UUtUns16 inLevel, UUtBool inLoaded)
+{
+	ONrSweep_SetContext(ONcSweep_PhaseParticles, "level");
+
+	if (inLevel == 0) {
+		ONrSweep_Record(ONcSweep_PhaseParticles, "level", ONcSweepSeverity_Skipped,
+			"menu level has no game-state level to run particles in");
+		return;
+	}
+
+	if (!inLoaded) {
+		ONrSweep_Record(ONcSweep_PhaseParticles, "level", ONcSweepSeverity_Skipped,
+			"level did not load");
+		return;
+	}
+
+	if ((ONgLevel == NULL) || (ONgGameState == NULL)) {
+		ONrSweep_Record(ONcSweep_PhaseParticles, "level", ONcSweepSeverity_Skipped,
+			"no level or game state is current");
+		return;
+	}
+
+	ONrSweep_SeedRandom();
+
+	ONiSweep_AuditParticleClasses();
+	ONiSweep_StartEnvParticles();
+}
+
+// === phases: AI =======================================================
+
+/*
+	Task 10: populate the level with every AI it can hold and let them think.
+
+	Driven through AI2rDeleteAllCharacters + AI2rStartAllCharacters rather than
+	through COrCommand_Execute("ai2_spawnall"). Those two calls ARE ai2_spawnall
+	(Oni_AI2_Script.c:539-545); going straight at them costs nothing and buys the
+	error return, where the console route yields one bool that says only whether
+	the console found a hook to call.
+
+	What the spawn actually does, since it is not simply a repeat of what the
+	load already did:
+
+	  * AI2rDeleteAllCharacters(UUcFalse) removes characters whose scriptID is
+	    UUcMaxUns16 — the ones AI2rLevelBegin created from the level's character
+	    objects — and leaves the player alone. The character phase's spawns carry
+	    setup->defaultScriptID (Oni_AI2.c:747) and so survive this.
+	  * AI2rStartAllCharacters(UUcFalse, UUcTrue) recreates those with the
+	    override set, which is the part that matters: it also spawns every
+	    character flagged OBJcCharFlags_NotInitiallyPresent, the reinforcements
+	    that ordinary play only ever sees if a trigger fires. Those are AI that a
+	    level load never touches.
+
+	So it is a fresh AI population that is strictly larger than the loaded one,
+	on top of the character phase's setups. ONcMaxCharacters is 128 and
+	ONrGameState_NewCharacter refuses gracefully once the table is full.
+*/
+static void ONiSweep_Phase_AI(UUtUns16 inLevel, UUtBool inLoaded)
+{
+	UUtError	error;
+
+	ONrSweep_SetContext(ONcSweep_PhaseAI, "level");
+
+	if (inLevel == 0) {
+		ONrSweep_Record(ONcSweep_PhaseAI, "level", ONcSweepSeverity_Skipped,
+			"menu level has no AI");
+		return;
+	}
+
+	if (!inLoaded) {
+		ONrSweep_Record(ONcSweep_PhaseAI, "level", ONcSweepSeverity_Skipped,
+			"level did not load");
+		return;
+	}
+
+	if ((ONgLevel == NULL) || (ONgGameState == NULL)) {
+		ONrSweep_Record(ONcSweep_PhaseAI, "level", ONcSweepSeverity_Skipped,
+			"no level or game state is current");
+		return;
+	}
+
+	ONrSweep_SeedRandom();
+
+	/*
+		READ THIS BEFORE CONCLUDING A LEVEL'S AI IS HEALTHY.
+
+		AI2 has two error channels and they are separately gated. The log channel
+		(ai2_set_logerror) writes ai2_log.txt and never reaches the console, so
+		the sweep's console tap cannot see it; the report channel
+		(ai2_set_reporterror) is the one that goes through COrConsole_Printf_Color
+		and is therefore the one a sweep wants. Both are irrelevant in the binary
+		this actually builds as: AI2_ERROR_REPORT is #defined from TOOL_VERSION,
+		TOOL_VERSION is 0 whenever SHIPPING_VERSION is 1, and the OniSweep target
+		inherits SHIPPING_VERSION=1 from the Oni target. With it off, the
+		AI2_ERROR macro expands to AI2rHandleError, which handles the error and
+		returns without reporting or logging anything at all.
+
+		The phase is still worth running — three thousand ticks of pathfinding,
+		combat and movement is the point, and a crash or a UUrPrintWarning still
+		lands in the report — but the AI's own diagnosis of itself is not in
+		evidence. The record below says so in the report rather than leaving a
+		reader to infer quiet means clean.
+	*/
+#if AI2_ERROR_REPORT
+	AI2rError_SetReportLevel(AI2cSubsystem_All, AI2cStatus);
+#else
+	ONrSweep_Record(ONcSweep_PhaseAI, "level", ONcSweepSeverity_Skipped,
+		"AI2 error reporting is compiled out of this build; AI findings come from warnings and crashes only");
+#endif
+
+	ONrSweep_SetContext(ONcSweep_PhaseAI, "spawnall");
+
+	AI2rDeleteAllCharacters(UUcFalse);
+
+	error = AI2rStartAllCharacters(UUcFalse, UUcTrue);
+	if (error != UUcError_None) {
+		ONrSweep_Record(ONcSweep_PhaseAI, "spawnall", ONcSweepSeverity_Error,
+			"AI2rStartAllCharacters failed");
+		/* Not a return: whatever it did manage to spawn is still worth settling,
+		   and the settle is where AI findings come from. */
+	}
+
+	ONrSweep_SetContext(ONcSweep_PhaseAI, "settle");
+	ONrSweep_Tick(ONcSweep_SettleAI);
+}
+
+// === phases: BSL scripts ==============================================
+
+/*
+	Refuse to run the script phase unless the engine's persist.dat resolves to
+	one in the current directory.
+
+	This is not defensiveness about a hypothetical. The shipped BSL corpus calls
+	save_game 56 times across the fourteen levels; save_game reaches
+	ONrGameState_MakeContinue -> ONrPersist_SetContinue -> ONrPersist(), which
+	rewrites persist.dat in full. ONiBundlePath_ResolveStateFile answers that
+	call with ./persist.dat when one exists in the working directory and with
+	$HOME/Library/Application Support/OniARM64/persist.dat when one does not —
+	and the second of those is where the player's real saved games live. A sweep
+	that called every BSL function from the default working directory would
+	overwrite them, on every cell, with continues manufactured from whatever
+	state the harness happened to leave the level in.
+
+	The path is resolved at write time (Oni_Persistance.c:161-165), not cached at
+	startup, so a working directory holding its own persist.dat is a complete
+	containment: every write during the run lands in the sandbox.
+
+	Skipping loudly is the right failure. The driver has to opt in by giving each
+	cell a working directory with a persist.dat in it, and until it does, the
+	report says in so many words why the script phase produced nothing.
+*/
+static UUtBool ONiSweep_ScriptsAreSandboxed(void)
+{
+	char		path[ONcSweep_StatePathSize];
+	UUtError	error;
+
+	error = ONiBundlePath_ResolveStateFile("persist.dat", path, sizeof(path));
+	if (error != UUcError_None) {
+		return UUcFalse;
+	}
+
+	return (UUtBool) (strcmp(path, "./persist.dat") == 0);
+}
+
+/*
+	Has this name already been called during this phase?
+
+	Recording happens before the database's duplicate-symbol check, so the same
+	name can appear twice in the table (task 4). No shipped level does it, but a
+	content pack that redefines a function would, and calling a function twice
+	would put a second, differently-conditioned run of the same script into the
+	report under one identity — two lines that gate as one.
+
+	Scanned against the earlier table entries rather than into a set of our own:
+	the table holds up to 2048 names of 64 bytes, which is 128 KB nobody needs on
+	the stack, and the worst shipped level records 175 entries, so this costs
+	fifteen thousand strcmps once per cell.
+*/
+static UUtBool ONiSweep_ScriptNameSeenEarlier(const char *inName, UUtUns32 inIndex)
+{
+	UUtUns32 itr;
+
+	for (itr = 0; itr < inIndex; itr++) {
+		const SLtRecordedScriptFunction *earlier = SLrScript_Database_RecordedFunctions_Get(itr);
+
+		if (earlier == NULL) {
+			continue;
+		}
+
+		if (strcmp(earlier->name, inName) == 0) {
+			return UUcTrue;
+		}
+	}
+
+	return UUcFalse;
+}
+
+/*
+	Task 11: call every zero-arity BSL function the loaded level defines.
+
+	The table is the one the task 4 hook fills at registration. Three of its
+	properties are load-bearing here:
+
+	  * numParams is not to be trusted for anything but the zero test. Recording
+	    happens before the engine's own bound on the formal count, so a malformed
+	    script can be recorded with an arity that no registered symbol has. It is
+	    never used to size anything.
+	  * a name in the table is not a promise that a symbol exists, for the same
+	    reason. SLrDatabase_IsFunctionCall is asked first, and a name that does
+	    not resolve is recorded as skipped — it is a fact about the script, not a
+	    failure of the harness.
+	  * the table is only meaningful while a level is loaded. ONrScript_LevelBegin
+	    resets it and ONrLevel_Load calls that; ONrLevel_Unload does not, and
+	    ONrLevel_LoadZero never called it in the first place. Reading it outside a
+	    loaded level reads the previous level's entries. This phase runs inside
+	    one, gated on the load phase's verdict.
+
+	Functions that take parameters are recorded as skipped with their arity and
+	not called. Passing invented arguments to a level's own script would produce
+	findings about the harness's guesses rather than about the level.
+
+	On what a cold call can do, which is the real risk in this phase: these are
+	narrative scripts being run out of order, and the shipped corpus contains 347
+	chr_delete calls, 168 cinematic_start, 54 restore_game and 42 win/lose. Most
+	of that is survivable here. win and lose only set ONgGameState->victory, and
+	the switch that acts on it is in the Oni.c main loop, which a sweep never
+	reaches — it runs the phases and sets ONgTerminateGame. restore_game teleports
+	the player. splash_screen sets a pending flag that the bypassed display path
+	would have consumed. movie_play would block on AVFoundation, and no shipped
+	script calls it. save_game is the one that reaches outside the process, and
+	the sandbox check above is what answers it.
+
+	What none of this can guard is a script that never returns. SLrScript_ExecuteOnce
+	runs the body synchronously through SLrScript_Parse; a sleep or a stalling
+	command returns promptly with the context parked for the scheduler, but a BSL
+	loop with no sleep in it spins inside that call with nothing in this process
+	able to interrupt it. A wall-clock budget here was considered and rejected: it
+	would make how many functions a cell called depend on how fast the machine was,
+	and every finding after the cutoff would appear and disappear between runs.
+	The driver's per-cell watchdog is the backstop, and it is the only one.
+
+	One more thing to expect in a memory profile rather than in the report:
+	SLrSchedule_Function_Script has its SLrContext_Delete commented out for the
+	immediate-execution path (BFW_ScriptLang_Scheduler.c:256-259, Bungie's own
+	comment), so every call leaks one SLtContext. That is 5,424 bytes each on
+	arm64, or about a megabyte across the worst level's table. It is not a leak
+	this harness can fix from here — nothing reachable tells us whether a given
+	context has finished or is parked in the scheduler, and deleting a parked one
+	is a use-after-free. SLgDatabaseHeap was created non-fixed and adds subheaps
+	on demand, so it grows rather than failing, and the process is one-shot.
+*/
+static void ONiSweep_CallScriptFunctions(void)
+{
+	UUtUns32	count;
+	UUtUns32	itr;
+
+	count = SLrScript_Database_RecordedFunctions_Count();
+
+	if (count == 0) {
+		ONrSweep_Record(ONcSweep_PhaseScripts, "functions", ONcSweepSeverity_Skipped,
+			"level defines no script functions");
+		return;
+	}
+
+	for (itr = 0; itr < count; itr++) {
+		const SLtRecordedScriptFunction	*function;
+		char							subject[ONcSweep_SubjectSize];
+		char							message[ONcSweep_SubjectSize];
+		UUtError						error;
+
+		function = SLrScript_Database_RecordedFunctions_Get(itr);
+		if (function == NULL) {
+			/* Count and Get read the same counter, so this cannot happen today.
+			   It costs one branch, and the alternative is dereferencing NULL. */
+			snprintf(subject, sizeof(subject), "function_%u", (unsigned) itr);
+			ONrSweep_Record(ONcSweep_PhaseScripts, subject, ONcSweepSeverity_Error,
+				"recorded script function could not be read back");
+			continue;
+		}
+
+		if (function->name[0] == '\0') {
+			snprintf(subject, sizeof(subject), "function_%u", (unsigned) itr);
+			ONrSweep_SetContext(ONcSweep_PhaseScripts, subject);
+			ONrSweep_Record(ONcSweep_PhaseScripts, subject, ONcSweepSeverity_Error,
+				"recorded script function has no name");
+			continue;
+		}
+
+		ONiSweep_CopyField(subject, sizeof(subject), function->name);
+		ONiSweep_SanitiseSubject(subject);
+		ONrSweep_SetContext(ONcSweep_PhaseScripts, subject);
+
+		if (ONiSweep_ScriptNameSeenEarlier(function->name, itr)) {
+			ONrSweep_Record(ONcSweep_PhaseScripts, subject, ONcSweepSeverity_Skipped,
+				"script function name is recorded more than once; called once only");
+			continue;
+		}
+
+		if (function->numParams != 0) {
+			snprintf(message, sizeof(message),
+				"script function takes %u parameters; not called",
+				(unsigned) function->numParams);
+			ONrSweep_Record(ONcSweep_PhaseScripts, subject, ONcSweepSeverity_Skipped, message);
+			continue;
+		}
+
+		if (!SLrDatabase_IsFunctionCall(function->name)) {
+			ONrSweep_Record(ONcSweep_PhaseScripts, subject, ONcSweepSeverity_Skipped,
+				"recorded script function does not resolve to a symbol; not called");
+			continue;
+		}
+
+		error = SLrScript_ExecuteOnce(function->name, 0, NULL, NULL, NULL);
+		if (error != UUcError_None) {
+			ONrSweep_Record(ONcSweep_PhaseScripts, subject, ONcSweepSeverity_Error,
+				"script function failed to execute");
+		}
+
+		/*
+			Settled after every call, not once at the end. A BSL function that
+			sleeps or stalls has left a context parked for the scheduler, and
+			SLrScript_Update only resumes it as game time passes — without a
+			settle here the phase would start the next function on top of a
+			suspended one and nothing would ever run to completion.
+		*/
+		ONrSweep_Tick(ONcSweep_SettleScript);
+	}
+}
+
+static void ONiSweep_Phase_Scripts(UUtUns16 inLevel, UUtBool inLoaded)
+{
+	ONrSweep_SetContext(ONcSweep_PhaseScripts, "level");
+
+	if (inLevel == 0) {
+		ONrSweep_Record(ONcSweep_PhaseScripts, "level", ONcSweepSeverity_Skipped,
+			"menu level has no level scripts");
+		return;
+	}
+
+	if (!inLoaded) {
+		ONrSweep_Record(ONcSweep_PhaseScripts, "level", ONcSweepSeverity_Skipped,
+			"level did not load");
+		return;
+	}
+
+	if ((ONgLevel == NULL) || (ONgGameState == NULL)) {
+		ONrSweep_Record(ONcSweep_PhaseScripts, "level", ONcSweepSeverity_Skipped,
+			"no level or game state is current");
+		return;
+	}
+
+	if (!ONiSweep_ScriptsAreSandboxed()) {
+		ONrSweep_Record(ONcSweep_PhaseScripts, "level", ONcSweepSeverity_Skipped,
+			"no persist.dat in the working directory; calling level scripts could overwrite the player's saved games");
+		return;
+	}
+
+	ONrSweep_SeedRandom();
+
+	ONiSweep_CallScriptFunctions();
+}
+
 // === phase driver =====================================================
 
+/*
+	Order is load, characters, particles, AI, scripts, and each of the four after
+	the load is gated on it.
+
+	Characters first because both of the phases after it want a populated level:
+	the setups are placed and settled before anything starts emitting or thinking.
+
+	Particles before AI, for attribution. The particle phase's own settle wants a
+	level that is not yet in combat: six hundred ticks of emitters with the
+	console otherwise quiet attributes cleanly, and the same six hundred ticks
+	underneath a running firefight would land every AI line under a particle
+	class's subject. The reverse order buys nothing back — the particle phase
+	stops what it started before it returns, so the AI phase gets the same level
+	either way.
+
+	Scripts last, and this one is not a preference. The shipped BSL corpus deletes
+	characters 347 times, starts cutscenes 168 times and restores saved state 54
+	times; a function called cold can take the level apart in ways no later phase
+	could work around. Running it after everything else means whatever it wrecks,
+	it wrecks only its own phase.
+*/
 void ONrSweep_RunAllPhases(UUtUns16 inLevel)
 {
 	UUtBool	loaded;
@@ -696,8 +1331,9 @@ void ONrSweep_RunAllPhases(UUtUns16 inLevel)
 	loaded = ONiSweep_Phase_Load(inLevel);
 
 	ONiSweep_Phase_Characters(inLevel, loaded);
-
-	/* Tasks 9-11 add particles, AI and scripts here, each gated on `loaded`. */
+	ONiSweep_Phase_Particles(inLevel, loaded);
+	ONiSweep_Phase_AI(inLevel, loaded);
+	ONiSweep_Phase_Scripts(inLevel, loaded);
 
 	/*
 		Terminal record, always. It is what separates "the cell ran and found

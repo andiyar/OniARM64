@@ -1,9 +1,9 @@
 // ======================================================================
 // test_sweep_phases.c
 //
-// Tests for the load and character sweep phases (tasks 7 and 8), driven
-// through the real ONrSweep_RunAllPhases in Oni_Sweep.c with the engine
-// stubbed (tests/test_sweep_engine_stubs.c).
+// Tests for the sweep phases — load, characters, particles, AI and BSL
+// scripts (tasks 7 to 11) — driven through the real ONrSweep_RunAllPhases
+// in Oni_Sweep.c with the engine stubbed (tests/test_sweep_engine_stubs.c).
 //
 // What these guard, in rough order of how expensive the failure would be:
 //
@@ -25,6 +25,12 @@
 //   * subjects never contain whitespace. sweep_diff's baseline format is
 //     whitespace-delimited, so a subject with a space in it would gate as a
 //     regression and a stale entry simultaneously, forever.
+//   * the script phase refuses to run without a persist.dat in the working
+//     directory. The shipped BSL corpus calls save_game 56 times, and that
+//     rewrites whichever persist.dat the engine resolves — which, absent a
+//     sandbox, is the player's real saved games. This is the single most
+//     expensive way this harness could fail, so it is tested first and
+//     from both directions.
 //
 // Build and run: tests/test_sweep_phases.sh   (from repo root)
 // ======================================================================
@@ -35,6 +41,8 @@
 #include "Oni_Character.h"
 #include "Oni_AI_Setup.h"
 #include "BFW_Console.h"
+#include "BFW_Particle3.h"
+#include "BFW_EnvParticle.h"
 
 #include "test_sweep_engine_stubs.h"
 
@@ -264,7 +272,19 @@ int main(void)
 		check_true("level0: nothing spawned", SweepStub_SpawnCalls == 0);
 		check_true("level0: terminal record present",
 			count_matching("\"phase\":\"done\"", "cell completed", NULL) == 1);
-		check_true("level0: three records exactly", g_numLines == 3);
+		check_true("level0: particle phase skipped",
+			count_matching("\"phase\":\"particles\"", "\"severity\":\"skipped\"", "menu level") == 1);
+		check_true("level0: AI phase skipped",
+			count_matching("\"phase\":\"ai\"", "\"severity\":\"skipped\"", "menu level") == 1);
+		check_true("level0: script phase skipped",
+			count_matching("\"phase\":\"scripts\"", "\"severity\":\"skipped\"", "menu level") == 1);
+		check_true("level0: nothing spawned by the AI phase either",
+			SweepStub_AIStartAllCalls == 0);
+		check_true("level0: no scripts called", SweepStub_ScriptExecuteCalls == 0);
+		/* One skip per phase plus the terminal record. Exact, because a phase
+		   that quietly stopped emitting is the failure this file exists to
+		   catch and a >= would not see it. */
+		check_true("level0: six records exactly", g_numLines == 6);
 	}
 
 	/* 2. A load failure aborts and stops everything downstream. Running the
@@ -544,6 +564,338 @@ int main(void)
 			count_matching("\"subject\":\"classes\"", "could not enumerate", NULL) == 1);
 		check_true("enumeration error: tag count not consulted",
 			SweepStub_TagCountCalls == 0);
+	}
+
+	// --- particles (task 9) ---------------------------------------------
+
+	/* 14. The particle class audit is silent for a table whose every class
+	   resolves to itself, and names the class when one does not. That lookup is
+	   a binary search over a separately sorted pointer table, so "the class is
+	   in the table" and "the class can be found" are different claims. */
+	{
+		static char *const names[3] = { "gun_flash", "steam_vent", "explosion" };
+
+		begin_run(4);
+		SweepStubs_SetParticleClasses(names, 3);
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("p3 classes: healthy table is silent",
+			count_matching("\"phase\":\"particles\"", "\"severity\":\"error\"", NULL) == 0);
+
+		begin_run(4);
+		SweepStubs_SetParticleClasses(names, 3);
+		SweepStub_ParticleLookup = SweepStubLookup_Miss;
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("p3 classes: unfindable class reported once per class",
+			count_matching("\"phase\":\"particles\"", "not findable by its own name", NULL) == 3);
+		check_true("p3 classes: attributed to the class",
+			count_matching("\"subject\":\"steam_vent\"", "not findable", NULL) == 1);
+
+		/* A lookup that answers with the wrong class is the same bug wearing a
+		   different hat, and a non-NULL check alone would pass it. */
+		begin_run(4);
+		SweepStubs_SetParticleClasses(names, 3);
+		SweepStub_ParticleLookup = SweepStubLookup_Wrong;
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("p3 classes: wrong class from the lookup is caught",
+			count_matching("\"phase\":\"particles\"", "not findable by its own name", NULL) == 2);
+	}
+
+	/* 14b. A class with no name still gets a stable identity, a class with no
+	   definition is reported, and a name with whitespace is folded. */
+	{
+		static char *const names[3] = { NULL, "my broken class", "ok_class" };
+
+		begin_run(4);
+		SweepStubs_SetParticleClasses(names, 3);
+		SweepStubs_ClearParticleDefinition(1);
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("p3 classes: unnamed class reported by index",
+			count_matching("\"subject\":\"p3class_0\"", "no name", NULL) == 1);
+		/* Folded, and the finding still lands: a subject that could never match
+		   a baseline line is the same as no finding at all. */
+		check_true("p3 classes: whitespace folded and the finding still lands",
+			count_matching("\"subject\":\"my_broken_class\"", "no definition", NULL) == 1);
+		check_true("p3 classes: the healthy one stays silent",
+			count_matching("\"subject\":\"ok_class\"", NULL, NULL) == 0);
+		check_true("p3 classes: no whitespace anywhere in the report",
+			!any_subject_has_whitespace());
+	}
+
+	/* 14c. An empty class table is a skip, not silence, and does not collide
+	   with the character phase's own "classes" subject. */
+	{
+		begin_run(4);
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("p3 classes: empty table skipped with a reason",
+			count_matching("\"subject\":\"particle_classes\"", "\"severity\":\"skipped\"", NULL) == 1);
+	}
+
+	/* 15. Environmental particles: every one is created and started, the settle
+	   runs once rather than once per particle, and every one is stopped after.
+	   The stop pass is what keeps the level's emitters from running through the
+	   AI phase's three thousand ticks. */
+	{
+		static EPtEnvParticle	particles[3];
+		static P3tParticleClass	fake_class;
+		int						updates_before;
+
+		begin_run(4);
+		memset(particles, 0, sizeof(particles));
+		strcpy(particles[0].classname, "steam");
+		strcpy(particles[1].classname, "sparks");
+		strcpy(particles[2].classname, "steam");
+		particles[0].particle_class = &fake_class;
+		particles[1].particle_class = &fake_class;
+		particles[2].particle_class = &fake_class;
+		SweepStubs_SetEnvParticles(particles, 3);
+		updates_before = g_update_calls;
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("env particles: every one created", SweepStub_EnvNewCalls == 3);
+		check_true("env particles: every one started", SweepStub_EnvStartEvents == 3);
+		check_true("env particles: every one stopped", SweepStub_EnvStopEvents == 3);
+		check_true("env particles: two enumeration passes", SweepStub_EnvEnumerateCalls == 2);
+		check_true("env particles: healthy ones are silent",
+			count_matching("\"phase\":\"particles\"", "\"severity\":\"error\"", NULL) == 0);
+		/* One settle for the phase, not three. */
+		check_true("env particles: settled at least once",
+			(g_update_calls - updates_before) >= ONcSweep_SettleParticle);
+	}
+
+	/* 15b. An env particle whose class does not exist is a finding attributed to
+	   the particle, and does not stop the rest from starting. */
+	{
+		static EPtEnvParticle	particles[2];
+		static P3tParticleClass	fake_class;
+
+		begin_run(4);
+		memset(particles, 0, sizeof(particles));
+		strcpy(particles[0].classname, "missing_class");
+		strcpy(particles[1].classname, "steam");
+		particles[0].particle_class = NULL;
+		particles[1].particle_class = &fake_class;
+		SweepStubs_SetEnvParticles(particles, 2);
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("env particles: missing class reported against the particle",
+			count_matching("\"subject\":\"missing_class\"", "names a class that does not exist", NULL) == 1);
+		check_true("env particles: reported once, not once per pass",
+			count_matching("names a class that does not exist", NULL, NULL) == 1);
+		check_true("env particles: the healthy one still started",
+			SweepStub_EnvStartEvents == 1);
+	}
+
+	/* 15c. A level that places none is a skip with a reason, and does not burn a
+	   six-hundred-tick settle on nothing. */
+	{
+		begin_run(4);
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("env particles: none placed is skipped with a reason",
+			count_matching("\"subject\":\"environment\"", "no environmental particles", NULL) == 1);
+	}
+
+	// --- AI (task 10) ----------------------------------------------------
+
+	/* 16. The AI phase clears the object-spawned population and respawns it with
+	   the override on — that override is the whole point, since it is what also
+	   spawns the characters flagged not-initially-present. The player is not
+	   respawned. */
+	{
+		int updates_before;
+
+		begin_run(4);
+		updates_before = g_update_calls;
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("ai: existing AI cleared once", SweepStub_AIDeleteAllCalls == 1);
+		check_true("ai: spawned once", SweepStub_AIStartAllCalls == 1);
+		check_true("ai: player not respawned", SweepStub_AIStartAllPlayer == UUcFalse);
+		check_true("ai: override set", SweepStub_AIStartAllOverride == UUcTrue);
+		check_true("ai: settled", (g_update_calls - updates_before) >= ONcSweep_SettleAI);
+		check_true("ai: healthy spawn is silent",
+			count_matching("\"phase\":\"ai\"", "\"severity\":\"error\"", NULL) == 0);
+	}
+
+	/* 16b. A failed spawn is recorded and the settle still runs — whatever did
+	   get spawned is what the phase exists to exercise. */
+	{
+		int updates_before;
+
+		begin_run(4);
+		SweepStub_AIStartAllResult = UUcError_Generic;
+		updates_before = g_update_calls;
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("ai: spawn failure recorded",
+			count_matching("\"phase\":\"ai\"", "AI2rStartAllCharacters failed", NULL) == 1);
+		check_true("ai: settled anyway", (g_update_calls - updates_before) >= ONcSweep_SettleAI);
+	}
+
+	/* 16c. Nothing runs against a level that did not load. */
+	{
+		begin_run(4);
+		SweepStub_LoadResult = UUcError_Generic;
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("ai: not spawned after a failed load", SweepStub_AIStartAllCalls == 0);
+		check_true("ai: skipped with a reason",
+			count_matching("\"phase\":\"ai\"", "\"severity\":\"skipped\"", "did not load") == 1);
+		check_true("particles: not started after a failed load",
+			SweepStub_EnvEnumerateCalls == 0);
+		check_true("scripts: not called after a failed load",
+			SweepStub_ScriptExecuteCalls == 0);
+	}
+
+	// --- BSL scripts (task 11) -------------------------------------------
+
+	/* 17. THE ONE THAT PROTECTS THE PLAYER'S SAVED GAMES.
+
+	   56 call sites in the shipped BSL corpus call save_game, which rewrites
+	   persist.dat wherever ONiBundlePath_ResolveStateFile says it lives — and
+	   with no persist.dat in the working directory that is the player's real
+	   one under Application Support. The phase refuses to call anything unless
+	   the resolver answers with a cwd-local file. */
+	{
+		begin_run(4);
+		SweepStubs_AddScriptFunction("intro_cutscene", 0);
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("scripts: unsandboxed run calls nothing", SweepStub_ScriptExecuteCalls == 0);
+		check_true("scripts: unsandboxed run says why",
+			count_matching("\"phase\":\"scripts\"", "\"severity\":\"skipped\"",
+				"overwrite the player's saved games") == 1);
+
+		/* A resolver that cannot answer at all is not a licence to proceed. */
+		begin_run(4);
+		SweepStubs_AddScriptFunction("intro_cutscene", 0);
+		SweepStub_StateFileResult = UUcError_Generic;
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("scripts: unresolvable state path calls nothing",
+			SweepStub_ScriptExecuteCalls == 0);
+	}
+
+	/* 18. Sandboxed, every zero-arity function is called once, in table order,
+	   each with its own settle so a script that slept can be resumed before the
+	   next one starts. */
+	{
+		int updates_before;
+
+		begin_run(4);
+		SweepStub_StateFilePath = "./persist.dat";
+		SweepStubs_AddScriptFunction("start_level", 0);
+		SweepStubs_AddScriptFunction("open_door", 0);
+		updates_before = g_update_calls;
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("scripts: one call per function", SweepStub_ScriptExecuteCalls == 2);
+		check_true("scripts: called in table order",
+			(SweepStubs_ScriptExecuted(0) != NULL) &&
+			(strcmp(SweepStubs_ScriptExecuted(0), "start_level") == 0) &&
+			(strcmp(SweepStubs_ScriptExecuted(1), "open_door") == 0));
+		check_true("scripts: settled per call",
+			(g_update_calls - updates_before) >= 2 * ONcSweep_SettleScript);
+		check_true("scripts: healthy calls are silent",
+			count_matching("\"phase\":\"scripts\"", "\"severity\":\"error\"", NULL) == 0);
+	}
+
+	/* 18b. A function with parameters is skipped with its arity, never called
+	   with invented arguments. The recorded arity is untrusted — recording
+	   happens before the engine's own bound on it — so an impossible one has to
+	   be handled as data, not as a length. */
+	{
+		begin_run(4);
+		SweepStub_StateFilePath = "./persist.dat";
+		SweepStubs_AddScriptFunction("patrol", 1);
+		SweepStubs_AddScriptFunction("chatter", 20);
+		SweepStubs_AddScriptFunction("callable", 0);
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("scripts: only the zero-arity one called", SweepStub_ScriptExecuteCalls == 1);
+		check_true("scripts: arity reported",
+			count_matching("\"subject\":\"patrol\"", "takes 1 parameters", NULL) == 1);
+		check_true("scripts: impossible arity handled as data",
+			count_matching("\"subject\":\"chatter\"", "takes 20 parameters", NULL) == 1);
+	}
+
+	/* 18c. A recorded name that resolves to no symbol is a fact about the
+	   script, not a harness failure: skipped with a reason, not an error. */
+	{
+		begin_run(4);
+		SweepStub_StateFilePath = "./persist.dat";
+		SweepStubs_AddScriptFunction("was_never_registered", 0);
+		SweepStubs_SetScriptUnresolved("was_never_registered");
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("scripts: unresolved name not called", SweepStub_ScriptExecuteCalls == 0);
+		check_true("scripts: unresolved name skipped, not errored",
+			count_matching("\"subject\":\"was_never_registered\"", "\"severity\":\"skipped\"",
+				"does not resolve") == 1);
+	}
+
+	/* 18d. A duplicate name is called once. Recording precedes the database's
+	   duplicate check, so the table can hold the same name twice; calling it
+	   twice would put two differently-conditioned runs under one identity. */
+	{
+		begin_run(4);
+		SweepStub_StateFilePath = "./persist.dat";
+		SweepStubs_AddScriptFunction("shared_name", 0);
+		SweepStubs_AddScriptFunction("shared_name", 0);
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("scripts: duplicate called once", SweepStub_ScriptExecuteCalls == 1);
+		check_true("scripts: duplicate recorded as skipped",
+			count_matching("\"subject\":\"shared_name\"", "recorded more than once", NULL) == 1);
+	}
+
+	/* 18e. A call that fails is an error against the function, and the rest of
+	   the table is still tried. */
+	{
+		begin_run(4);
+		SweepStub_StateFilePath = "./persist.dat";
+		SweepStubs_AddScriptFunction("bad_one", 0);
+		SweepStubs_AddScriptFunction("next_one", 0);
+		SweepStub_ScriptExecuteResult = UUcError_Generic;
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("scripts: failure recorded per function",
+			count_matching("\"phase\":\"scripts\"", "failed to execute", NULL) == 2);
+		check_true("scripts: every function still tried", SweepStub_ScriptExecuteCalls == 2);
+	}
+
+	/* 18f. A level whose table is empty is a skip, not silence. */
+	{
+		begin_run(4);
+		SweepStub_StateFilePath = "./persist.dat";
+		ONrSweep_RunAllPhases(4);
+		end_run();
+
+		check_true("scripts: empty table skipped with a reason",
+			count_matching("\"phase\":\"scripts\"", "no script functions", NULL) == 1);
 	}
 
 	/* 13. Whatever else happens, a cell emits records. sweep_diff refuses to
