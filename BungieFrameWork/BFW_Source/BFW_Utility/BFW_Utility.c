@@ -107,6 +107,14 @@ void UUrRandom_SetSeed(UUtUns32 seed)
 	random_seed = seed;
 }
 
+// UUgLocalRandomSeed is a distinct global from random_seed above, so
+// UUrRandom_SetSeed leaves this stream untouched. Issue #103 (level sweep)
+// needs both streams reproducible, hence the second setter.
+void UUrLocalRandom_SetSeed(UUtUns32 seed)
+{
+	UUgLocalRandomSeed = seed;
+}
+
 UUtUns32 UUrRandom_GetSeed(void)
 {
 	return random_seed;

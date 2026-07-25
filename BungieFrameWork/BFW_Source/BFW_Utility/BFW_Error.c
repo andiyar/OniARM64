@@ -605,19 +605,43 @@ void UUcArglist_Call UUrStartupMessage(
 	return;
 }
 
+// Issue #103 — the level sweep runs unattended, and the AUrMessageBox below is
+// a blocking modal, so one warning would hang a whole run. A registered tap
+// gets first look at the formatted text and can claim the warning; with no tap
+// registered (the default, and every non-sweep build) the flow below is the
+// stock one.
+static UUtWarningTap UUgWarningTap = NULL;
+
+void UUrError_SetWarningTap(UUtWarningTap inTap)
+{
+	UUgWarningTap = inTap;
+}
+
 void UUcArglist_Call UUrPrintWarning(
 	const char 			*format,
 	...)
 {
 	char buffer[MAX_STRING_LENGTH];
 	va_list arglist;
-	int return_value;
+	UUtBool consumed = UUcFalse;
 
 	va_start(arglist, format);
-	return_value= vsprintf(buffer, format, arglist);
+	// vsnprintf, not vsprintf: MAX_STRING_LENGTH is 256 and nothing bounds the
+	// formatted result, so a long %s argument would smash the stack. Truncating
+	// changes nothing for any current caller and removes the overflow.
+	vsnprintf(buffer, sizeof(buffer), format, arglist);
 	va_end(arglist);
 
 	fprintf(stderr, "%s"UUmNL, buffer);
-	AUrMessageBox(AUcMBType_OK, "%s", buffer);
+
+	if (UUgWarningTap != NULL)
+	{
+		consumed = UUgWarningTap(buffer);
+	}
+
+	if (!consumed)
+	{
+		AUrMessageBox(AUcMBType_OK, "%s", buffer);
+	}
 }
 

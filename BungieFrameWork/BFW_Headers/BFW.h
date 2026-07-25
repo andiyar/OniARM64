@@ -697,6 +697,18 @@ extern "C" {
 		const char 			*format,
 		...);
 
+	// Warning tap (issue #103, level sweep harness). A registered tap sees the
+	// formatted warning text before UUrPrintWarning would raise its modal;
+	// returning UUcTrue means the tap has dealt with it and AUrMessageBox is
+	// skipped. An unattended sweep cannot survive a blocking dialog, so this is
+	// how it stays unattended. NULL is the default and restores stock behaviour
+	// byte for byte. A function pointer rather than a weak symbol because weak
+	// symbols are a GCC/Clang extension and this tree still has MSVC project
+	// generators.
+	typedef UUtBool (*UUtWarningTap)(const char *inMessage);
+
+	void UUrError_SetWarningTap(UUtWarningTap inTap);
+
 /*
  * Error handling macros
  */
@@ -1482,6 +1494,12 @@ extern "C" {
 	// this effects UUrRandom only, not UUrLocalRandom
 	void UUrRandom_SetSeed(UUtUns32 seed);
 	UUtUns32 UUrRandom_GetSeed(void);
+
+	// seeds the UUrLocalRandom stream. UUgLocalRandomSeed is a separate global
+	// from the one UUrRandom_SetSeed writes, and deliberately so — local random
+	// is the unsynchronised stream. Anything that wants both streams reproducible
+	// (the level sweep harness, issue #103) has to call both setters.
+	void UUrLocalRandom_SetSeed(UUtUns32 seed);
 
 	// gets a random number in sync
 	UUtUns16 UUrRandom(void);

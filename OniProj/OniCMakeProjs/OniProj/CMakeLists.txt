@@ -478,6 +478,12 @@ set(SOURCE_FILES
         ../../OniGameSource/Oni_Sky.h
         ../../OniGameSource/Oni_Sound2.c
         ../../OniGameSource/Oni_Sound2.h
+        ../../OniGameSource/Oni_Sweep.c
+        ../../OniGameSource/Oni_Sweep.h
+        ../../OniGameSource/Oni_Sweep_Normalize.c
+        ../../OniGameSource/Oni_Sweep_Normalize.h
+        ../../OniGameSource/Oni_Sweep_Report.c
+        ../../OniGameSource/Oni_Sweep_Report.h
         ../../OniGameSource/Oni_Sound_Animation.c
         ../../OniGameSource/Oni_Sound_Animation.h
         ../../OniGameSource/Oni_Sound_Private.h
