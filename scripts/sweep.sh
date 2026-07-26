@@ -96,6 +96,19 @@ if [ "$DO_RUN" -eq 1 ]; then
 		echo "sweep: missing $BINARY — build with: make OniSweep" >&2
 		exit 3
 	}
+
+	# GL cells block during character-spawn/texture work when the display is
+	# asleep (2026-07-26 run 2: with the display off, every GL cell past
+	# level 0 hit the watchdog at the exact point run 1 passed display-on;
+	# Metal was unaffected either way). Wake the display and hold it awake
+	# for the run. -w $$ ties the assertion to this script's lifetime, and
+	# the game stays a direct child of the cell subshell so the watchdog's
+	# kill semantics are unchanged.
+	if command -v caffeinate >/dev/null 2>&1; then
+		caffeinate -u -t 1 2>/dev/null
+		caffeinate -di -w $$ &
+	fi
+
 	rm -rf "$OUT_DIR"
 	mkdir -p "$OUT_DIR"
 else
