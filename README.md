@@ -76,6 +76,7 @@ Chapters 1–9 (through level 10) verified playable end-to-end: combat, AI, weap
 - [x] Save / load works across runs
 - [x] Chapters 1–9 (levels 1–10) playable with particle effects, combat, AI, level transitions
 - [ ] All 14 chapters playable — 10–14 still to march ([#90](https://github.com/andiyar/OniARM64/issues/90))
+- [x] Level sweep harness — every level's assets, characters, particles, AI and scripts exercised headlessly per renderer and gated against committed baselines; first run surfaced three engine bugs in the unplayed levels ([#103](https://github.com/andiyar/OniARM64/issues/103))
 
 ### Phase 7 — Shippable artefact
 - [x] `.app` bundle + Developer-ID code signing
