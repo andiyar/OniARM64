@@ -277,7 +277,10 @@ ONiInitializeAll(
 	// ~/Library/Application Support/OniARM64/GameDataFolder. On success we
 	// re-resolve and continue. If the user chose Quit/Cancel, exit cleanly here
 	// rather than surfacing the generic engine "Could not find game data" error.
-	if (error != UUcError_None) {
+	// Under -sweep there is nobody at the keyboard: skip the picker and fail
+	// the cell instead of blocking it on a dialog until the driver's watchdog
+	// kills it (#103).
+	if (error != UUcError_None && !ONgCommandLine.sweepMode) {
 		if (ONrDataSetup_RunGuidedPicker()) {
 			error = ONiBundlePath_ResolveGameDataFolder(&ONgGameDataFolder);
 		} else {
@@ -292,29 +295,43 @@ ONiInitializeAll(
 	// Game data is resolved and we're still pre-window on the main thread —
 	// the same safe point the first-run picker uses.
 	//
-	// Crash-recovery check FIRST (#74): a sentinel surviving from the last
-	// session means it died dirty — offer the pre-filled GitHub report before
-	// the update check, whose Download button exits this process.
+	// All of this is skipped under -sweep (#103), for three separate reasons.
+	// The crash prompt and update prompt are modal NSAlerts, and an unattended
+	// cell would hang on either until the driver's watchdog killed it. The
+	// .session-active sentinel resolves to the shared Application Support copy
+	// (a sweep sandbox has no cwd-local one), so a sweep would consume and
+	// re-arm the sentinel belonging to the player's real sessions — and a
+	// crashed cell, which is exactly what a sweep exists to produce, would
+	// leave it armed and make every later cell prompt. And the update check
+	// talks to the network, which a reproducible test harness has no business
+	// doing. Skipping CheckAndPromptAtStartup leaves the sentinel path
+	// uncached, which makes MarkSessionActive/MarkCleanExit no-ops too.
+	if (!ONgCommandLine.sweepMode)
 	{
-		char	crashSentinelPath[1024];
+		// Crash-recovery check FIRST (#74): a sentinel surviving from the last
+		// session means it died dirty — offer the pre-filled GitHub report before
+		// the update check, whose Download button exits this process.
+		{
+			char	crashSentinelPath[1024];
 
-		if (UUcError_None == ONiBundlePath_ResolveStateFile(".session-active",
-				crashSentinelPath, sizeof(crashSentinelPath))) {
-			ONrCrashReport_CheckAndPromptAtStartup(crashSentinelPath,
-				ONgCommandLine.useMetal ? "Metal" : "OpenGL");
+			if (UUcError_None == ONiBundlePath_ResolveStateFile(".session-active",
+					crashSentinelPath, sizeof(crashSentinelPath))) {
+				ONrCrashReport_CheckAndPromptAtStartup(crashSentinelPath,
+					ONgCommandLine.useMetal ? "Metal" : "OpenGL");
+			}
 		}
+
+		// Check GitHub for a newer release and, if one exists, offer it (throttled
+		// + opt-out; silent when offline). Non-fatal: any failure just continues
+		// into the game. (#40)
+		ONrUpdateCheck_RunAtStartup();
+
+		// Session is now committed to launching: arm the sentinel. Deliberately
+		// AFTER the pre-window dialogs (their clean exit(0) paths must not leave a
+		// stale sentinel) and BEFORE engine init (a crash while loading corrupt
+		// game data is exactly the kind of thing worth reporting). (#74)
+		ONrCrashReport_MarkSessionActive();
 	}
-
-	// Check GitHub for a newer release and, if one exists, offer it (throttled
-	// + opt-out; silent when offline). Non-fatal: any failure just continues
-	// into the game. (#40)
-	ONrUpdateCheck_RunAtStartup();
-
-	// Session is now committed to launching: arm the sentinel. Deliberately
-	// AFTER the pre-window dialogs (their clean exit(0) paths must not leave a
-	// stale sentinel) and BEFORE engine init (a crash while loading corrupt
-	// game data is exactly the kind of thing worth reporting). (#74)
-	ONrCrashReport_MarkSessionActive();
 #endif
 
 	// Discover installed HD texture packs and register their directories as
