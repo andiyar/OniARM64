@@ -43,6 +43,14 @@ GitHub release notes and gets stamped with the version + date.
   nothing was registered. It now names the pack-building step (#110). The
   README covers it too.
 
+### Saved games
+- Your progress file is now backed up before the game ever resets it. If
+  `persist.dat` can't be read, or was written by a build using a different
+  save version, the old file is copied beside it as `persist.dat.v15.bak`
+  (or `persist.dat.unreadable.bak`) before anything gets cleared, so save
+  points, unlocked levels and diary pages are still recoverable. An existing
+  backup is never overwritten, so the earliest copy is the one you keep (#91).
+
 ### Menus
 - Grabbing the scrollbar thumb in a list (save/load, options) no longer makes
   the list jump to a random position. The click was sending an uninitialised

@@ -95,24 +95,154 @@ ONtGraphicsQuality ONrPersistance_GraphicsQuality_GetDefault(void)
 }
 #endif
 
+/*
+	Issue #91: keep a copy of the file on disk before a mismatch resets it.
+
+	ONrPersistance_Initialize clears the in-memory struct whenever persist.dat
+	fails the version or swap-code check, or cannot be read at all. Nothing has
+	been lost yet at that point — but the next ONrPersist(), which fires on
+	something as small as a volume change, rewrites the file from that cleared
+	struct, and every save point, unlock and diary page in it goes with it. The
+	gap between the reset and that first write is the only window there is, so
+	the copy happens inside it.
+
+	Bytes are copied out of the file rather than written from ONgPersistance:
+	the read is one of the things that may have failed, and a file written by a
+	later build can be longer than the struct this build knows about. Copying
+	the file keeps whatever is in it intact for a build that understands it.
+
+	Keep-first, not newest. If a backup is already sitting there we leave it
+	alone — a build that mismatches gets launched more than once, and rotating
+	the backup on each launch would replace the copy holding the real progress
+	with a copy of the freshly reset file.
+
+	Logging goes through UUrStartupMessage rather than the console: console
+	output feeds the #103 sweep report taps, and a line per cell would churn
+	the baselines.
+*/
+static void ONiPersistance_BackupBeforeReset(
+	char		*inPath,
+	UUtBool		inReadSucceeded,
+	UUtUns32	inFoundVersion)
+{
+	char		backup_path[BFcMaxPathLength + 32];
+	BFtFile		*source;
+	BFtFile		*destination;
+	UUtUns32	remaining;
+	UUtUns8		buffer[4096];
+	int			path_length;
+
+	if (inReadSucceeded) {
+		path_length = snprintf(backup_path, sizeof(backup_path), "%s.v%u.bak", inPath, inFoundVersion);
+	} else {
+		path_length = snprintf(backup_path, sizeof(backup_path), "%s.unreadable.bak", inPath);
+	}
+
+	if ((path_length <= 0) || ((size_t) path_length >= (size_t) BFcMaxPathLength)) {
+		/*
+			BFrFileRef_Set refuses a path this long, so the existence check
+			below would report "no backup" for one that is actually there,
+			while the "w" fallback inside BFrFile_FOpen would go ahead and
+			write anyway. Do nothing rather than risk clobbering a good copy.
+		*/
+		UUrStartupMessage("[persist] backup path for %s is too long; not backed up", inPath);
+		return;
+	}
+
+	source = BFrFile_FOpen(inPath, "r");
+	if (NULL == source) {
+		UUrStartupMessage("[persist] could not reopen %s to back it up", inPath);
+		return;
+	}
+
+	if (UUcError_None != BFrFile_GetLength(source, &remaining)) {
+		UUrStartupMessage("[persist] could not measure %s; not backed up", inPath);
+		BFrFile_Close(source);
+		return;
+	}
+
+	if (0 == remaining) {
+		/*
+			Nothing in it to preserve. This is the ordinary case under the #103
+			sweep, which seeds an empty persist.dat in every cell's working
+			directory to keep the run's writes out of the player's real one;
+			each of those fails the version check by design.
+		*/
+		BFrFile_Close(source);
+		return;
+	}
+
+	destination = BFrFile_FOpen(backup_path, "r");
+	if (NULL != destination) {
+		BFrFile_Close(destination);
+		BFrFile_Close(source);
+		UUrStartupMessage("[persist] %s already exists; keeping the earlier backup", backup_path);
+		return;
+	}
+
+	destination = BFrFile_FOpen(backup_path, "w");
+	if (NULL == destination) {
+		UUrStartupMessage("[persist] could not create %s; %s not backed up", backup_path, inPath);
+		BFrFile_Close(source);
+		return;
+	}
+
+	while (remaining > 0) {
+		UUtUns32 chunk = (remaining < sizeof(buffer)) ? remaining : (UUtUns32) sizeof(buffer);
+
+		if ((UUcError_None != BFrFile_Read(source, chunk, buffer)) ||
+			(UUcError_None != BFrFile_Write(destination, chunk, buffer))) {
+			BFtFileRef file_ref;
+
+			BFrFile_Close(destination);
+			BFrFile_Close(source);
+
+			/*
+				Drop the partial copy. Keep-first would otherwise hold on to a
+				truncated backup in place of the complete one a later launch
+				could have written.
+			*/
+			if (UUcError_None == BFrFileRef_Set(&file_ref, backup_path)) {
+				BFrFile_Delete(&file_ref);
+			}
+
+			UUrStartupMessage("[persist] copying %s failed; partial backup removed", inPath);
+			return;
+		}
+
+		remaining -= chunk;
+	}
+
+	BFrFile_Close(destination);
+	BFrFile_Close(source);
+
+	UUrStartupMessage("[persist] backed up %s to %s", inPath, backup_path);
+}
+
 void ONrPersistance_Initialize(void)
 {
 	BFtFile *stream;
 	UUtError error;
 	UUtBool invalid_file;
+	UUtBool file_existed;
+	UUtBool read_succeeded = UUcFalse;
+	UUtUns32 found_version = 0;
+	char path[BFcMaxPathLength];
 
-	{
-		char path[BFcMaxPathLength];
-		if (UUcError_None != ONiBundlePath_ResolveStateFile(ONcPersistance_FileName, path, sizeof(path))) {
-			UUrString_Copy(path, ONcPersistance_FileName, sizeof(path));
-		}
-		stream = BFrFile_FOpen(path, "r");
+	if (UUcError_None != ONiBundlePath_ResolveStateFile(ONcPersistance_FileName, path, sizeof(path))) {
+		UUrString_Copy(path, ONcPersistance_FileName, sizeof(path));
 	}
+	stream = BFrFile_FOpen(path, "r");
+
 	invalid_file = (NULL == stream);
+	file_existed = (UUtBool) (NULL != stream);
 
 	if (!invalid_file) {
 		error = BFrFile_Read(stream, sizeof(ONtPersistance), &ONgPersistance);
 		BFrFile_Close(stream);
+
+		read_succeeded = (UUtBool) (UUcError_None == error);
+		found_version = ONgPersistance.version;		// read before the reset below clears it
 	}
 
 	invalid_file = invalid_file || (UUcError_None != error);
@@ -120,6 +250,19 @@ void ONrPersistance_Initialize(void)
 	invalid_file = invalid_file || (ONcPersistance_SwapCode != ONgPersistance.swap_code);
 
 	if (invalid_file) {
+		if (file_existed) {
+			if (!read_succeeded) {
+				UUrStartupMessage("[persist] %s could not be read; backing it up before reset (#91)", path);
+			} else if (ONcPersistance_Version != found_version) {
+				UUrStartupMessage("[persist] %s is version %u, this build wants %u; backing it up before reset (#91)",
+					path, found_version, (UUtUns32) ONcPersistance_Version);
+			} else {
+				UUrStartupMessage("[persist] %s has the wrong swap code; backing it up before reset (#91)", path);
+			}
+
+			ONiPersistance_BackupBeforeReset(path, read_succeeded, found_version);
+		}
+
 		UUrMemory_Clear(&ONgPersistance, sizeof(ONgPersistance));
 		ONgPersistance.version = ONcPersistance_Version;
 		ONgPersistance.swap_code = ONcPersistance_SwapCode;
