@@ -3295,11 +3295,17 @@ void ONrCharacter_EnablePhysics(ONtCharacter *inCharacter)
 
 	active_character = ONrForceActiveCharacter(inCharacter);
 
+	if (active_character == NULL) {
+		COrConsole_Printf("failed to make %s active, physics not enabled", inCharacter->player_name);
+		return;
+	}
+
 	ONrCharacter_BuildSphereTree(inCharacter, active_character);
 	ONrCharacter_UpdateSphereTree(inCharacter, active_character);
 
 	active_character->physics = PHrPhysicsContext_Add();
 	if (active_character->physics == NULL) {
+		COrConsole_Printf("failed to allocate physics for %s", inCharacter->player_name);
 		return;
 	}
 
@@ -4194,7 +4200,8 @@ static void ONrGameState_DoCharacterFrame(
 				// the character has been released from the pickup state
 				active_character->inAirControl.numFramesInAir = 1;
 				active_character->inAirControl.pickupOwner = NULL;
-				active_character->inAirControl.jump_height = active_character->physics->position.y;
+				active_character->inAirControl.jump_height = (active_character->physics != NULL)
+					? active_character->physics->position.y : ioCharacter->location.y;
 			}
 		}
 
@@ -11080,7 +11087,7 @@ void ONrCharacter_Teleport_With_Collision(ONtCharacter *ioCharacter, M3tPoint3D 
 
 	ONtActiveCharacter *active_character = ONrForceActiveCharacter(ioCharacter);
 
-	if (NULL != active_character) {
+	if ((NULL != active_character) && (NULL != active_character->physics)) {
 		M3tPoint3D movement_vector;
 
 		MUmVector_Subtract(movement_vector, *inPoint, active_character->physics->position);
@@ -11479,6 +11486,12 @@ static P3tParticle *ONiCharacter_AttachParticle(ONtCharacter *ioCharacter, ONtAc
 	M3tBoundingBox_MinMax *bbox;
 	P3tParticle *particle;
 
+	// the death hook calls us with whatever ONrForceActiveCharacter returned, which is NULL
+	// once the active character pool is full; the particle attaches to the body matrices
+	if (ioActiveCharacter == NULL) {
+		return NULL;
+	}
+
 	UUrMemory_Clear(&effect_data, sizeof(effect_data));
 	effect_spec.collision_orientation = P3cEnumCollisionOrientation_Unchanged;
 	effect_spec.location_type = P3cEffectLocationType_Default;
@@ -11653,7 +11666,8 @@ void ONrCharacter_NewAnimationHook(ONtCharacter *ioCharacter, ONtActiveCharacter
 
 		if (ioActiveCharacter->inAirControl.numFramesInAir == 0) {
 			// COrConsole_Printf("jump_start mark flying %f", ioCharacter->physics->position.y);
-			ioActiveCharacter->inAirControl.jump_height = ioActiveCharacter->physics->position.y;
+			ioActiveCharacter->inAirControl.jump_height = (ioActiveCharacter->physics != NULL)
+				? ioActiveCharacter->physics->position.y : ioCharacter->location.y;
 		}
 	}
 
@@ -12818,9 +12832,16 @@ static UUtBool FindGroundCollision(ONtCharacter *inCharacter, ONtActiveCharacter
 	float foot_offset = 0;
 	float solid_offset = 10.f;
 	float feet_location = UUmMax(inCharacter->feetLocation, inCharacter->location.y);
+
 	float maximum_height;
 	UUtBool is_in_air;
 	UUtInt32 gq_index_of_max_height_gq = -1;
+
+	// ONrCharacter_EnablePhysics leaves physics NULL when the pool is exhausted;
+	// fail over to the caller's ray path, which tolerates a physicsless character
+	if (ioActiveCharacter->physics == NULL) {
+		return UUcFalse;
+	}
 
 	if ((ioActiveCharacter->inAirControl.numFramesInAir > 0) || is_landing) {
 		feet_location = UUmMax(inCharacter->feetLocation, inCharacter->location.y);
@@ -17232,9 +17253,11 @@ static void ONrCharacter_SetMovementThisFrame(ONtCharacter *inCharacter, ONtActi
 {
 	MUmAssertVector(*inVector, 1000.f);
 
-	inActiveCharacter->physics->velocity.x = 0.f;
-	inActiveCharacter->physics->velocity.y = 0.f;
-	inActiveCharacter->physics->velocity.z = 0.f;
+	if (inActiveCharacter->physics != NULL) {
+		inActiveCharacter->physics->velocity.x = 0.f;
+		inActiveCharacter->physics->velocity.y = 0.f;
+		inActiveCharacter->physics->velocity.z = 0.f;
+	}
 
 	inActiveCharacter->movementThisFrame.x = inVector->x;
 	inActiveCharacter->movementThisFrame.z = inVector->z;

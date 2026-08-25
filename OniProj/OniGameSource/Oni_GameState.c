@@ -3529,8 +3529,10 @@ void ONrGameState_HandleUtilityInput(const ONtInputState*	inInput)
 		localCharacter->location.x += unstick_x;
 		localCharacter->location.z += unstick_z;
 
-		localActiveCharacter->physics->position.x += unstick_x;
-		localActiveCharacter->physics->position.z += unstick_z;
+		if (localActiveCharacter->physics != NULL) {
+			localActiveCharacter->physics->position.x += unstick_x;
+			localActiveCharacter->physics->position.z += unstick_z;
+		}
 	}
 
 	if (ONrDebugKey_WentDown(ONcDebugKey_RecordScreen)) {
@@ -3563,14 +3565,18 @@ void ONrGameState_HandleUtilityInput(const ONtInputState*	inInput)
 		} else {
 			if (localActiveCharacter->physics == NULL) {
 				ONrCharacter_EnablePhysics(localCharacter);
-				UUmAssert(localActiveCharacter->physics != NULL);
 			}
 
-			localActiveCharacter->physics->position = CArGetLocation();
-			character->location = localActiveCharacter->physics->position;
+			// ONrCharacter_EnablePhysics can still leave us without a context when the pool is full
+			if (localActiveCharacter->physics == NULL) {
+				COrConsole_Printf("### no physics context free, cannot move character to camera");
+			} else {
+				localActiveCharacter->physics->position = CArGetLocation();
+				character->location = localActiveCharacter->physics->position;
 
-			// set the camera to follow mode
-			CArFollow_Enter();
+				// set the camera to follow mode
+				CArFollow_Enter();
+			}
 		}
 	}
 

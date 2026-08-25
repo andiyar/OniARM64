@@ -3340,7 +3340,11 @@ static UUtUns32 AI2iBehavior_SuperNinja(ONtCharacter *ioCharacter, AI2tCombatSta
 			ioCharacter->location.y = AI2cSuperNinja_FallTeleportHeight;
 			ioCharacter->prev_location.y = AI2cSuperNinja_FallTeleportHeight;
 			ioCharacter->actual_position.y = AI2cSuperNinja_FallTeleportHeight;
-			active_character->physics->position.y = AI2cSuperNinja_FallTeleportHeight;
+
+			if ((active_character != NULL) && (active_character->physics != NULL)) {
+				active_character->physics->position.y = AI2cSuperNinja_FallTeleportHeight;
+			}
+
 			return UUcTrue;
 		}
 

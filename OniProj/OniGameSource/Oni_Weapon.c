@@ -2171,6 +2171,7 @@ void WPrRelease(
 
 	PHtPhysicsContext *physics;
 	M3tMatrix4x3 *weapon_matrix;
+	M3tMatrix4x3 *drop_matrix;
 
 	if ((inWeapon->flags & WPcWeaponFlag_InUse) == 0) { return; }
 
@@ -2185,9 +2186,17 @@ void WPrRelease(
 
 	physics = inWeapon->physics;
 	weapon_matrix = NULL;
+
+	// a weapon that missed out on a physics context is positioned by its own matrix instead,
+	// which is what the display and pickup paths already read when physics is NULL
+	drop_matrix = (physics != NULL) ? &physics->matrix : &inWeapon->matrix;
+
 	if (inWeapon->owner != NULL) {
-		WPrNotThroughWall(inWeapon->owner, &physics->matrix);
-		physics->position = MUrMatrix_GetTranslation(&physics->matrix);
+		WPrNotThroughWall(inWeapon->owner, drop_matrix);
+
+		if (physics != NULL) {
+			physics->position = MUrMatrix_GetTranslation(drop_matrix);
+		}
 
 		weapon_matrix = ONrCharacter_GetMatrix(inWeapon->owner, ONcWeapon_Index);
 		ONrCharacter_NotifyReleaseWeapon(inWeapon->owner);
@@ -2201,9 +2210,11 @@ void WPrRelease(
 		inWeapon->rotation = (M3c2Pi * UUrRandom()) / UUcMaxUns16;
 	}
 
-	physics->velocity.x = physics->velocity.y = physics->velocity.z = 0.0f;
+	if (physics != NULL) {
+		physics->velocity.x = physics->velocity.y = physics->velocity.z = 0.0f;
+	}
 
-	if (inKnockAway)
+	if (inKnockAway && (physics != NULL))
 	{
 		physics->velocity.y += WPcItemLaunchSpeed;	// Give a nice ballistic arc
 
@@ -2928,9 +2939,12 @@ void WPrMagicDrop(ONtCharacter *inCharacter, WPtWeapon *inWeapon, UUtBool inWant
 	WPrNotThroughWall(inCharacter, &inWeapon->matrix);
 
 	WPiWeapon_CreatePhysics(inWeapon);
-	inWeapon->physics->matrix = inWeapon->matrix;
-	inWeapon->physics->position = MUrMatrix_GetTranslation(&inWeapon->matrix);
-	inWeapon->physics->sphereTree->sphere.center = inWeapon->physics->position;
+
+	if (inWeapon->physics != NULL) {
+		inWeapon->physics->matrix = inWeapon->matrix;
+		inWeapon->physics->position = MUrMatrix_GetTranslation(&inWeapon->matrix);
+		inWeapon->physics->sphereTree->sphere.center = inWeapon->physics->position;
+	}
 
 	WPrRelease(inWeapon, inWantKnockAway);
 }
