@@ -3226,6 +3226,7 @@ TMiGame_OverlayDir_Scan(
 	UUtUns32			curFileIndex;
 	char				curFileSuffix[BFcMaxFileNameLength];
 	UUtUns32			numRegistered = 0;
+	UUtUns32			numSeen = 0;
 
 	error =
 		BFrDirectory_FileIterator_New(
@@ -3248,6 +3249,12 @@ TMiGame_OverlayDir_Scan(
 		{
 			break;
 		}
+
+		// Count every file the iterator yields, whatever happens to it below --
+		// numRegistered can legitimately land on 0 for a dir that DOES hold
+		// packs (dup index, registry headroom), and those paths log for
+		// themselves. numSeen == 0 is the only "nothing here at all" signal.
+		numSeen++;
 
 		// Honour the base reserve (#44): stop registering overlay files while
 		// TMcInstanceFileRefs_BaseReserve slots remain, so the GameDataFolder
@@ -3321,6 +3328,15 @@ TMiGame_OverlayDir_Scan(
 	UUrStartupMessage(
 		"[overlay] %d overlay file(s) registered from %s",
 		(int)numRegistered, BFrFileRef_GetFullPath(inDirRef));
+
+	if(numSeen == 0)
+	{
+		UUrStartupMessage(
+			"[overlay] %s holds no level*.dat pack files. Raw AE mods (.oni "
+			"files) must be built into a pack first - run onipack import-sep "
+			"(see the TexturePacks notes in the README).",
+			BFrFileRef_GetFullPath(inDirRef));
+	}
 }
 
 UUtError

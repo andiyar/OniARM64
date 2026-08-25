@@ -130,7 +130,7 @@ Chapters 1–9 (through level 10) verified playable end-to-end: combat, AI, weap
 
    Prefer to place it yourself? Drop your `GameDataFolder` into `~/Library/Application Support/OniARM64/` - you'll likely need to create the folder first.
 
-   Optional: HD texture packs go in `~/Library/Application Support/OniARM64/TexturePacks/` — each pack's textures override the originals, your game data is untouched. Bring your own packs (the [oni2.net mod depot](https://mods.oni2.net/) is the place — no mod content is bundled or redistributed here); a friendlier installer is planned ([#20](https://github.com/andiyar/OniARM64/issues/20)).
+   Optional: HD texture packs go in `~/Library/Application Support/OniARM64/TexturePacks/` — each pack's textures override the originals, your game data is untouched. Bring your own packs (the [oni2.net mod depot](https://mods.oni2.net/) is the place — no mod content is bundled or redistributed here); a friendlier installer is planned ([#20](https://github.com/andiyar/OniARM64/issues/20)). Depot downloads are usually raw mods rather than packs: a tree of `.oni` files under `oni/common/levelN_Final/`, which the engine ignores because it only loads `levelN_*.dat` packs. Build the packer with `make onipack`, then run `onipack import-sep <levelN_Final folder> <TexturePacks>/levelN_HD.dat` once per `levelN_Final` folder in the mod (any output suffix will do except `_Final`, which collides with the base game).
 
 *tested but hey verify.
 

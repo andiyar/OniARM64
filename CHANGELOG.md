@@ -37,6 +37,11 @@ GitHub release notes and gets stamped with the version + date.
   form (timer 0) no longer puts the character straight back into panic
   (#104). No stock script uses the command, so this matters for the dev
   console and mod scripts.
+- Dropping an unbuilt mod folder into `TexturePacks/` now tells you what to
+  do. Mod-depot downloads are usually raw `.oni` files, which the engine
+  can't load until they're packed, and the startup log used to just say
+  nothing was registered. It now names the pack-building step (#110). The
+  README covers it too.
 
 ### Menus
 - Grabbing the scrollbar thumb in a list (save/load, options) no longer makes
