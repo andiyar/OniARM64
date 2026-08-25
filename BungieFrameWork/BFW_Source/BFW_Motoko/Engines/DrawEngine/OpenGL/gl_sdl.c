@@ -20,7 +20,18 @@ void M3rSetGamma(
 {
 	Uint16 ramp[256];
 	SDL_CalculateGammaRamp(inGamma + 0.5f, ramp);
-	SDL_SetWindowGammaRamp(ONgPlatformData.gameWindow, ramp, ramp, ramp);
+	if (SDL_SetWindowGammaRamp(ONgPlatformData.gameWindow, ramp, ramp, ramp) != 0) {
+		// Issue #84: on modern macOS the ramp call fails ("That operation is
+		// not supported" on macOS 15/Apple Silicon, SDL 2.32), so the options
+		// brightness slider does nothing. Both renderers route through here.
+		// Once per session, not per slider notch.
+		static UUtBool warned = UUcFalse;
+		if (!warned) {
+			warned = UUcTrue;
+			UUrStartupMessage("[gamma] SDL_SetWindowGammaRamp failed (%s); the brightness slider has no effect on this system (#84)",
+				SDL_GetError());
+		}
+	}
 
 	return;
 }
