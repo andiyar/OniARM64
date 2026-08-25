@@ -777,12 +777,12 @@ static UUtError OBJiTurret_SetOSD( OBJtObject *inObject, const OBJtOSD_All *inOS
 	turret_osd->flags				= (turret_osd->flags & ~OBJcTurretFlag_Persist) | (inOSD->osd.turret_osd.flags & OBJcTurretFlag_Persist);
 	turret_osd->target_teams 		= inOSD->osd.turret_osd.target_teams;
 
-	error = TMrInstance_GetDataPtr( OBJcTemplate_TurretClass, turret_osd->turret_class_name, &turret_class );
+	error = TMrInstance_GetDataPtr( OBJcTemplate_TurretClass, turret_osd->turret_class_name, (void **) &turret_class );
 	if( error != UUcError_None )
 	{
 		UUrDebuggerMessage("failed to find turret class %s\n", turret_osd->turret_class_name);
 
-		error = TMrInstance_GetDataPtr_ByNumber(OBJcTemplate_TurretClass, 0, &turret_class);
+		error = TMrInstance_GetDataPtr_ByNumber(OBJcTemplate_TurretClass, 0, (void **) &turret_class);
 
 		UUmError_ReturnOnErrorMsg(error, "failed to find any turret class");
 

@@ -2112,14 +2112,14 @@ P3tParticle *P3rCreateEffect(P3tEffectSpecification *inSpecification, P3tEffectD
 		UUrMemory_Clear(decal_data, sizeof(P3tDecalData));
 
 		// get the decal's texture
-		error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, new_class->definition->appearance.instance, &texture);
+		error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, new_class->definition->appearance.instance, (void **) &texture);
 		if (error != UUcError_None)
 		{
 			if ((new_class->non_persistent_flags & P3cParticleClass_NonPersistentFlag_WarnedAboutNotFound) == 0) {
 				COrConsole_Printf("DECAL TEXTURE NOT FOUND: decal '%s' texture '%s'", new_class->classname, new_class->definition->appearance.instance);
 				new_class->non_persistent_flags |= P3cParticleClass_NonPersistentFlag_WarnedAboutNotFound;
 			}
-			error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "notfoundtex", &texture);
+			error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "notfoundtex", (void **) &texture);
 			if (error != UUcError_None) {
 				P3rKillParticle(new_class, particle);
 				return NULL;
@@ -2640,14 +2640,14 @@ void P3rUpdateActionData(P3tParticleClass *inClass, P3tActionInstance *inAction)
 			UUtError		error;
 			M3tTextureMap	*texturemap;
 			P3iCalculateValue(NULL, &inAction->action_value[0], (void *) &classname);
-			error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, classname, &texturemap);
+			error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, classname, (void **) &texturemap);
 			if (error != UUcError_None)
 			{
 				COrConsole_Printf("DECAL TEXTURE NOT FOUND: particle class '%s': Create Decal action texture '%s'",
 									inClass->classname, classname);
 
 				// default texture if none can be found
-				error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "notfoundtex", &texturemap);
+				error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "notfoundtex", (void **) &texturemap);
 				if (error != UUcError_None)
 				{
 					texturemap = NULL;
@@ -3131,7 +3131,7 @@ void P3rPrecacheParticleClass(P3tParticleClass *inClass)
 		((inClass->definition->flags & P3cParticleClassFlag_Appearance_Geometry) == 0)) {
 		M3tTextureMap *texture;
 
-		error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, inClass->definition->appearance.instance, &texture);
+		error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, inClass->definition->appearance.instance, (void **) &texture);
 		if (error == UUcError_None) {
 			M3rDraw_Texture_EnsureLoaded(texture);
 		}
@@ -9709,7 +9709,7 @@ void P3rDisplayClass_Geometry(P3tParticleClass *inClass, UUtUns32 inTime, UUtUns
 		currentalpha = constalpha;
 	}
 
-	error = TMrInstance_GetDataPtr(M3cTemplate_Geometry, appearance_params->instance, &geometry);
+	error = TMrInstance_GetDataPtr(M3cTemplate_Geometry, appearance_params->instance, (void **) &geometry);
 	if (error != UUcError_None) {
 		if ((inClass->non_persistent_flags & P3cParticleClass_NonPersistentFlag_WarnedAboutNotFound) == 0) {
 			COrConsole_Printf("GEOMETRY NOT FOUND: particle '%s' geometry '%s'", inClass->classname, appearance_params->instance);
@@ -9717,7 +9717,7 @@ void P3rDisplayClass_Geometry(P3tParticleClass *inClass, UUtUns32 inTime, UUtUns
 		}
 
 		// default geometry if none can be found
-		error = TMrInstance_GetDataPtr(M3cTemplate_Geometry, "notfound", &geometry);
+		error = TMrInstance_GetDataPtr(M3cTemplate_Geometry, "notfound", (void **) &geometry);
 		if (error != UUcError_None) {
 			// give up - no geometry found
 			return;
@@ -10207,7 +10207,7 @@ void P3rDisplayClass_Sprite(P3tParticleClass *inClass, UUtUns32 inTime, UUtUns32
 	if (!dynamic_tint)
 		P3iCalculateValue(NULL, &appearance_params->tint, (void *) &tint);
 
-	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, appearance_params->instance, &texturemap);
+	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, appearance_params->instance, (void **) &texturemap);
 	if (error != UUcError_None) {
 		if ((inClass->non_persistent_flags & P3cParticleClass_NonPersistentFlag_WarnedAboutNotFound) == 0) {
 			COrConsole_Printf("PARTICLE TEXTURE NOT FOUND: particle '%s' texture '%s'", inClass->classname, appearance_params->instance);
@@ -10215,7 +10215,7 @@ void P3rDisplayClass_Sprite(P3tParticleClass *inClass, UUtUns32 inTime, UUtUns32
 		}
 
 		// default texture if none can be found
-		error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "notfoundtex", &texturemap);
+		error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "notfoundtex", (void **) &texturemap);
 		if (error != UUcError_None) {
 			// give up
 			return;
@@ -10583,7 +10583,7 @@ void P3rDisplayClass_Contrail(P3tParticleClass *inClass, UUtUns32 inTime, UUtUns
 		check_length = (maxlength_sq > 0.001);
 	}
 
-	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, appearance_params->instance, &texturemap);
+	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, appearance_params->instance, (void **) &texturemap);
 	if (error != UUcError_None) {
 		if ((inClass->non_persistent_flags & P3cParticleClass_NonPersistentFlag_WarnedAboutNotFound) == 0) {
 			COrConsole_Printf("PARTICLE TEXTURE NOT FOUND: particle '%s' texture '%s'", inClass->classname, appearance_params->instance);
@@ -10591,7 +10591,7 @@ void P3rDisplayClass_Contrail(P3tParticleClass *inClass, UUtUns32 inTime, UUtUns
 		}
 
 		// default texture if none can be found
-		error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "notfoundtex", &texturemap);
+		error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "notfoundtex", (void **) &texturemap);
 		if (error != UUcError_None) {
 			// give up
 			return;
@@ -11880,7 +11880,7 @@ UUtBool P3iAttractorIterator_Character(P3tParticleClass *inClass, P3tParticle *i
 			// find out which character and team we belong to
 			p_owner = P3rGetOwnerPtr(inClass, inParticle);
 			if (p_owner != NULL) {
-				if (WPrOwner_IsCharacter(*p_owner, &our_character)) {
+				if (WPrOwner_IsCharacter(*p_owner, (void **) &our_character)) {
 					our_team = (our_character == NULL) ? OBJcCharacter_TeamSyndicate : our_character->teamNumber;
 				}
 			}

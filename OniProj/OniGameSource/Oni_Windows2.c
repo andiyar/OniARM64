@@ -55,7 +55,7 @@ OWrLevelList_Initialize(
 			UUtUns32				index;
 
 			// get a pointer to the first descriptor
-			error =	TMrInstance_GetDataPtr_ByNumber(ONcTemplate_Level_Descriptor, i, &descriptor);
+			error =	TMrInstance_GetDataPtr_ByNumber(ONcTemplate_Level_Descriptor, i, (void **) &descriptor);
 			if (error != UUcError_None) {
 				return;
 			}

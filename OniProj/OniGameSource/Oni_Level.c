@@ -164,7 +164,7 @@ ONiLevel_SetDefaultReverb(
 				TMrInstance_GetDataPtr_ByNumber(
 					ONcTemplate_Level_Descriptor,
 					i,
-					&descriptor);
+					(void **) &descriptor);
 			if (error != UUcError_None) return error;
 
 			if (descriptor->level_number == inLevelNum)
@@ -1204,7 +1204,7 @@ UUtUns16 ONrLevel_GetNextLevel(UUtUns16 inLevelNum)
 		ONtLevel_Descriptor		*descriptor;
 
 		// get a pointer to the first descriptor
-		error =	TMrInstance_GetDataPtr_ByNumber(ONcTemplate_Level_Descriptor, i, &descriptor);
+		error =	TMrInstance_GetDataPtr_ByNumber(ONcTemplate_Level_Descriptor, i, (void **) &descriptor);
 		UUmAssert(UUcError_None == error);
 
 		if (UUcError_None == error) {
@@ -1378,7 +1378,7 @@ static void ONrLevel_Preload_Textures_Characters(void)
 	{
 		TRtBodyTextures *body_textures = NULL;
 
-		TMrInstance_GetDataPtr_ByNumber(TRcTemplate_BodyTextures, itr, &body_textures);
+		TMrInstance_GetDataPtr_ByNumber(TRcTemplate_BodyTextures, itr, (void **) &body_textures);
 
 		ONrLevel_Preload_Texture_OneBody(body_textures);
 	}

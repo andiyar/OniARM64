@@ -797,7 +797,7 @@ WMrDialog_Create(
 			WMcTemplate_DialogData,
 			1024,
 			&num_dialog_data,
-			dialog_data);
+			(void **) dialog_data);
 	UUmError_ReturnOnError(error);
 
 	// find the desired dialog

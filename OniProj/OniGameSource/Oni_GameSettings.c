@@ -42,7 +42,7 @@ UUtError ONrGameSettings_Initialize(void)
 
 	UUrMemory_Clear(&ONgGameSettingsRuntime, sizeof(ONgGameSettingsRuntime));
 
-	error = TMrInstance_GetDataPtr( ONcTemplate_GameSettings, "game_settings", &ONgGameSettings );
+	error = TMrInstance_GetDataPtr( ONcTemplate_GameSettings, "game_settings", (void **) &ONgGameSettings );
 	UUmError_ReturnOnErrorMsg(error, "Could not access game_settings template");
 
 	WPgHypoStrength		= (UUtInt32)(100.0f * ONgGameSettings->hypo_amount);

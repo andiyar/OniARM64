@@ -2133,7 +2133,7 @@ UUtError COrConsole_StatusLine_LevelBegin(void)
 	UUtError error;
 	TStFontFamily	*fontFamily;
 
-	error = TMrInstance_GetDataPtr(TScTemplate_FontFamily, TScFontFamily_Default,	&fontFamily);
+	error = TMrInstance_GetDataPtr(TScTemplate_FontFamily, TScFontFamily_Default,	(void **) &fontFamily);
 	UUmError_ReturnOnErrorMsg(error, "Could not get font family");
 
 	error = TSrContext_New(fontFamily, TScFontSize_Default, TScStyle_Bold, TSc_HLeft, UUcFalse, &ONgStatusLineTextContext);

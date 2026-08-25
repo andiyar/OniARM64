@@ -132,7 +132,7 @@ FFrRead_2D_Reduce(
 		goto error_exit;
 	}
 
-	error = FFrRead_2D(inFileRef, inPixelType, &width, &height, &mipMap, &buffer);
+	error = FFrRead_2D(inFileRef, inPixelType, &width, &height, &mipMap, (void **) &buffer);
 	if (error != UUcError_None) {
 		goto error_exit;
 	}

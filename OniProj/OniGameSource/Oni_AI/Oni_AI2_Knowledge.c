@@ -1977,7 +1977,7 @@ void AI2rKnowledge_FindNearbyProjectiles(ONtCharacter *ioCharacter, AI2tManeuver
 		if ((projectile->flags & AI2cDodgeProjectileFlag_InUse) == 0)
 			continue;
 
-		if (WPrOwner_IsCharacter(projectile->owner, &owner_character) && (owner_character == ioCharacter)) {
+		if (WPrOwner_IsCharacter(projectile->owner, (void **) &owner_character) && (owner_character == ioCharacter)) {
 			// don't try to dodge our own projectiles
 			continue;
 		}
@@ -2254,7 +2254,7 @@ static void AI2iKnowledge_UpdateProjectileAlertness(void)
 		if (((projectile->flags & AI2cDodgeProjectileFlag_InUse) == 0) || (projectile->alert_radius == 0))
 			continue;
 
-		if (!WPrOwner_IsCharacter(projectile->owner, &owner_character))
+		if (!WPrOwner_IsCharacter(projectile->owner, (void **) &owner_character))
 			continue;
 
 		if (owner_character == NULL)

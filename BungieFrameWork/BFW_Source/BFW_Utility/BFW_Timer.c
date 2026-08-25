@@ -146,7 +146,7 @@ UUtTimerRef UUrTimer_Allocate(const char *inTimerType, const char *inTimerName)
 		timer_ref->total_time = 0;
 		timer_ref->current_time = 0;
 
-		UUrList_Add(&living_timer_list, &timer_ref->listCell);
+		UUrList_Add((void **) &living_timer_list, &timer_ref->listCell);
 	}
 
 	return timer_ref;
@@ -154,8 +154,8 @@ UUtTimerRef UUrTimer_Allocate(const char *inTimerType, const char *inTimerName)
 
 void UUrTimer_Dispose(UUtTimerRef inTimer)
 {
-	UUrList_Delete(&living_timer_list, &inTimer->listCell);
-	UUrList_Add(&dead_timer_list, &inTimer->listCell);
+	UUrList_Delete((void **) &living_timer_list, &inTimer->listCell);
+	UUrList_Add((void **) &dead_timer_list, &inTimer->listCell);
 
 	return;
 }
@@ -188,7 +188,7 @@ static void UUrTimerSystem_PurgeCells(void)
 	{
 		UUtTimerRef current_cell = dead_timer_list;
 
-		UUrList_Delete(&dead_timer_list, &current_cell->listCell);
+		UUrList_Delete((void **) &dead_timer_list, &current_cell->listCell);
 
 		UUrMemory_Block_Delete(current_cell);
 	}

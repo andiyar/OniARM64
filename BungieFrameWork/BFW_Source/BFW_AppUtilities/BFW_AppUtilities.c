@@ -547,7 +547,7 @@ AUrSharedPointArray_CreateTemplate(
 			M3cTemplate_Point3DArray,
 			inName,
 			numSharedPoints + M3cExtraCoords,  // Hack - this is needed for Akira
-			outReference);
+			(void **) outReference);
 
 	if(error != UUcError_None)
 	{
@@ -892,7 +892,7 @@ AUrSharedPlaneEquArray_CreateTemplate(
 			M3cTemplate_PlaneEquationArray,
 			inName,
 			numSharedPlaneEqus,
-			outReference);
+			(void **) outReference);
 
 	if(error != UUcError_None)
 	{
@@ -1203,7 +1203,7 @@ AUrSharedQuadArray_CreateTemplate(
 			M3cTemplate_QuadArray,
 			inName,
 			numSharedQuads,
-			outReference);
+			(void **) outReference);
 
 	if(error != UUcError_None)
 	{
@@ -1359,7 +1359,7 @@ AUrSharedVectorArray_CreateTemplate(
 			M3cTemplate_Vector3DArray,
 			inName,
 			numSharedVectors,
-			outReference);
+			(void **) outReference);
 
 	if(error != UUcError_None)
 	{
@@ -1496,7 +1496,7 @@ AUrSharedTexCoordArray_CreateTemplate(
 			M3cTemplate_TextureCoordArray,
 			inName,
 			numSharedTexCoords + M3cExtraCoords,
-			outReference);
+			(void **) outReference);
 
 	if(error != UUcError_None)
 	{
@@ -2787,7 +2787,7 @@ AUrFlags_ParseFromGroupArray(
 				inElement,
 				curGroupElemIndex,
 				&groupType,
-				&elemFlagString);
+				(void **) &elemFlagString);
 
 			for(curFlagElem = inFlagList;
 				curFlagElem->textName != NULL;

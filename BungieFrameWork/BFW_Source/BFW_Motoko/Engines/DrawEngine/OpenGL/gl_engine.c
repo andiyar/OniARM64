@@ -315,7 +315,7 @@ static UUtError gl_private_state_update(
 	GLenum gl_fill_mode;
 	boolean constant_color_changed= FALSE;
 
-	gl->state_int= (long *)in_state_int;
+	gl->state_int= (UUtInt32 *)in_state_int;
 	gl->state_ptr= in_state_ptr;
 
 #ifdef ENABLE_GL_FOG

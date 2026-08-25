@@ -321,7 +321,7 @@ M3rTextureMap_New(
 				memPool,
 				M3cTemplate_TextureMap,
 				0,
-				&new_texture_map);
+				(void **) &new_texture_map);
 	}
 	else
 	{
@@ -409,7 +409,7 @@ M3rTextureMap_Big_New(
 			TMcDynamicPool_Type_Permanent,
 			M3cTemplate_TextureMap_Big,
 			num_x * num_y,
-			&new_texture_map);
+			(void **) &new_texture_map);
 	UUmError_ReturnOnErrorMsg(error, "Unable to create a new texture.");
 
 	// set up the texture map

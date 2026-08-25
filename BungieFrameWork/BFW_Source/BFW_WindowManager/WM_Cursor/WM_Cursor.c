@@ -64,7 +64,7 @@ WMrCursor_Get(
 		TMrInstance_GetDataPtr(
 			WMcTemplate_CursorList,
 			"cursor_list",
-			&cursor_list);
+			(void **) &cursor_list);
 	if (error != UUcError_None)
 	{
 		return NULL;

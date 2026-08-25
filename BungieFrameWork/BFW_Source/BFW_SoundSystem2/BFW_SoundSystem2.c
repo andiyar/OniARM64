@@ -1127,7 +1127,7 @@ SSrSoundData_GetByName(
 		TMrInstance_GetDataPtr(
 			SScTemplate_SoundData,
 			inSoundDataName,
-			&sound_data);
+			(void **) &sound_data);
 	if (error == UUcError_None)
 	{
 		return sound_data;
@@ -1325,7 +1325,7 @@ SSrSoundData_New_Uncached(
 	const char					*leaf_name;
 
 	// load the file
-	error =	BFrFileRef_LoadIntoMemory(inFileRef, &file_length, &file_data);
+	error =	BFrFileRef_LoadIntoMemory(inFileRef, &file_length, (void **) &file_data);
 	if (error != UUcError_None) { goto exit; }
 	if (file_length == 0) { goto exit; }
 

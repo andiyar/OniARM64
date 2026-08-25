@@ -1686,7 +1686,7 @@ TMiGame_InstanceFile_New_FromFileRef(
 			inInstanceFileRef,
 			0,
 			&(newInstanceFile->mapping),
-			&mappingPtr,
+			(void **) &mappingPtr,
 			&totalFileLength);
 
 		if (error != UUcError_None)

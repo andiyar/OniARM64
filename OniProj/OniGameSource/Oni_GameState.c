@@ -634,7 +634,7 @@ ONrGameState_SplashScreen(
 	UUtUns32 start_time;
 	UUtUns32 end_time;
 
-	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap_Big, inInstanceName, &splash_screen);
+	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap_Big, inInstanceName, (void **) &splash_screen);
 	splash_screen = (UUcError_None != error) ? NULL : splash_screen;
 
 	if (NULL == splash_screen) {
@@ -839,7 +839,7 @@ ONrGameState_LevelBegin(UUtUns16 inLevelNumber)
 		for (onlv_itr = 0; ; onlv_itr++) {
 			ONtLevel *onlv_candidate = NULL;
 
-			error = TMrInstance_GetDataPtr_ByNumber(ONcTemplate_Level, onlv_itr, &onlv_candidate);
+			error = TMrInstance_GetDataPtr_ByNumber(ONcTemplate_Level, onlv_itr, (void **) &onlv_candidate);
 			if (error != UUcError_None) { break; }
 
 			if (onlv_candidate->environment != NULL) {
@@ -2802,7 +2802,7 @@ static void ONiWeaponCheat(void)
 	UUtError error;
 
 	// get a list of pointers to the weapon classes
-	error = TMrInstance_GetDataPtr_List(WPcTemplate_WeaponClass, 64, &num_classes, weapon_classes);
+	error = TMrInstance_GetDataPtr_List(WPcTemplate_WeaponClass, 64, &num_classes, (void **) weapon_classes);
 	if (error != UUcError_None) {
 		return;
 	}
@@ -2847,7 +2847,7 @@ static void ONiCycle_Weapon(const ONtInputState *inInput)
 			WPcTemplate_WeaponClass,
 			64,
 			&num_classes,
-			weapon_class);
+			(void **) weapon_class);
 
 	// find the weapon class of the weapon currently in use by the character
 	if (localCharacter->inventory.weapons[0])
@@ -2907,7 +2907,7 @@ static void ONiCycle_Class(const ONtInputState *inInput)
 	if (numClasses > 0) {
 		localCharacter->characterClassNumber = localCharacter->characterClassNumber % numClasses;
 
-		error = TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, localCharacter->characterClassNumber, &newClass);
+		error = TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, localCharacter->characterClassNumber, (void **) &newClass);
 
 		if ((newClass != NULL) && (UUcError_None == error)) {
 			ONrCharacter_SetCharacterClass(localCharacter, newClass);
@@ -5517,7 +5517,7 @@ iDebugEnvAnim(
 
 	COrConsole_Printf("debug_env_anim %s", animation_name);
 
-	error = TMrInstance_GetDataPtr(OBcTemplate_Animation, animation_name, &animation);
+	error = TMrInstance_GetDataPtr(OBcTemplate_Animation, animation_name, (void **) &animation);
 
 	if (UUcError_None == error) {
 		ONgLineSize = animation->numFrames;
@@ -6520,7 +6520,7 @@ UUtError ONrGameState_Timer_LevelBegin(void)
 	UUtError error;
 	TStFontFamily	*fontFamily;
 
-	error = TMrInstance_GetDataPtr(TScTemplate_FontFamily, TScFontFamily_Default,	&fontFamily);
+	error = TMrInstance_GetDataPtr(TScTemplate_FontFamily, TScFontFamily_Default,	(void **) &fontFamily);
 	UUmError_ReturnOnErrorMsg(error, "Could not get font family for the timer");
 
 	error = TSrContext_New(fontFamily, TScFontSize_Default, TScStyle_Bold, TSc_HLeft,UUcFalse, &ONgTimerTextContext);

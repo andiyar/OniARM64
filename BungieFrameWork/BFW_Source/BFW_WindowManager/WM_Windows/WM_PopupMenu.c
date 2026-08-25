@@ -175,7 +175,7 @@ WMiPopupMenu_Create(
 			TMrInstance_GetDataPtr(
 				WMcTemplate_MenuData,
 				title,
-				&menu_data);
+				(void **) &menu_data);
 		if (error != UUcError_None) { goto cleanup; }
 	}
 

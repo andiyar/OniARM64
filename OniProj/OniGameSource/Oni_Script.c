@@ -62,7 +62,7 @@ ONiScript_LoadDirectory(
 		error = BFrDirectory_FileIterator_Next(fileIterator, &curFileRef);
 		if(error != UUcError_None) break;
 
-		error = BFrFileRef_LoadIntoMemory(&curFileRef, &length, &textFile);
+		error = BFrFileRef_LoadIntoMemory(&curFileRef, &length, (void **) &textFile);
 		if(error != UUcError_None) goto abort;
 
 		error =	SLrScript_Database_Add(BFrFileRef_GetLeafName(&curFileRef), textFile);

@@ -49,7 +49,7 @@ MArImpactType_GetByName(
 
 	UUmAssert(inImpactTypeName);
 
-	error = TMrInstance_GetDataPtr(MAcTemplate_Impact, inImpactTypeName, &impact);
+	error = TMrInstance_GetDataPtr(MAcTemplate_Impact, inImpactTypeName, (void **) &impact);
 	if (error != UUcError_None) { return MAcInvalidID; }
 
 	return impact->id;
@@ -150,7 +150,7 @@ MArMaterialType_GetByName(
 
 	UUmAssert(inMaterialTypeName);
 
-	error = TMrInstance_GetDataPtr(MAcTemplate_Material, inMaterialTypeName, &material);
+	error = TMrInstance_GetDataPtr(MAcTemplate_Material, inMaterialTypeName, (void **) &material);
 	if (error != UUcError_None) { return MAcInvalidID; }
 
 	return material->id;
@@ -438,7 +438,7 @@ MArImpacts_PreProcess(
 
 	// set all impacts' IDs to invalid
 	for (itr = 0; itr < num_impacts; itr++) {
-		error = TMrInstance_GetDataPtr_ByNumber(MAcTemplate_Impact, itr, &impact);
+		error = TMrInstance_GetDataPtr_ByNumber(MAcTemplate_Impact, itr, (void **) &impact);
 		UUmError_ReturnOnError(error);
 
 		impact->id = MAcInvalidID;
@@ -454,7 +454,7 @@ MArImpacts_PreProcess(
 		// loop over all impacts and hierarchically order them
 		num_added = 0;
 		for (itr = 0; itr < num_impacts; itr++) {
-			error = TMrInstance_GetDataPtr_ByNumber(MAcTemplate_Impact, itr, &impact);
+			error = TMrInstance_GetDataPtr_ByNumber(MAcTemplate_Impact, itr, (void **) &impact);
 			UUmError_ReturnOnError(error);
 
 			if (impact->id != MAcInvalidID)
@@ -535,7 +535,7 @@ MArImpacts_PreProcess(
 							num_impacts - MAgNumImpacts, num_impacts);
 
 		for (itr = 0; itr < num_impacts; itr++) {
-			error = TMrInstance_GetDataPtr_ByNumber(MAcTemplate_Impact, itr, &impact);
+			error = TMrInstance_GetDataPtr_ByNumber(MAcTemplate_Impact, itr, (void **) &impact);
 			UUmError_ReturnOnError(error);
 
 			if (impact->id == MAcInvalidID) {
@@ -637,7 +637,7 @@ MArMaterials_PreProcess(
 
 	// set all materials' IDs to invalid
 	for (itr = 0; itr < num_materials; itr++) {
-		error = TMrInstance_GetDataPtr_ByNumber(MAcTemplate_Material, itr, &material);
+		error = TMrInstance_GetDataPtr_ByNumber(MAcTemplate_Material, itr, (void **) &material);
 		UUmError_ReturnOnError(error);
 
 		material->id = MAcInvalidID;
@@ -653,7 +653,7 @@ MArMaterials_PreProcess(
 		// loop over all materials and hierarchically order them
 		num_added = 0;
 		for (itr = 0; itr < num_materials; itr++) {
-			error = TMrInstance_GetDataPtr_ByNumber(MAcTemplate_Material, itr, &material);
+			error = TMrInstance_GetDataPtr_ByNumber(MAcTemplate_Material, itr, (void **) &material);
 			UUmError_ReturnOnError(error);
 
 			if (material->id != MAcInvalidID)
@@ -734,7 +734,7 @@ MArMaterials_PreProcess(
 							num_materials - MAgNumMaterials, num_materials);
 
 		for (itr = 0; itr < num_materials; itr++) {
-			error = TMrInstance_GetDataPtr_ByNumber(MAcTemplate_Material, itr, &material);
+			error = TMrInstance_GetDataPtr_ByNumber(MAcTemplate_Material, itr, (void **) &material);
 			UUmError_ReturnOnError(error);
 
 			if (material->id == MAcInvalidID) {

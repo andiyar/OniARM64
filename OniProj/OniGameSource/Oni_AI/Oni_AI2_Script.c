@@ -223,13 +223,13 @@ static UUtError	AI2iScript_Skill_Select(SLtErrorContext *inErrorContext, UUtUns3
 	// clear skill editing
 	AI2rScript_ClearSkillEdit();
 
-	error = TMrInstance_GetDataPtr(TRcTemplate_CharacterClass, inParameterList[0].val.str, &AI2gSkillEdit_TargetClass);
+	error = TMrInstance_GetDataPtr(TRcTemplate_CharacterClass, inParameterList[0].val.str, (void **) &AI2gSkillEdit_TargetClass);
 	if (error != UUcError_None) {
 		COrConsole_Printf("### ai2_skill_select: can't find character class '%s'", inParameterList[0].val.str);
 		return UUcError_None;
 	}
 
-	error = TMrInstance_GetDataPtr(WPcTemplate_WeaponClass, inParameterList[1].val.str, &AI2gSkillEdit_TargetWeapon);
+	error = TMrInstance_GetDataPtr(WPcTemplate_WeaponClass, inParameterList[1].val.str, (void **) &AI2gSkillEdit_TargetWeapon);
 	if (error != UUcError_None) {
 		COrConsole_Printf("### ai2_skill_select: can't find weapon class '%s'", inParameterList[1].val.str);
 		return UUcError_None;
@@ -1975,7 +1975,7 @@ static ONtFilm *AI2iScript_Playback_Internal(SLtErrorContext *inErrorContext, UU
 	AI2iScript_CancelEnvAnim(character, active_character);
 
 	film_name = inParameterList[1].val.str;
-	error = TMrInstance_GetDataPtr(ONcTemplate_Film,film_name,&film);
+	error = TMrInstance_GetDataPtr(ONcTemplate_Film,film_name,(void **) &film);
 
 	if (error != UUcError_None) {
 		SLrScript_ReportError(inErrorContext, "can not find any film named \"%s\"", film_name);
@@ -2066,7 +2066,7 @@ static UUtError AI2iScript_Playback_Debug(SLtErrorContext *inErrorContext, UUtUn
 	UUtError		error;
 	ONtFilm*		film;
 
-	error = TMrInstance_GetDataPtr(ONcTemplate_Film, film_name, &film);
+	error = TMrInstance_GetDataPtr(ONcTemplate_Film, film_name, (void **) &film);
 
 	if (error != UUcError_None) {
 		SLrScript_ReportError(inErrorContext, "failed to find film %s", film_name);
@@ -2229,7 +2229,7 @@ static UUtError AI2iScript_EnvAnimate_Internal(SLtErrorContext *inErrorContext, 
 	error = TMrInstance_GetDataPtr(
 		OBcTemplate_Animation,
 		inParameterList[1].val.str,
-		&anim);
+		(void **) &anim);
 
 	if (error != UUcError_None)
 	{
@@ -3039,7 +3039,7 @@ static UUtError AI2iScript_WeaponSpawn(SLtErrorContext *inErrorContext, UUtUns32
 	UUtError error;
 
 	// get the weapon class
-	error = TMrInstance_GetDataPtr(WPcTemplate_WeaponClass, inParameterList[0].val.str, &weapon_class);
+	error = TMrInstance_GetDataPtr(WPcTemplate_WeaponClass, inParameterList[0].val.str, (void **) &weapon_class);
 	if (error != UUcError_None) {
 		COrConsole_Printf("### weapon_spawn: unknown weapon type '%s'", inParameterList[0].val.str);
 		return UUcError_None;

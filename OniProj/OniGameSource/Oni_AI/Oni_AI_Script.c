@@ -318,7 +318,7 @@ AIiScript_CameraAnim_Internal(
 		TMrInstance_GetDataPtr(
 			OBcTemplate_Animation,
 			inParameterList[1].val.str,
-			&animation);
+			(void **) &animation);
 
 #if TOOL_VERSION
 	COrConsole_Printf("cm_anim %s", inParameterList[1].val.str);
@@ -1133,7 +1133,7 @@ AIiScript_EnvTexSwap(
 			TMrInstance_GetDataPtr(
 				M3cTemplate_TextureMap,
 				texname,
-				&texture);
+				(void **) &texture);
 
 		if (error != UUcError_None)
 		{

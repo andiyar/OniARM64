@@ -729,22 +729,22 @@ M3rGroup_GetColor(
 	GRtElementArray*	array;
 	char*				string;
 
-	error = GRrGroup_GetElement(inGroup, inVarName, &elementType, &array);
+	error = GRrGroup_GetElement(inGroup, inVarName, &elementType, (void **) &array);
 	if(error != UUcError_None) return error;
 
 	if(elementType != GRcElementType_Array) return UUcError_Generic;
 
-	error = GRrGroup_Array_GetElement(array, 0, &elementType, &string);
+	error = GRrGroup_Array_GetElement(array, 0, &elementType, (void **) &string);
 	if(error != UUcError_None) return error;
 	if(elementType != GRcElementType_String) return UUcError_Generic;
 	sscanf(string, "%f", &outColor->r);
 
-	error = GRrGroup_Array_GetElement(array, 1, &elementType, &string);
+	error = GRrGroup_Array_GetElement(array, 1, &elementType, (void **) &string);
 	if(error != UUcError_None) return error;
 	if(elementType != GRcElementType_String) return UUcError_Generic;
 	sscanf(string, "%f", &outColor->g);
 
-	error = GRrGroup_Array_GetElement(array, 2, &elementType, &string);
+	error = GRrGroup_Array_GetElement(array, 2, &elementType, (void **) &string);
 	if(error != UUcError_None) return error;
 	if(elementType != GRcElementType_String) return UUcError_Generic;
 	sscanf(string, "%f", &outColor->b);

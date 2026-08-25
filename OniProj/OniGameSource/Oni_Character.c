@@ -1240,7 +1240,7 @@ ONrCharacter_ArmByNumber(
 	if (0 == (inCharacter->flags & ONcCharacterFlag_InUse)) { return UUcError_None; }
 
 	inWeaponNumber = inWeaponNumber % TMrInstance_GetTagCount(WPcTemplate_WeaponClass);
-	error = TMrInstance_GetDataPtr_ByNumber(WPcTemplate_WeaponClass, inWeaponNumber, &weapon);
+	error = TMrInstance_GetDataPtr_ByNumber(WPcTemplate_WeaponClass, inWeaponNumber, (void **) &weapon);
 
 	if (UUcError_None == error) {
 		ONrCharacter_UseNewWeapon(inCharacter, weapon);
@@ -1392,7 +1392,7 @@ iSetMainCharacterClass(
 		characterNum = inParameterList[0].val.i;
 
 		characterNum = characterNum % TMrInstance_GetTagCount(TRcTemplate_CharacterClass);
-		error = TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, characterNum, &characterClass);
+		error = TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, characterNum, (void **) &characterClass);
 
 		if (UUcError_None == error)
 		{
@@ -1467,7 +1467,7 @@ iSetCharacterClass(
 				TMrInstance_GetDataPtr_ByNumber(
 					TRcTemplate_CharacterClass,
 					character_class_number,
-					&character_class);
+					(void **) &character_class);
 			if (error != UUcError_None)
 			{
 				COrConsole_Printf("character class was not changed");
@@ -2291,7 +2291,7 @@ UUtError ONrCharacter_LevelBegin(void)
 				TRcTemplate_CharacterClass,
 				2048,
 				&num_classes,
-				character_class_list);
+				(void **) character_class_list);
 		UUmAssert(error == UUcError_None);
 
 		for (i = 0; i < num_classes; i++)
@@ -2660,7 +2660,7 @@ ONrGameState_NewCharacter(
 
 		// get the character class
 		error = TMrInstance_GetDataPtr(TRcTemplate_CharacterClass, char_osd->character_class,
-										&thisCharacter->characterClass);
+										(void **) &thisCharacter->characterClass);
 		if (error == UUcError_None) {
 			// issue #56: a zeroed placeholder ref loads without error and leaves these
 			// sub-references NULL; the console path (ONrCharacter_SetCharacterClass
@@ -2694,7 +2694,7 @@ ONrGameState_NewCharacter(
 				}
 
 				for (itr = 0; itr < UUcMaxUns16; itr++) {
-					error = TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, itr, &test_class);
+					error = TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, itr, (void **) &test_class);
 					if (error != UUcError_None)
 						break;
 
@@ -2721,7 +2721,7 @@ ONrGameState_NewCharacter(
 			}
 		} else {
 			// get a default character class
-			error = TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, 0, &thisCharacter->characterClass);
+			error = TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, 0, (void **) &thisCharacter->characterClass);
 			UUmError_ReturnOnError(error);
 		}
 
@@ -2799,7 +2799,7 @@ ONrGameState_NewCharacter(
 		// Character class
 		thisCharacter->characterClass = inSetup->characterClass;
 		if (NULL == thisCharacter->characterClass) {
-			TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, 0, &thisCharacter->characterClass);
+			TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, 0, (void **) &thisCharacter->characterClass);
 		}
 
 		UUmAssert( thisCharacter->characterClass );
@@ -13310,7 +13310,7 @@ ONtCharacterClass *ONrGetCharacterClass(const char *inString)
 	error = TMrInstance_GetDataPtr(
 		TRcTemplate_CharacterClass,
 		inString,
-		&result);
+		(void **) &result);
 
 	if (UUcError_None != error) {
 		result = NULL;
@@ -14000,7 +14000,7 @@ void ONrCharacter_DumpAllCollections(void)
 	{
 		TRtAnimationCollection *collection;
 
-		TMrInstance_GetDataPtr_ByNumber(TRcTemplate_AnimationCollection, collection_index, &collection);
+		TMrInstance_GetDataPtr_ByNumber(TRcTemplate_AnimationCollection, collection_index, (void **) &collection);
 		ONrCharacter_DumpCollection(file, collection);
 	}
 
@@ -14018,9 +14018,9 @@ void ONrCharacter_DumpCollection(BFtFile *inFile, TRtAnimationCollection *inColl
 	TMtStringArray *anim_types = NULL;
 	TMtStringArray *anim_flags = NULL;
 
-	TMrInstance_GetDataPtr(TMcTemplate_StringArray, "anim_types", &anim_types);
-	TMrInstance_GetDataPtr(TMcTemplate_StringArray, "anim_states", &anim_states);
-	TMrInstance_GetDataPtr(TMcTemplate_StringArray, "anim_flags", &anim_flags);
+	TMrInstance_GetDataPtr(TMcTemplate_StringArray, "anim_types", (void **) &anim_types);
+	TMrInstance_GetDataPtr(TMcTemplate_StringArray, "anim_states", (void **) &anim_states);
+	TMrInstance_GetDataPtr(TMcTemplate_StringArray, "anim_flags", (void **) &anim_flags);
 
 	if (inCollection->recursiveOnly) {
 		return;
@@ -17198,7 +17198,7 @@ void ONrCharacter_ListBrokenSounds(BFtFile *inFile)
 	BFrFile_Printf(inFile, "********** Character Vocalizations **********"UUmNL);
 	BFrFile_Printf(inFile, UUmNL);
 
-	error = TMrInstance_GetDataPtr_List(TRcTemplate_CharacterClass, 256, &num_classes, classptrs);
+	error = TMrInstance_GetDataPtr_List(TRcTemplate_CharacterClass, 256, &num_classes, (void **) classptrs);
 	if (error != UUcError_None) {
 		return;
 	}

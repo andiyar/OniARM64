@@ -417,7 +417,7 @@ PSrPartSpec_LoadByType(
 		TMrInstance_GetDataPtr(
 			PScTemplate_PartSpecList,
 			"partspec_list",
-			&partspec_list);
+			(void **) &partspec_list);
 	if (error != UUcError_None)
 	{
 		return NULL;

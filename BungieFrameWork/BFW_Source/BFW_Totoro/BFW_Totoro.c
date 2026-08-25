@@ -2356,7 +2356,7 @@ static void iVerifyCollections(void)
 	UUtUns32 itr;
 	TRtAnimationCollection *collectionList[cMaxCollections];
 
-	TMrInstance_GetDataPtr_List(TRcTemplate_AnimationCollection, cMaxCollections, &numCollections, collectionList);
+	TMrInstance_GetDataPtr_List(TRcTemplate_AnimationCollection, cMaxCollections, &numCollections, (void **) collectionList);
 
 	for(itr = 0; itr < numCollections; itr++)
 	{

@@ -112,7 +112,7 @@ UUtError OBrSetAnimationByName(
 	error = TMrInstance_GetDataPtr(
 		OBcTemplate_Animation,
 		inAnimName,
-		&anim);
+		(void **) &anim);
 
 	if (anim) {
 		OBrSetAnimation(inObject,anim,0,anim->numFrames);

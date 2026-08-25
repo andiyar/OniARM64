@@ -363,7 +363,7 @@ GRiGroup_ParseElement(
 			return UUcError_Generic;
 		}
 
-		error = GRrGroup_GetElement(inPreferenceGroup, GRgLexem, &elementType, &value);
+		error = GRrGroup_GetElement(inPreferenceGroup, GRgLexem, &elementType, (void **) &value);
 		if(error != UUcError_None || elementType != GRcElementType_String)
 		{
 			UUmError_ReturnOnErrorMsg(UUcError_Generic, "Illegal preference variable");
@@ -800,7 +800,7 @@ GRrGroup_GetString(
 					inGroup,
 					inVarName,
 					&elementType,
-					&string);
+					(void **) &string);
 
 	if (error)
 	{
@@ -837,7 +837,7 @@ GRrGroup_GetUns32(
 					inGroup,
 					inVarName,
 					&elementType,
-					&string);
+					(void **) &string);
 
 	if (error)
 	{
@@ -882,7 +882,7 @@ GRrGroup_GetInt32(
 					inGroup,
 					inVarName,
 					&elementType,
-					&string);
+					(void **) &string);
 
 	if (error)
 	{
@@ -1073,7 +1073,7 @@ GRrGroup_GetFloat(
 					inGroup,
 					inVarName,
 					&elementType,
-					&string);
+					(void **) &string);
 
 	if (error)
 	{

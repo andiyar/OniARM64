@@ -2024,21 +2024,21 @@ ONiInGameUI_LevelLoad(
 	UUtError					error;
 
 	// load the textures
-	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "left", &gLeft);
-	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "right", &gRight);
-	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "leftRing", &gLeftRing);
-	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "rightRing", &gRightRing);
-	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "lsi_icon", &gLSIIcon);
+	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "left", (void **) &gLeft);
+	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "right", (void **) &gRight);
+	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "leftRing", (void **) &gLeftRing);
+	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "rightRing", (void **) &gRightRing);
+	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "lsi_icon", (void **) &gLSIIcon);
 	if (error != UUcError_None) {
-		error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "notfoundtex", &gLSIIcon);
+		error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "notfoundtex", (void **) &gLSIIcon);
 		if (error != UUcError_None) {
 			gLSIIcon = NULL;
 		}
 	}
-	error = TMrInstance_GetDataPtr(ONcTemplate_IGUI_HUDHelp, "hud_help_info", &gHUDHelp);
+	error = TMrInstance_GetDataPtr(ONcTemplate_IGUI_HUDHelp, "hud_help_info", (void **) &gHUDHelp);
 	if (error != UUcError_None) { gHUDHelp = NULL; }
 
-	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "updn_arrow", &gUpDnArrow);
+	error = TMrInstance_GetDataPtr(M3cTemplate_TextureMap, "updn_arrow", (void **) &gUpDnArrow);
 
 	ONrInGameUI_SetArcPoints();
 
@@ -2628,7 +2628,7 @@ ONiPS_DiaryPage_Init(
 			ONcTemplate_DiaryPage,
 			1024,
 			&num_pages,
-			pages);
+			(void **) pages);
 	UUmError_ReturnOnError(error);
 
 	// add all of the valid diary pages to the list
@@ -2757,7 +2757,7 @@ ONiPS_ItemPage_Init(
 			ONcTemplate_ItemPage,
 			1024,
 			&num_pages,
-			pages);
+			(void **) pages);
 	UUmError_ReturnOnError(error);
 
 	// count the items
@@ -2823,7 +2823,7 @@ ONiPS_ObjectivePage_Init(
 			ONcTemplate_ObjectivePage,
 			1024,
 			&num_pages,
-			pages);
+			(void **) pages);
 	UUmError_ReturnOnError(error);
 
 	// get the objective pages for this level
@@ -2862,7 +2862,7 @@ ONiPS_WeaponPage_Init(
 			ONcTemplate_WeaponPage,
 			1024,
 			&num_pages,
-			pages);
+			(void **) pages);
 	UUmError_ReturnOnError(error);
 
 #if 1
@@ -2998,7 +2998,7 @@ ONiPS_HelpPage_Init(
 			ONcTemplate_HelpPage,
 			1024,
 			&num_pages,
-			pages);
+			(void **) pages);
 	UUmError_ReturnOnError(error);
 
 	// put pointers to all of the help pages into the list
@@ -4133,7 +4133,7 @@ ONrInGameUI_LevelLoad(
 	UUmError_ReturnOnError(error);
 
 	// get a pointer to the key icons
-	error = TMrInstance_GetDataPtr(ONcTemplate_KeyIcons, "keyicons", &ONgKeyIcons);
+	error = TMrInstance_GetDataPtr(ONcTemplate_KeyIcons, "keyicons", (void **) &ONgKeyIcons);
 	UUmError_ReturnOnError(error);
 
 	// set up our global variables so that we don't "fill up" to initial state

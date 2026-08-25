@@ -575,7 +575,7 @@ static void AI2iNeutral_GiveItems(ONtCharacter *ioCharacter, AI2tNeutralState *i
 		ioCharacter->inventory.has_lsi = UUcFalse;
 	}
 
-	error = TMrInstance_GetDataPtr(WPcTemplate_WeaponClass, ioNeutralState->behavior.give_weaponclass, &weapon_class);
+	error = TMrInstance_GetDataPtr(WPcTemplate_WeaponClass, ioNeutralState->behavior.give_weaponclass, (void **) &weapon_class);
 	if ((error == UUcError_None) && (weapon_class != NULL)) {
 		weapon = WPrNew(weapon_class, WPcNormalWeapon);
 		if (weapon != NULL) {

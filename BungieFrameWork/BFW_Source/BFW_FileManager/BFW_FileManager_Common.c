@@ -275,7 +275,7 @@ BFrTextFile_MapForRead(
 		return UUcError_OutOfMemory;
 	}
 
-	error = BFrFile_Map(inFileRef, 0, &newTextFile->mapping, &newTextFile->fileMemory, &fileLength);
+	error = BFrFile_Map(inFileRef, 0, &newTextFile->mapping, (void **) &newTextFile->fileMemory, &fileLength);
 
 	// failed to load the file into memory free and return
 	if (UUcError_None != error)
@@ -312,7 +312,7 @@ BFrTextFile_OpenForRead(
 		return UUcError_OutOfMemory;
 	}
 
-	error = BFrFileRef_LoadIntoMemory(inFileRef, &fileLength, &newTextFile->fileMemory);
+	error = BFrFileRef_LoadIntoMemory(inFileRef, &fileLength, (void **) &newTextFile->fileMemory);
 
 	// failed to load the file into memory free and return
 	if (UUcError_None != error)

@@ -1074,7 +1074,7 @@ static UUtError OBJiDoor_SetOSD( OBJtObject *inObject, const OBJtOSD_All *inOSD)
 	door_class = NULL;
 	if( inOSD->osd.door_osd.door_class_name[0] )
 	{
-		error = TMrInstance_GetDataPtr( OBJcTemplate_DoorClass, inOSD->osd.door_osd.door_class_name, &door_class );
+		error = TMrInstance_GetDataPtr( OBJcTemplate_DoorClass, inOSD->osd.door_osd.door_class_name, (void **) &door_class );
 		if( error != UUcError_None )
 		{
 			inObject->flags		|= OBJcObjectFlag_Temporary;

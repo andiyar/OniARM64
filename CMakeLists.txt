@@ -17,18 +17,31 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED True)
 
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+	# #76 left this branch alone deliberately. The burn-down and the fence below
+	# were verified against clang only; GCC groups these diagnostics differently
+	# and nobody has built the tree with it, so arming -Werror here would be an
+	# unverified claim. Worth revisiting if a GCC build is ever exercised.
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-multichar -Wno-incompatible-pointer-types")
 endif()
 
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-multichar -Wno-incompatible-pointer-types -Wno-incompatible-function-pointer-types")
-	# #69 — a -Werror=incompatible-pointer-types fence was trialled 2026-07-09 to
-	# make UUtUns32*-into-uintptr_t* mismatches (silent stack corruption on 64-bit)
-	# a hard error. The tree was verified CLEAN of that class with the fence +
-	# -ferror-limit=0, but ~139 pre-existing benign T**<->void** mismatches (same
-	# diagnostic, no width change) block enabling it permanently. Tracked as
-	# issue #76: cast those sites, then land
-	#   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Werror=incompatible-pointer-types>)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-multichar")
+	# #69/#76 — the incompatible-pointer-types fence is ACTIVE. It makes a
+	# UUtUns32* passed where a uintptr_t* is expected a hard error rather than a
+	# warning: on 64-bit the callee writes 8 bytes into a 4-byte slot and quietly
+	# corrupts the caller's stack, which is exactly the class of bug this port
+	# keeps uncovering. A trial run in July 2026 confirmed the tree was already
+	# clean of that class (fixed in ba08db7); what was left were 135 benign
+	# same-width T**<->void** mismatches from TMrInstance_GetDataPtr-style
+	# out-params, and those were cast explicitly during the #76 burn-down. Every
+	# site was checked for a width change before being cast, so a genuine
+	# UUtUns32*/uintptr_t* mismatch cannot hide behind one of these casts.
+	add_compile_options($<$<COMPILE_LANGUAGE:C>:-Werror=incompatible-pointer-types>)
+	# Function-pointer mismatches are a separate class and out of scope for #76.
+	# Clang files incompatible-function-pointer-types as a SUBGROUP of
+	# incompatible-pointer-types, so the -Werror above re-arms it and an earlier
+	# -Wno- in CMAKE_C_FLAGS would not survive. Suppress it after the fence.
+	add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-incompatible-function-pointer-types>)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

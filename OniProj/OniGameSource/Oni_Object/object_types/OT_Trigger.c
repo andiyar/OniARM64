@@ -934,12 +934,12 @@ static UUtError OBJiTrigger_SetOSD( OBJtObject *inObject, const OBJtOSD_All *inO
 	trigger_osd->emitters = UUrMemory_Block_Realloc( trigger_osd->emitters, sizeof(OBJtTriggerEmitterInstance) * trigger_osd->emitter_count );
 
 	// grab the template
-	error = TMrInstance_GetDataPtr( OBJcTemplate_TriggerClass, trigger_osd->trigger_class_name, &trigger_class );
+	error = TMrInstance_GetDataPtr( OBJcTemplate_TriggerClass, trigger_osd->trigger_class_name, (void **) &trigger_class );
 	if( error != UUcError_None )
 	{
 		UUrDebuggerMessage("failed to find trigger class %s", trigger_osd->trigger_class_name);
 
-		error = TMrInstance_GetDataPtr_ByNumber(OBJcTemplate_TriggerClass, 0, &trigger_class);
+		error = TMrInstance_GetDataPtr_ByNumber(OBJcTemplate_TriggerClass, 0, (void **) &trigger_class);
 
 		UUmError_ReturnOnErrorMsg(error, "failed to find any trigger class");
 

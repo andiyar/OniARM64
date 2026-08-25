@@ -5027,12 +5027,12 @@ UUtError AI2rMelee_PrepareForUse(AI2tMeleeProfile *ioMeleeProfile)
 	UUtBool is_first_move, valid_move, overflowed;
 	ONtAirConstants *air_constants;
 
-	error = TMrInstance_GetDataPtr(TRcTemplate_CharacterClass, ioMeleeProfile->char_classname, &new_class);
+	error = TMrInstance_GetDataPtr(TRcTemplate_CharacterClass, ioMeleeProfile->char_classname, (void **) &new_class);
 	if (error != UUcError_None) {
 		// this character class does not exist... find a default one
 		AI2_ERROR(AI2cBug, AI2cSubsystem_Melee, AI2cError_Melee_NoCharacterClass, NULL,
 				ioMeleeProfile->char_classname, ioMeleeProfile->id, ioMeleeProfile->name, 0);
-		error = TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, 0, &new_class);
+		error = TMrInstance_GetDataPtr_ByNumber(TRcTemplate_CharacterClass, 0, (void **) &new_class);
 		UUmError_ReturnOnErrorMsg(error, "AI2rMelee_PrepareForUse: cannot find any character classes!");
 	}
 	anim_collection = new_class->animations;

@@ -324,7 +324,7 @@ ONiTextureMaterialList_LevelLoad(
 			TMrInstance_GetDataPtr(
 				M3cTemplate_TextureMap,
 				materials_array[i].texture_name,
-				&texture);
+				(void **) &texture);
 		if (error == UUcError_None)
 		{
 			materials_array[i].texture = texture;
@@ -415,7 +415,7 @@ ONrTextureMaterialList_TextureMaterial_Set(
 		UUrString_Copy(texture_material->texture_name, inTextureName, ONcMaxNameLength);
 
 		texture_material->texture = NULL;
-		TMrInstance_GetDataPtr(M3cTemplate_TextureMap, texture_material->texture_name, &texture_material->texture);
+		TMrInstance_GetDataPtr(M3cTemplate_TextureMap, texture_material->texture_name, (void **) &texture_material->texture);
 		if (texture_material->texture != NULL) {
 			M3rTextureMap_SetMaterialType(texture_material->texture, texture_material->type);
 		}
@@ -474,7 +474,7 @@ void ONrTextureMaterials_LevelLoad(void)
 		ONtTextureMaterial *material = materials_array + i;
 
 		material->texture = NULL;
-		TMrInstance_GetDataPtr(M3cTemplate_TextureMap, material->texture_name, &material->texture);
+		TMrInstance_GetDataPtr(M3cTemplate_TextureMap, material->texture_name, (void **) &material->texture);
 
 		if (material->texture != NULL) {
 			M3rTextureMap_SetMaterialType(material->texture, material->type);

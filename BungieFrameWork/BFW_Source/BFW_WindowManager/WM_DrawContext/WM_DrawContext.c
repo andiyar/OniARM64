@@ -1105,7 +1105,7 @@ DCrText_Initialize(
 		TMrInstance_GetDataPtr(
 			TScTemplate_FontFamily,
 			TScFontFamily_Default,
-			&font_family);
+			(void **) &font_family);
 	UUmError_ReturnOnErrorMsg(error, "Unable to load font family");
 
 	// create a new text context

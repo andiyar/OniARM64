@@ -616,7 +616,7 @@ WMrMenuBar_Create(
 		TMrInstance_GetDataPtr(
 			WMcTemplate_MenuBarData,
 			inMenuBarName,
-			&menubar_data);
+			(void **) &menubar_data);
 	if (error != UUcError_None) { return NULL; }
 
 	// set the flags

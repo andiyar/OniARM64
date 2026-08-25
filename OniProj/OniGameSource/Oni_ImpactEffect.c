@@ -2288,7 +2288,7 @@ UUtError ONrIEBinaryData_Process(void)
 #else
 	// 64-bit: bridge per-record from the 32-bit on-disk layout.
 	error = ONiIEParticle_ConvertArrayFromDisk(&ONgImpactEffect_DynamicParticleArray, ONgNumImpactParticles,
-												(UUtUns8 *) buffer, &ONgImpactParticles);
+												(UUtUns8 *) buffer, (ONtIEParticle **) &ONgImpactParticles);
 	if (error != UUcError_None) {
 		UUrDebuggerMessage("Impact Effect Load: error converting particles from on-disk layout!\n");
 		goto cleanup;
@@ -2314,7 +2314,7 @@ UUtError ONrIEBinaryData_Process(void)
 #else
 		// 64-bit: bridge per-record from the 32-bit on-disk layout.
 		error = ONiIESound_ConvertArrayFromDisk(&ONgImpactEffect_DynamicSoundArray, ONgNumImpactSounds,
-												(UUtUns8 *) buffer, &ONgImpactSounds);
+												(UUtUns8 *) buffer, (ONtIESound **) &ONgImpactSounds);
 		if (error != UUcError_None) {
 			UUrDebuggerMessage("Impact Effect Load: error converting sounds from on-disk layout!\n");
 			goto cleanup;

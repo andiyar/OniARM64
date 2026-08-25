@@ -100,7 +100,7 @@ OBJiWeapon_Enumerate(
 			WPcTemplate_WeaponClass,
 			128,
 			&num_weapon_classes,
-			weapon_class_list);
+			(void **) weapon_class_list);
 	UUmError_ReturnOnError(error);
 
 	for (i = 0; i < num_weapon_classes; i++)
@@ -304,7 +304,7 @@ OBJiWeapon_SetOSD(
 		TMrInstance_GetDataPtr(
 			WPcTemplate_WeaponClass,
 			weapon_osd->weapon_class_name,
-			&weapon_osd->weapon_class);
+			(void **) &weapon_osd->weapon_class);
 	UUmError_ReturnOnError(error);
 
 	return UUcError_None;

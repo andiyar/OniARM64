@@ -2368,7 +2368,7 @@ WPiCreateWeapon_Callback(
 		TMrInstance_GetDataPtr(
 			WPcTemplate_WeaponClass,
 			weapon_osd->weapon_class_name,
-			&weapon_class);
+			(void **) &weapon_class);
 	if (error == UUcError_None)
 	{
 		WPtWeapon				*weapon;
@@ -3980,8 +3980,8 @@ WPrPowerup_SetType(
 
 	ioPowerup->glow_size[0] = ONgGameSettings->powerup_glowsize[inPowerupType][0];
 	ioPowerup->glow_size[1] = ONgGameSettings->powerup_glowsize[inPowerupType][1];
-	TMrInstance_GetDataPtr(M3cTemplate_Geometry,	ONgGameSettings->powerup_geom[inPowerupType], &ioPowerup->geometry);
-	TMrInstance_GetDataPtr(M3cTemplate_TextureMap,	ONgGameSettings->powerup_glow[inPowerupType], &ioPowerup->glow_texture);
+	TMrInstance_GetDataPtr(M3cTemplate_Geometry,	ONgGameSettings->powerup_geom[inPowerupType], (void **) &ioPowerup->geometry);
+	TMrInstance_GetDataPtr(M3cTemplate_TextureMap,	ONgGameSettings->powerup_glow[inPowerupType], (void **) &ioPowerup->glow_texture);
 	return UUcError_None;
 }
 

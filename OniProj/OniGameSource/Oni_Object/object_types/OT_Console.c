@@ -417,12 +417,12 @@ static UUtError OBJiConsole_SetOSD( OBJtObject *inObject, const OBJtOSD_All *inO
 	ONrEventList_Copy( &((OBJtOSD_All*)inOSD)->osd.console_osd.event_list, &console_osd->event_list );
 
 	// get a pointer to the console template
-	error = TMrInstance_GetDataPtr( OBJcTemplate_ConsoleClass, inOSD->osd.console_osd.console_class_name, &console );
+	error = TMrInstance_GetDataPtr( OBJcTemplate_ConsoleClass, inOSD->osd.console_osd.console_class_name, (void **) &console );
 	if( error != UUcError_None )
 	{
 		COrConsole_Printf("failed to find console class %s", inOSD->osd.console_osd.console_class_name);
 
-		error = TMrInstance_GetDataPtr_ByNumber(OBJcTemplate_ConsoleClass, 0, &console);
+		error = TMrInstance_GetDataPtr_ByNumber(OBJcTemplate_ConsoleClass, 0, (void **) &console);
 
 		UUmError_ReturnOnErrorMsg(error, "failed to find any console class");
 

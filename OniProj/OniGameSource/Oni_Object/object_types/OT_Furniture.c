@@ -658,7 +658,7 @@ OBJiFurniture_SetOSD(
 		TMrInstance_GetDataPtr(
 			OBJcTemplate_FurnGeomArray,
 			furn_geom_name,
-			&furn_geom_array);
+			(void **) &furn_geom_array);
 	if (error != UUcError_None) {
 		UUrDebuggerMessage("failed to locate instance %s\n", furn_geom_name, 0, 0);
 		return error;

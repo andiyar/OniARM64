@@ -361,7 +361,7 @@ OCiCinematic_Draw(
 		TMrInstance_GetDataPtr(
 			PScTemplate_PartSpecification,
 			"cinematic_border",
-			&OCgBorder);
+			(void **) &OCgBorder);
 	}
 
 	PSrPartSpec_Draw(
@@ -436,7 +436,7 @@ OCrCinematic_Start(
 	}
 
 	// find the texture
-	error =	TMrInstance_GetDataPtr(M3cTemplate_TextureMap, inTextureName, &texture);
+	error =	TMrInstance_GetDataPtr(M3cTemplate_TextureMap, inTextureName, (void **) &texture);
 	if (error != UUcError_None) { return; }
 
 	if (inDrawWidth == -1) { inDrawWidth = texture->width; }
@@ -517,7 +517,7 @@ OCrCinematic_Stop(
 	if (cinematics == NULL) { return; }
 
 	// find the texture
-	error =	TMrInstance_GetDataPtr(M3cTemplate_TextureMap, inTextureName, &texture);
+	error =	TMrInstance_GetDataPtr(M3cTemplate_TextureMap, inTextureName, (void **) &texture);
 	if (error != UUcError_None) { return; }
 
 	// find the cinematic in the list

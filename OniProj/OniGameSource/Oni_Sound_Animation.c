@@ -687,7 +687,7 @@ OSrVariant_SoundAnimation_Add(
 	{
 		UUmAssert(inAnimationName);
 
-		error = TMrInstance_GetDataPtr(TRcTemplate_Animation, inAnimationName, &animation);
+		error = TMrInstance_GetDataPtr(TRcTemplate_Animation, inAnimationName, (void **) &animation);
 		if (error != UUcError_None) { animation = NULL; }
 		anim_name = inAnimationName;
 	}
@@ -1321,7 +1321,7 @@ OSrVariantList_Initialize(
 		TMrInstance_GetDataPtr(
 			ONcTemplate_VariantList,
 			"variant_list",
-			&variant_list);
+			(void **) &variant_list);
 	UUmError_ReturnOnError(error);
 
 	// make sure all of the variants except "Any" have a parent
@@ -1398,7 +1398,7 @@ OSrVariantList_LevelLoad(
 				TMrInstance_GetDataPtr(
 					TRcTemplate_Animation,
 					sound_array[j].anim_name,
-					&animation);
+					(void **) &animation);
 			if (error != UUcError_None) { continue; }
 
 			sound_array[j].animation = animation;
