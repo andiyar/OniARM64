@@ -35,6 +35,7 @@
 #include "BFW_Particle3.h"			/* P3gClassTable, P3rGetParticleClass, P3rSendEvent */
 #include "BFW_EnvParticle.h"		/* EPrEnumerateAllParticles, EPrNewParticle */
 #include "BFW_ScriptLang.h"			/* SLrScript_ExecuteOnce */
+#include "WM_Dialog.h"				/* WMrDialog_SetModalTap — see the modal tap */
 #include "ONi_BundlePath.h"			/* ONiBundlePath_ResolveStateFile — see the script phase */
 
 /*
@@ -229,6 +230,40 @@ static UUtBool ONiSweep_WarningTap(const char *inMessage)
 	return UUcTrue;
 }
 
+// === modal tap ========================================================
+
+/*
+	Registered with the window manager for the lifetime of the sweep. A modal
+	dialog — text_console diary pages, the win and lose screens — spins its own
+	frame loop until somebody dismisses it, so an unattended run reaching one
+	never comes back. Returning UUcTrue records it and skips the dialog.
+
+	The id goes into the message because the baseline keys off the recorded
+	text: two different dialogs have to be two different findings, or a newly
+	reached one hides behind an already-known one.
+*/
+static UUtBool ONiSweep_ModalTap(WMtDialogID inDialogID)
+{
+	char		message[ONcSweep_SubjectSize];
+
+	if (!ONgSweep_Active) {
+		return UUcFalse;
+	}
+
+	if (ONgSweep_InTap) {
+		/* Consume it anyway: still better than a dialog, and it cannot recurse. */
+		return UUcTrue;
+	}
+
+	ONgSweep_InTap = UUcTrue;
+	snprintf(message, sizeof(message), "modal dialog suppressed (id %u)",
+		(unsigned) inDialogID);
+	ONrSweep_Record(NULL, NULL, ONcSweepSeverity_Warn, message);
+	ONgSweep_InTap = UUcFalse;
+
+	return UUcTrue;
+}
+
 // === console tap ======================================================
 
 #if THE_DAY_IS_MINE || defined(ONI_SWEEP_CONSOLE)
@@ -371,6 +406,7 @@ UUtError ONrSweep_Begin(const char *inOutputPath, const char *inRenderer, UUtUns
 
 	/* Registered last: until this point a warning takes the stock path. */
 	UUrError_SetWarningTap(ONiSweep_WarningTap);
+	WMrDialog_SetModalTap(ONiSweep_ModalTap);
 #if THE_DAY_IS_MINE || defined(ONI_SWEEP_CONSOLE)
 	COrConsole_SetTap(ONiSweep_ConsoleTap);
 #endif
@@ -392,6 +428,7 @@ void ONrSweep_End(void)
 	/* Unregistered first, so nothing raised during teardown reaches a file
 	   that is about to close. */
 	UUrError_SetWarningTap(NULL);
+	WMrDialog_SetModalTap(NULL);
 #if THE_DAY_IS_MINE || defined(ONI_SWEEP_CONSOLE)
 	COrConsole_SetTap(NULL);
 #endif

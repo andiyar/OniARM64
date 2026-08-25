@@ -78,6 +78,7 @@ typedef struct WMtGetString_Private
 // ======================================================================
 static WMtMessageBox_Init	WMgMessageBox_Init;
 static WMtDialog_ModalDrawCallback WMgModalDrawCallback = NULL;
+static WMtDialogModalTap	WMgModalTap = NULL;
 // ======================================================================
 // functions
 // ======================================================================
@@ -964,6 +965,19 @@ WMrDialog_ModalBegin(
 	WMtDialog				*dialog;
 	WMtDialog_PrivateData	*private_data;
 
+	// the sweep harness (#103) registers a tap here: a modal dialog in an
+	// unattended run would spin its event loop forever, so the tap records it
+	// and the dialog is skipped
+	if ((WMgModalTap != NULL) && (WMgModalTap(inDialogID)))
+	{
+		if (outMessage)
+		{
+			*outMessage = 0;
+		}
+
+		return UUcError_Generic;
+	}
+
 	// load the dialog
 	error =
 		WMrDialog_Create(
@@ -1175,6 +1189,14 @@ WMrDialog_RegisterTemplates(
 void WMrDialog_SetDrawCallback(WMtDialog_ModalDrawCallback inModalDrawCallback)
 {
 	WMgModalDrawCallback = inModalDrawCallback;
+
+	return;
+}
+
+// ----------------------------------------------------------------------
+void WMrDialog_SetModalTap(WMtDialogModalTap inTap)
+{
+	WMgModalTap = inTap;
 
 	return;
 }

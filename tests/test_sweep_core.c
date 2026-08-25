@@ -2,7 +2,7 @@
 // test_sweep_core.c
 //
 // Lifecycle tests for the sweep core. Links the real Oni_Sweep.c — that
-// translation unit has only seven non-libc externals, all stubbed below — so
+// translation unit has only eight non-libc externals, all stubbed below — so
 // these assertions are about the shipped code, not a transcription of it.
 //
 // The behaviours worth guarding:
@@ -23,6 +23,7 @@
 #include "Oni_GameState.h"
 #include "Oni_GameStatePrivate.h"
 #include "BFW_Console.h"
+#include "WM_Dialog.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -57,6 +58,14 @@ void UUrError_SetWarningTap(UUtWarningTap inTap)
 	g_registered_tap = inTap;
 }
 
+static WMtDialogModalTap	g_registered_modal_tap = NULL;
+static WMtDialogModalTap	g_modal_tap_saved = NULL;
+
+void WMrDialog_SetModalTap(WMtDialogModalTap inTap)
+{
+	g_registered_modal_tap = inTap;
+}
+
 #ifdef ONI_SWEEP_CONSOLE
 static COtConsoleTap	g_registered_console_tap = NULL;
 static COtConsoleTap	g_console_tap_saved = NULL;
@@ -75,8 +84,14 @@ void COrConsole_SetTap(COtConsoleTap inTap)
 	g_reenter_once makes a console line arrive from inside the writer — the one
 	shape ONgSweep_InTap exists to survive, and otherwise unreachable from a
 	test. In the shipping configuration the wrapper is a plain pass-through.
+
+	g_reenter_modal_once does the same for the modal tap, and is not tied to
+	ONI_SWEEP_CONSOLE: the modal tap is compiled into both configurations, so a
+	dialog raised from inside the writer is reachable in both.
 */
 static UUtBool g_reenter_once = UUcFalse;
+static UUtBool g_reenter_modal_once = UUcFalse;
+static UUtBool g_reenter_modal_result = UUcFalse;
 
 void ONrSweep_Report_FormatLine_real(
 	char *outLine, size_t inLineSize, const char *inRenderer, int inLevel,
@@ -95,6 +110,13 @@ void ONrSweep_Report_FormatLine(
 			g_registered_console_tap("re-entrant console line");
 		}
 #endif
+	}
+
+	if (g_reenter_modal_once) {
+		g_reenter_modal_once = UUcFalse;
+		if (g_registered_modal_tap != NULL) {
+			g_reenter_modal_result = g_registered_modal_tap(4321);
+		}
 	}
 
 	ONrSweep_Report_FormatLine_real(outLine, inLineSize, inRenderer, inLevel,
@@ -247,6 +269,7 @@ int main(void)
 
 	/* 1. Before Begin: inert. Nothing recorded, nothing created, no crash. */
 	check_true("pre-begin: not active", ONgSweep_Active == UUcFalse);
+	check_true("pre-begin: modal tap not registered", g_registered_modal_tap == NULL);
 	ONrSweep_Record("p", "s", ONcSweepSeverity_Error, "before begin");
 	ONrSweep_SetContext("phase", "subject");
 	ONrSweep_Record(NULL, NULL, ONcSweepSeverity_Warn, "still before begin");
@@ -257,6 +280,7 @@ int main(void)
 	check_true("begin: succeeded", error == UUcError_None);
 	check_true("begin: active", ONgSweep_Active == UUcTrue);
 	check_true("begin: warning tap registered", g_registered_tap != NULL);
+	check_true("begin: modal tap registered", g_registered_modal_tap != NULL);
 #ifdef ONI_SWEEP_CONSOLE
 	check_true("begin: console tap registered", g_registered_console_tap != NULL);
 #endif
@@ -312,6 +336,38 @@ int main(void)
 	expect++;
 	check_true("warning tap: recorded", count_lines(g_report_path) == expect);
 	check_true("warning tap: text present", file_contains(g_report_path, "a tapped warning"));
+
+	/* 6a. The modal tap consumes the dialog rather than letting
+	   WMrDialog_ModalBegin run its frame loop, and each one becomes a record
+	   carrying the dialog id — different dialogs have to be different findings. */
+	check_true("modal tap: consumes", g_registered_modal_tap(1234) == UUcTrue);
+	expect++;
+	check_true("modal tap: recorded", count_lines(g_report_path) == expect);
+	check_true("modal tap: id present",
+		file_contains(g_report_path, "modal dialog suppressed (id 1234)"));
+
+	/* 6a-ii. Re-entrancy: a dialog raised from inside the writer is consumed
+	   without a second record, rather than recursing into it. */
+	{
+		int before = count_lines(g_report_path);
+
+		g_reenter_modal_result = UUcFalse;
+		g_reenter_modal_once = UUcTrue;
+		g_registered_tap("outer warning that raises a dialog from inside the writer");
+		g_reenter_modal_once = UUcFalse;
+
+		check_true("modal reentrancy: nested dialog still consumed",
+			g_reenter_modal_result == UUcTrue);
+		check_true("modal reentrancy: exactly one record, nested one dropped",
+			count_lines(g_report_path) == before + 1);
+		check_true("modal reentrancy: nested id absent",
+			!file_contains(g_report_path, "(id 4321)"));
+		expect = before + 1;
+	}
+
+	/* Keep a copy: after End the window manager holds NULL, but the function is
+	   still there and a dialog raised during teardown would still reach it. */
+	g_modal_tap_saved = g_registered_modal_tap;
 
 #ifdef ONI_SWEEP_CONSOLE
 	/* 6b. The console tap records too, and returns nothing — there is no
@@ -462,6 +518,7 @@ int main(void)
 	/* 10. End unregisters both taps and clears the flag. */
 	ONrSweep_End();
 	check_true("end: warning tap unregistered", g_registered_tap == NULL);
+	check_true("end: modal tap unregistered", g_registered_modal_tap == NULL);
 #ifdef ONI_SWEEP_CONSOLE
 	check_true("end: console tap unregistered", g_registered_console_tap == NULL);
 #endif
@@ -473,6 +530,14 @@ int main(void)
 	ONrSweep_Record(NULL, NULL, ONcSweepSeverity_Error, "also after end");
 	check_true("post-end: nothing appended", count_lines(g_report_path) == expect);
 	check_true("post-end: no late text", !file_contains(g_report_path, "after end"));
+
+	/* 11a. A dialog raised after End declines rather than consuming. Nothing is
+	   watching the report any more, and a suppressed dialog with nowhere to be
+	   recorded is a dialog that vanished without trace. */
+	check_true("post-end: late dialog declined", g_modal_tap_saved(99) == UUcFalse);
+	check_true("post-end: late dialog not recorded", count_lines(g_report_path) == expect);
+	check_true("post-end: no late dialog text",
+		!file_contains(g_report_path, "(id 99)"));
 
 #ifdef ONI_SWEEP_CONSOLE
 	/* 11b. The tap function itself survives being called after End. BFW holds
@@ -493,6 +558,7 @@ int main(void)
 		ONrSweep_Begin("/nonexistent-dir-for-sweep-test/report.ndjson", "gl", 1) != UUcError_None);
 	check_true("begin bad path: not active", ONgSweep_Active == UUcFalse);
 	check_true("begin bad path: tap not registered", g_registered_tap == NULL);
+	check_true("begin bad path: modal tap not registered", g_registered_modal_tap == NULL);
 	ONrSweep_Record(NULL, NULL, ONcSweepSeverity_Error, "after failed begin");
 	check_true("begin bad path: record inert", count_lines(g_report_path) == expect);
 

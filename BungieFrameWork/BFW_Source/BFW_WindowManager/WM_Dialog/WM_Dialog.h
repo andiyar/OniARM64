@@ -164,6 +164,13 @@ WMrDialog_ModalBegin(
 	uintptr_t				inUserData,
 	uintptr_t				*outMessage);
 
+/* #109 — returning UUcTrue makes WMrDialog_ModalBegin skip the dialog
+   entirely and hand back UUcError_Generic with *outMessage zeroed. Only the
+   sweep harness registers one; with no tap the modal path is unchanged. */
+typedef UUtBool (*WMtDialogModalTap)(WMtDialogID inDialogID);
+
+void WMrDialog_SetModalTap(WMtDialogModalTap inTap);
+
 void
 WMrDialog_ModalEnd(
 	WMtDialog				*inDialog,

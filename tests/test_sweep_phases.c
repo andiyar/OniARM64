@@ -43,6 +43,7 @@
 #include "BFW_Console.h"
 #include "BFW_Particle3.h"
 #include "BFW_EnvParticle.h"
+#include "WM_Dialog.h"
 
 #include "test_sweep_engine_stubs.h"
 
@@ -67,6 +68,11 @@ static void check_true(const char *label, int cond)
 // --- stubs for the sweep core's own externals -------------------------
 
 void UUrError_SetWarningTap(UUtWarningTap inTap)
+{
+	(void) inTap;
+}
+
+void WMrDialog_SetModalTap(WMtDialogModalTap inTap)
 {
 	(void) inTap;
 }
