@@ -1725,16 +1725,18 @@ static void OBJrDoor_Close( OBJtObject *inObject )
 		door_osd->state	= OBJcDoorState_Closed;
 
 		if (door_osd->flags & OBJcDoorFlag_Busy) {
-			// we are closing a door that was in the process of opening
-			UUmAssert(door_osd->internal_door_object[0] != NULL);
-			anim_context = &door_osd->internal_door_object[0]->physics->animContext;
+			// we are closing a door that was in the process of opening. a busy door has no internal
+			// objects if it has none defined, or if the object pool was full when they were created
+			if (door_osd->internal_door_object[0] != NULL) {
+				anim_context = &door_osd->internal_door_object[0]->physics->animContext;
 
-			anim_context->animationFrame = anim->doorOpenFrames + (anim->doorOpenFrames - anim_context->animationFrame);
-			if (door_osd->internal_door_object[1] != NULL) {
-				door_osd->internal_door_object[1]->physics->animContext.animationFrame = anim_context->animationFrame;
+				anim_context->animationFrame = anim->doorOpenFrames + (anim->doorOpenFrames - anim_context->animationFrame);
+				if (door_osd->internal_door_object[1] != NULL) {
+					door_osd->internal_door_object[1]->physics->animContext.animationFrame = anim_context->animationFrame;
+				}
+
+				already_closed = (anim_context->animationFrame == anim->numFrames);
 			}
-
-			already_closed = (anim_context->animationFrame == anim->numFrames);
 		}
 
 		if (!already_closed) {
@@ -1876,16 +1878,18 @@ void OBJrDoor_Open( OBJtObject *inObject, ONtCharacter *inCharacter )
 	if( door_osd->state != OBJcDoorState_Open )
 	{
 		if (door_osd->flags & OBJcDoorFlag_Busy) {
-			// we are opening a door that was in the process of closing
-			UUmAssert(door_osd->internal_door_object[0] != NULL);
-			anim_context = &door_osd->internal_door_object[0]->physics->animContext;
+			// we are opening a door that was in the process of closing. a busy door has no internal
+			// objects if it has none defined, or if the object pool was full when they were created
+			if (door_osd->internal_door_object[0] != NULL) {
+				anim_context = &door_osd->internal_door_object[0]->physics->animContext;
 
-			anim_context->animationFrame = anim->numFrames - anim_context->animationFrame;
-			if (door_osd->internal_door_object[1] != NULL) {
-				door_osd->internal_door_object[1]->physics->animContext.animationFrame = anim_context->animationFrame;
+				anim_context->animationFrame = anim->numFrames - anim_context->animationFrame;
+				if (door_osd->internal_door_object[1] != NULL) {
+					door_osd->internal_door_object[1]->physics->animContext.animationFrame = anim_context->animationFrame;
+				}
+
+				already_open = (anim_context->animationFrame == anim->doorOpenFrames);
 			}
-
-			already_open = (anim_context->animationFrame == anim->doorOpenFrames);
 		} else {
 			CreateDoorObjects(inObject);
 		}
@@ -2576,10 +2580,14 @@ static void CreateDoorObjects(OBJtObject *inDoor)
 		door_osd->internal_door_object_setup[0]->flags = OBcFlags_InUse | OBcFlags_FaceCollision;
 		object = OBrList_Add(ONgGameState->objects);
 
-		OBrInit(object, door_osd->internal_door_object_setup[0]);
-
-		object->flags |= OBcFlags_FlatLighting;
-		object->flat_lighting_shade = door_osd->shade;
+		if ((NULL == object) || (UUcError_None != OBrInit(object, door_osd->internal_door_object_setup[0]))) {
+			COrConsole_Printf("door: object pool full, door piece dropped");
+			object = NULL;
+		}
+		else {
+			object->flags |= OBcFlags_FlatLighting;
+			object->flat_lighting_shade = door_osd->shade;
+		}
 
 		door_osd->internal_door_object[0] = object;
 	}
@@ -2588,10 +2596,14 @@ static void CreateDoorObjects(OBJtObject *inDoor)
 		door_osd->internal_door_object_setup[1]->flags = OBcFlags_InUse | OBcFlags_FaceCollision;
 		object = OBrList_Add(ONgGameState->objects);
 
-		OBrInit(object, door_osd->internal_door_object_setup[1]);
-
-		object->flags |= OBcFlags_FlatLighting;
-		object->flat_lighting_shade = door_osd->shade;
+		if ((NULL == object) || (UUcError_None != OBrInit(object, door_osd->internal_door_object_setup[1]))) {
+			COrConsole_Printf("door: object pool full, door piece dropped");
+			object = NULL;
+		}
+		else {
+			object->flags |= OBcFlags_FlatLighting;
+			object->flat_lighting_shade = door_osd->shade;
+		}
 
 		door_osd->internal_door_object[1] = object;
 	}
@@ -2610,9 +2622,13 @@ static void CreateDoorObjects(OBJtObject *inDoor)
 	if (door_osd->internal_door_object[1]) {
 		door_osd->internal_door_object[1]->flags |= (OBcFlags_IsDoor | OBcFlags_NotifyCollision);
 		door_osd->internal_door_object[1]->owner = inDoor;
-		door_osd->internal_door_object[1]->physics->master							= door_osd->internal_door_object[0]->physics;
 		door_osd->internal_door_object[1]->physics->animContext.animationFrame		= 0;
-		door_osd->internal_door_object[1]->physics->animContext.animContextFlags		|= OBcAnimContextFlags_Slave;
+
+		if (door_osd->internal_door_object[0]) {
+			// PHrPhysics_Update derefs master unconditionally for a slave, so the pair must be set together
+			door_osd->internal_door_object[1]->physics->master						= door_osd->internal_door_object[0]->physics;
+			door_osd->internal_door_object[1]->physics->animContext.animContextFlags	|= OBcAnimContextFlags_Slave;
+		}
 
 		if(!( door_osd->flags & OBJcDoorFlag_Mirror )) {
 			door_osd->internal_door_object[1]->physics->animContext.animContextFlags	|= OBcAnimContextFlags_RotateY180;

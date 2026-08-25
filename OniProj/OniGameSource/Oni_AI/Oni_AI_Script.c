@@ -680,7 +680,16 @@ AIiScript_ObjCreate(
 			if (!(setup->flags & OBcFlags_InUse)) continue;
 
 			object = OBrList_Add(ONgGameState->objects);
-			OBrInit(object,setup);
+
+			if (NULL == object) {
+				COrConsole_Printf("obj_create: object list full, remaining objects skipped");
+				break;
+			}
+
+			if (UUcError_None != OBrInit(object, setup)) {
+				COrConsole_Printf("obj_create: object init failed, remaining objects skipped");
+				break;
+			}
 		}
 	}
 

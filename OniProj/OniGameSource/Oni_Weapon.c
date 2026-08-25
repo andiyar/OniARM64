@@ -3207,6 +3207,12 @@ static void WPrPowerup_AddPhysics(
 
 	// create physics context
 	physics = inPowerup->physics = PHrPhysicsContext_Add();
+
+	if (NULL == physics) {
+		COrConsole_Printf("failed to allocate physics for powerup");
+		return;
+	}
+
 	PHrPhysics_Init(physics);
 	OBrAnim_Reset(&physics->animContext);
 	physics->level = PHcPhysics_Linear;
@@ -3284,7 +3290,13 @@ WPtPowerup *WPrPowerup_Drop(
 	}
 
 	WPrPowerup_AddPhysics(powerup);
-	UUmAssertReadPtr(powerup->physics, sizeof(PHtPhysicsContext));
+
+	if (NULL == powerup->physics) {
+		// without a physics context the powerup can't move, so it must not be marked as moving
+		// or it will never fade out
+		return powerup;
+	}
+
 	powerup->flags |= WPcPowerupFlag_Moving;
 
 	// add a small random velocity offset

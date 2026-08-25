@@ -788,6 +788,11 @@ UUtError OBrInit(
 	M3tBoundingVolume *bounding_volume_memory = NULL;
 	UUtError error;
 
+	if (NULL == ioObject) {
+		COrConsole_Printf("OBrInit: no free object slot, object dropped");
+		return UUcError_Generic;
+	}
+
 	UUmAssertWritePtr(ioObject, sizeof(OBtObject));
 	UUrMemory_Clear(ioObject, sizeof(OBtObject));
 
@@ -805,6 +810,13 @@ UUtError OBrInit(
 	ioObject->pausing_context = NULL;
 
 	ioObject->physics = PHrPhysicsContext_Add();
+
+	if (NULL == ioObject->physics) {
+		// ioObject was cleared above, so its flags are not OBcFlags_InUse and the slot stays free
+		COrConsole_Printf("OBrInit: physics context pool full, object dropped");
+		return UUcError_Generic;
+	}
+
 	physics = ioObject->physics;
 	PHrPhysics_Init(physics);
 	OBrAnim_Reset(&physics->animContext);
