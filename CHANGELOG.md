@@ -11,6 +11,11 @@ GitHub release notes and gets stamped with the version + date.
 ## Unreleased (since 1.3.0r5, 2026-07-17)
 
 ### Mod safety
+- Running out of engine object or physics slots no longer crashes the game.
+  Mass-kill scripts and big `obj_create` ranges could exhaust the fixed pools
+  Oni allocates from; the engine now logs a warning and degrades (a dropped
+  item lies still instead of arcing away, extra objects are skipped) instead
+  of dereferencing NULL (#107, #108). Stock play doesn't hit these limits.
 - Hardened the script interpreter and pause screen against out-of-spec
   community content: scripts nested deeper than the engine's limits, functions
   with too many parameters, and data sets with extra help pages or no diary
