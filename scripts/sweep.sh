@@ -144,6 +144,15 @@ run_cell() {
 	mkdir -p "$sandbox"
 	: > "$sandbox/persist.dat"
 
+	# Re-fire the display wake per cell: the single run-start wake proved
+	# unreliable on 2026-08-25 (display slept before the run; every GL cell
+	# watchdogged in the load phase while Metal passed untouched). The -di
+	# hold below only PREVENTS sleep, it does not undo sleep that already
+	# happened, and -u is cheap.
+	if [ "$renderer" = "gl" ] && command -v caffeinate >/dev/null 2>&1; then
+		caffeinate -u -t 2 2>/dev/null
+	fi
+
 	cell_start=$(date +%s)
 
 	# ONI_RENDERER is force-cleared: the engine honours it when no renderer
