@@ -959,6 +959,19 @@ UUtError AI2rInitializeCharacter(ONtCharacter *ioCharacter, const OBJtOSD_Charac
 // ------------------------------------------------------------------------------------
 // -- high-level job manager
 
+/* Gate the [ALERT-DBG] tracers (see Oni_AI2_Targeting.c for rationale).
+   Set ONI_AI_TRACE=1 to re-enable. */
+static UUtBool oniAiTraceEnabled(void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_AI_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
 // the character needs to enter its current state
 void AI2rEnterState(ONtCharacter *ioCharacter)
 {
@@ -995,7 +1008,11 @@ void AI2rEnterState(ONtCharacter *ioCharacter)
 		break;
 
 		case AI2cGoal_Combat:
-			UUrStartupMessage("[ALERT-DBG] EnterState dispatching Combat for %s", ioCharacter->player_name);
+			// issue #92 — was the one [ALERT-DBG] tracer outside the
+			// ONI_AI_TRACE gate; it now joins its Oni_AI2_Alert.c siblings.
+			if (oniAiTraceEnabled()) {
+				UUrStartupMessage("[ALERT-DBG] EnterState dispatching Combat for %s", ioCharacter->player_name);
+			}
 			AI2rCombat_Enter(ioCharacter);
 		break;
 

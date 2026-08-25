@@ -2712,14 +2712,16 @@ static void TRrAnimation_Prepare(TRtAnimation *animation)
 	animation->flags |= (1 << TRcAnimFlag_Prepared);
 
 	{
+		// issue #92 — port-added prep tracer. Gated with the rest of the verbose
+		// families, and moved off stderr onto startup.txt where the other
+		// diagnostics land.
 		static int prep_diag = 0;
-		if (prep_diag < 30) {
+		if (UUrDiagVerbose() && prep_diag < 30) {
 			const char *resolved_snd = TRrAnimation_GetSoundName(animation);
-			fprintf(stderr, "ANIM_PREP: %s sndName=%s sndFrame=%d type=%d\n",
+			UUrStartupMessage("[ANIM_PREP] %s sndName=%s sndFrame=%d type=%d",
 				animation->instanceName ? animation->instanceName : "?",
 				resolved_snd ? resolved_snd : "(none)",
 				animation->soundFrame, animation->type);
-			fflush(stderr);
 			prep_diag++;
 		}
 	}

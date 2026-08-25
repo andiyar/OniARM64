@@ -332,7 +332,9 @@ static UUtError metal_frame_end(UUtUns32 *out_texture_bytes_downloaded)
 		if (gMetalDrawable) {
 			[gMetalCmd presentDrawable:gMetalDrawable];
 			gDiagPresents++;
-			if (gDiagPresents == 1 || (gDiagPresents % 300) == 0) {
+			// issue #92 — the 1-in-300 heartbeat is gated; the one-shot first-frame
+			// marker stays, matching metal_draw.mm's [Metal] env-draw counter.
+			if (gDiagPresents == 1 || (UUrDiagVerbose() && (gDiagPresents % 300) == 0)) {
 				UUrStartupMessage("[Metal] presented frame %u (%u verts)",
 					gDiagPresents, gMetalRingCursor);
 			}

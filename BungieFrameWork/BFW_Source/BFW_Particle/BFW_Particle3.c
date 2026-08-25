@@ -2314,8 +2314,10 @@ void P3rDisposeParticle(P3tParticleClass *inClass, P3tParticle *inParticle)
 #endif
 		UUmAssert(inParticle->header.current_sound != SScInvalidID);
 		/* [DAODAN-DBG] Filter for super-* class to track which Daodan particles
-		   reach the dispose path (issue #2). */
-		if (UUrString_CompareLen_NoCase(inClass->classname, "super", 5) == 0) {
+		   reach the dispose path (issue #2). Issue #92 — the classname compare
+		   is closed-hunt residue, so it sits behind the verbose gate too. */
+		if (UUrDiagVerbose() &&
+		    UUrString_CompareLen_NoCase(inClass->classname, "super", 5) == 0) {
 			UUrStartupMessage("[DAODAN-DBG] P3_Dispose: class='%s' particle=%p sound_id=%u",
 				inClass->classname, (void *)inParticle,
 				(UUtUns32)inParticle->header.current_sound);
@@ -14777,8 +14779,10 @@ static UUtBool P3iAmbientSound_Update(P3tParticleClass *inClass, P3tParticle *in
 		UUmAssert(inParticle->header.current_sound == SScInvalidID);
 		inParticle->header.current_sound = OSrAmbient_Start(inAmbientSound, &position, directionptr, velocityptr, NULL, NULL);
 		/* [DAODAN-DBG] Filter for ap_wiz (issue #2). Show every particle that
-		   starts this looping ambient — reveals which class is the actual source. */
-		if (inAmbientSound->ambient_name[0] != '\0' &&
+		   starts this looping ambient — reveals which class is the actual source.
+		   Issue #92 — the strstr is closed-hunt residue, gated with its log. */
+		if (UUrDiagVerbose() &&
+		    inAmbientSound->ambient_name[0] != '\0' &&
 		    strstr(inAmbientSound->ambient_name, "ap_wiz") != NULL) {
 			UUrStartupMessage("[DAODAN-DBG] P3_StartAmbient ap_wiz: class='%s' particle=%p sound_id=%u",
 				inClass->classname, (void *)inParticle,
@@ -14814,8 +14818,10 @@ UUtBool P3iAction_EndAmbientSound(P3tParticleClass *inClass, P3tParticle *inPart
 #if PARTICLE_DEBUG_SOUND
 		COrConsole_Printf("P3iAction_EndAmbientSound (%d) from 0x%08X", sound_id, inParticle->header.self_ref);
 #endif
-		/* [DAODAN-DBG] Filter for super-* class to track ap_wiz cleanup (issue #2). */
-		if (UUrString_CompareLen_NoCase(inClass->classname, "super", 5) == 0) {
+		/* [DAODAN-DBG] Filter for super-* class to track ap_wiz cleanup (issue #2).
+		   Issue #92 — the classname compare is closed-hunt residue, gated with its log. */
+		if (UUrDiagVerbose() &&
+		    UUrString_CompareLen_NoCase(inClass->classname, "super", 5) == 0) {
 			UUrStartupMessage("[DAODAN-DBG] P3_EndAmbient: class='%s' particle=%p sound_id=%u",
 				inClass->classname, (void *)inParticle, (UUtUns32)sound_id);
 		}

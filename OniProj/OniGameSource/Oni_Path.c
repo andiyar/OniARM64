@@ -1792,9 +1792,11 @@ void PHrPrepareRoomForPath(PHtNode *inNode, const PHtRoomData *inRoom)
 			UUmAssertReadPtr(inNode->static_grid, size);
 			UUmAssertReadPtr(inNode->dynamic_grid, size);
 
-			UUrStartupMessage("[PHrPrepRoomForPath] compressed_grid=%p size=%u gridX=%u gridY=%u",
-				(void*)inRoom->compressed_grid, (unsigned)inRoom->compressed_grid_size,
-				(unsigned)inRoom->gridX, (unsigned)inRoom->gridY);
+			if (UUrDiagVerbose()) {	// issue #92 — recurs under AI-heavy play
+				UUrStartupMessage("[PHrPrepRoomForPath] compressed_grid=%p size=%u gridX=%u gridY=%u",
+					(void*)inRoom->compressed_grid, (unsigned)inRoom->compressed_grid_size,
+					(unsigned)inRoom->gridX, (unsigned)inRoom->gridY);
+			}
 			PHrGrid_Decompress(inRoom->compressed_grid, inRoom->compressed_grid_size, inNode->static_grid);
 		}
 

@@ -215,7 +215,10 @@ M3rGeometry_Draw(
 		// (falls back to the white "NONE" texture) or is broken. Log every
 		// unique base texture drawn (deduped, name+dims+fmt+flags+env) so an
 		// airport/level-6 run names the exact white texture to fix.
-		if (inGeometryObject->baseMap != NULL)
+		// issue #92 — the dedup scan below is O(<=1024) per M3rGeometry_Draw call,
+		// so the verbose check comes first and the scan never runs when the family
+		// cannot log.
+		if (UUrDiagVerbose() && inGeometryObject->baseMap != NULL)
 		{
 			static const void *tex_diag_seen[1024];
 			static UUtUns32 tex_diag_count = 0;

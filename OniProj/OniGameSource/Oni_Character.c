@@ -3720,45 +3720,53 @@ static void ONiCharacter_SuperParticle_SendEvent(ONtCharacter *ioCharacter, ONtA
 	UUtUns32 itr;
 
 	// send an event to all the super particles
-	UUrStartupMessage("[DAODAN-DBG] SuperParticle_SendEvent inEvent=%u numSuperParticles=%u",
-		(UUtUns32)inEvent, ioActiveCharacter->numSuperParticles);
+	if (UUrDiagVerbose()) {	// issue #92 — 1+N lines per super on/off edge
+		UUrStartupMessage("[DAODAN-DBG] SuperParticle_SendEvent inEvent=%u numSuperParticles=%u",
+			(UUtUns32)inEvent, ioActiveCharacter->numSuperParticles);
+	}
 	for (itr = 0, particle = ioActiveCharacter->superParticles; itr < ioActiveCharacter->numSuperParticles; itr++, particle++) {
 		if ((particle->particle == NULL) || (particle->particle->header.self_ref != particle->particle_ref)) {
-			UUrStartupMessage("[DAODAN-DBG]   slot=%u SKIPPED: particle=%p ref_match=%d",
-				itr, (void*)particle->particle,
-				(particle->particle && particle->particle->header.self_ref == particle->particle_ref));
+			if (UUrDiagVerbose()) {	// issue #92
+				UUrStartupMessage("[DAODAN-DBG]   slot=%u SKIPPED: particle=%p ref_match=%d",
+					itr, (void*)particle->particle,
+					(particle->particle && particle->particle->header.self_ref == particle->particle_ref));
+			}
 			continue;
 		}
 
 		UUmAssert(particle->particle_def != NULL);
-		UUrStartupMessage("[DAODAN-DBG]   slot=%u particle=%p flags=0x%08x current_sound=%u",
-			itr, (void*)particle->particle,
-			(UUtUns32)particle->particle->header.flags,
-			(UUtUns32)particle->particle->header.current_sound);
-		/* Dump template shape on Stop event — investigating issue #2 (slot 0
-		   never toggles flags on Stop, hypothesis: empty eventlist[Stop] + active emitters). */
-		if (inEvent == P3cEvent_Stop) {
-			P3tParticleClass *cls = particle->particle_def->particle_class;
-			if (cls != NULL && cls->definition != NULL) {
-				UUtUns16 stop_actions = cls->definition->eventlist[P3cEvent_Stop].end_index -
-				                        cls->definition->eventlist[P3cEvent_Stop].start_index;
-				UUtUns32 em_idx;
-				UUrStartupMessage("[DAODAN-DBG]   slot=%u class='%s' stop_actions=%u num_emitters=%u",
-					itr, cls->classname,
-					(UUtUns32)stop_actions,
-					(UUtUns32)cls->definition->num_emitters);
-				for (em_idx = 0; em_idx < cls->definition->num_emitters; em_idx++) {
-					P3tParticleClass *emitted = cls->definition->emitter[em_idx].emittedclass;
-					UUrStartupMessage("[DAODAN-DBG]     slot=%u emitter[%u].emittedclass='%s'",
-						itr, em_idx, (emitted != NULL) ? emitted->classname : "(null)");
+		if (UUrDiagVerbose()) {	// issue #92
+			UUrStartupMessage("[DAODAN-DBG]   slot=%u particle=%p flags=0x%08x current_sound=%u",
+				itr, (void*)particle->particle,
+				(UUtUns32)particle->particle->header.flags,
+				(UUtUns32)particle->particle->header.current_sound);
+			/* Dump template shape on Stop event — investigating issue #2 (slot 0
+			   never toggles flags on Stop, hypothesis: empty eventlist[Stop] + active emitters). */
+			if (inEvent == P3cEvent_Stop) {
+				P3tParticleClass *cls = particle->particle_def->particle_class;
+				if (cls != NULL && cls->definition != NULL) {
+					UUtUns16 stop_actions = cls->definition->eventlist[P3cEvent_Stop].end_index -
+					                        cls->definition->eventlist[P3cEvent_Stop].start_index;
+					UUtUns32 em_idx;
+					UUrStartupMessage("[DAODAN-DBG]   slot=%u class='%s' stop_actions=%u num_emitters=%u",
+						itr, cls->classname,
+						(UUtUns32)stop_actions,
+						(UUtUns32)cls->definition->num_emitters);
+					for (em_idx = 0; em_idx < cls->definition->num_emitters; em_idx++) {
+						P3tParticleClass *emitted = cls->definition->emitter[em_idx].emittedclass;
+						UUrStartupMessage("[DAODAN-DBG]     slot=%u emitter[%u].emittedclass='%s'",
+							itr, em_idx, (emitted != NULL) ? emitted->classname : "(null)");
+					}
 				}
 			}
 		}
 		P3rSendEvent(particle->particle_def->particle_class, particle->particle, inEvent, current_time);
-		UUrStartupMessage("[DAODAN-DBG]   slot=%u after-send: flags=0x%08x current_sound=%u",
-			itr,
-			(UUtUns32)particle->particle->header.flags,
-			(UUtUns32)particle->particle->header.current_sound);
+		if (UUrDiagVerbose()) {	// issue #92
+			UUrStartupMessage("[DAODAN-DBG]   slot=%u after-send: flags=0x%08x current_sound=%u",
+				itr,
+				(UUtUns32)particle->particle->header.flags,
+				(UUtUns32)particle->particle->header.current_sound);
+		}
 	}
 
 	if (inEvent == P3cEvent_Start) {

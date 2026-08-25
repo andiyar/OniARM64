@@ -5369,7 +5369,9 @@ SSrAmbient_Start(
 
 	UUmAssert(inAmbient);
 
-	UUrStartupMessage("[SS2] SSrAmbient_Start name='%s' usable=%d pos=%p", inAmbient->ambient_name, SSgUsable, (void*)inPosition);
+	if (UUrDiagVerbose()) {	// issue #92 — one line per ambient start
+		UUrStartupMessage("[SS2] SSrAmbient_Start name='%s' usable=%d pos=%p", inAmbient->ambient_name, SSgUsable, (void*)inPosition);
+	}
 
 	if (SSgUsable == UUcFalse) { return SScInvalidID; }
 
@@ -5477,7 +5479,9 @@ SSrAmbient_Stop(
 	UUtBool						found = UUcFalse;  /* [SS2-STOP-DBG] issue #2 */
 
 	if (SSgUsable == UUcFalse) {
-		UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u SKIP: SSgUsable=false", (UUtUns32)inPlayID);
+		if (UUrDiagVerbose()) {	// issue #92 — fires on every ambient stop
+			UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u SKIP: SSgUsable=false", (UUtUns32)inPlayID);
+		}
 		return;
 	}
 
@@ -5496,23 +5500,27 @@ SSrAmbient_Stop(
 			((playing_ambient_array[i].stage >= SScPAStage_BodyStopping) &&
 			(playing_ambient_array[i].stage <= SScPAStage_OutSoundPlaying)))
 		{
-			UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u name='%s' SKIP: stage=%u (already stopping/done)",
-				(UUtUns32)inPlayID,
-				playing_ambient_array[i].ambient ? playing_ambient_array[i].ambient->ambient_name : "(null)",
-				(UUtUns32)playing_ambient_array[i].stage);
+			if (UUrDiagVerbose()) {	// issue #92 — fires on every ambient stop
+				UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u name='%s' SKIP: stage=%u (already stopping/done)",
+					(UUtUns32)inPlayID,
+					playing_ambient_array[i].ambient ? playing_ambient_array[i].ambient->ambient_name : "(null)",
+					(UUtUns32)playing_ambient_array[i].stage);
+			}
 			break;
 		}
 
 
 		if ((playing_ambient_array[i].ambient->flags & SScAmbientFlag_InterruptOnStop) != 0)
 		{
-			UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u name='%s' stage=%u flags=0x%x BRANCH=interrupt ch1=%p ch2=%p",
-				(UUtUns32)inPlayID,
-				playing_ambient_array[i].ambient->ambient_name,
-				(UUtUns32)playing_ambient_array[i].stage,
-				(UUtUns32)playing_ambient_array[i].ambient->flags,
-				(void*)playing_ambient_array[i].channel1,
-				(void*)playing_ambient_array[i].channel2);
+			if (UUrDiagVerbose()) {	// issue #92 — fires on every ambient stop
+				UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u name='%s' stage=%u flags=0x%x BRANCH=interrupt ch1=%p ch2=%p",
+					(UUtUns32)inPlayID,
+					playing_ambient_array[i].ambient->ambient_name,
+					(UUtUns32)playing_ambient_array[i].stage,
+					(UUtUns32)playing_ambient_array[i].ambient->flags,
+					(void*)playing_ambient_array[i].channel1,
+					(void*)playing_ambient_array[i].channel2);
+			}
 			// stop channel 1
 			if (playing_ambient_array[i].channel1 != NULL)
 			{
@@ -5529,14 +5537,17 @@ SSrAmbient_Stop(
 		{
 			UUtBool ch2_playing = (playing_ambient_array[i].channel2 != NULL) &&
 				(SSiSoundChannel_IsPlaying(playing_ambient_array[i].channel2) == UUcTrue);
-			UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u name='%s' stage=%u flags=0x%x BRANCH=graceful ch1=%p ch2=%p ch2_playing=%d",
-				(UUtUns32)inPlayID,
-				playing_ambient_array[i].ambient->ambient_name,
-				(UUtUns32)playing_ambient_array[i].stage,
-				(UUtUns32)playing_ambient_array[i].ambient->flags,
-				(void*)playing_ambient_array[i].channel1,
-				(void*)playing_ambient_array[i].channel2,
-				(int)ch2_playing);
+			// NB: ch2_playing above is load-bearing control flow, so it stays ungated.
+			if (UUrDiagVerbose()) {	// issue #92 — fires on every ambient stop
+				UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u name='%s' stage=%u flags=0x%x BRANCH=graceful ch1=%p ch2=%p ch2_playing=%d",
+					(UUtUns32)inPlayID,
+					playing_ambient_array[i].ambient->ambient_name,
+					(UUtUns32)playing_ambient_array[i].stage,
+					(UUtUns32)playing_ambient_array[i].ambient->flags,
+					(void*)playing_ambient_array[i].channel1,
+					(void*)playing_ambient_array[i].channel2,
+					(int)ch2_playing);
+			}
 			// make sure channel 2 isn't looping
 			if (ch2_playing)
 			{
@@ -5567,7 +5578,7 @@ SSrAmbient_Stop(
 		break;
 	}
 
-	if (!found) {
+	if (!found && UUrDiagVerbose()) {	// issue #92 — fires on every ambient stop
 		UUrStartupMessage("[SS2-STOP-DBG] inPlayID=%u NOT FOUND in SSgPlayingAmbient[0..%u)",
 			(UUtUns32)inPlayID, (UUtUns32)num_playing_ambients);
 	}
