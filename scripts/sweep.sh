@@ -18,7 +18,7 @@
 # Environment overrides:
 #   SWEEP_LEVELS        levels to sweep    (default: all 15)
 #   SWEEP_RENDERERS     renderers          (default: "gl metal")
-#   SWEEP_CELL_TIMEOUT  per-cell watchdog, seconds  (default: 600)
+#   SWEEP_CELL_TIMEOUT  per-cell watchdog, seconds  (default: 120)
 #   SWEEP_REPORT_CAP    per-cell report cap, bytes  (default: 64 MiB)
 #
 # Exit: 0 clean, 1 regressions or aborts, 2 only stale entries,
@@ -56,7 +56,10 @@ set -u
 
 LEVELS=${SWEEP_LEVELS:-"0 1 2 3 4 6 8 9 10 11 12 13 14 18 19"}
 RENDERERS=${SWEEP_RENDERERS:-"gl metal"}
-CELL_TIMEOUT=${SWEEP_CELL_TIMEOUT:-600}
+# 120 s is ~4x the slowest healthy cell ever recorded (27 s, 2026-08-25 full
+# run; the July first run peaked at ~40 s). Raise via the env var if a future
+# level legitimately needs longer rather than editing this default.
+CELL_TIMEOUT=${SWEEP_CELL_TIMEOUT:-120}
 REPORT_CAP=${SWEEP_REPORT_CAP:-67108864}
 
 REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
