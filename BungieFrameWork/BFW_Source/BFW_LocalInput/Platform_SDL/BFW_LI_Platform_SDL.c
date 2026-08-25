@@ -234,6 +234,190 @@ static LItKeyCode sdl_to_oni_keycode(SDL_Keycode key)
 	return LIcKeyCode_None;
 }
 
+// #93 — translate a key by where it sits, not by what the layout calls it.
+//
+// SDL gives every key two identities: keysym.sym is the character the active
+// layout produces, keysym.scancode is the physical position. Translating by sym
+// makes the bindings follow the layout — on AZERTY the W-position key reports
+// 'z', so the default WASD movement binds scatter across the board and the game
+// is unplayable out of the box (a French player's report on #93). Oni's key
+// codes are ASCII and every bind name in key_config.txt is a QWERTY character,
+// so the fix is to read the position and translate it against a fixed QWERTY
+// reference: "bind w to forward" then means the W-position key on any layout.
+//
+// Only the printable block moves between layouts. F-keys, arrows, modifiers,
+// keypad, space/enter/escape/tab/backspace and the rest sit in the same place
+// everywhere, so they delegate to sdl_to_oni_keycode() and the existing
+// translation table stays the one place non-ASCII keys are mapped.
+//
+// Trade-off worth knowing about: the engine consumes no SDL_TEXTINPUT events at
+// all (see the #77 comment in Oni_Platform_SDL.c) — every text field, including
+// the dev console, reads raw key codes — so typed text goes positional too, and
+// someone on AZERTY typing into the console gets QWERTY letters. That surface is
+// dev-only, so it stays as is; ONI_KEY_LAYOUT=1 brings the old layout-mapped
+// translation back for anyone who wants it.
+static LItKeyCode sdl_scancode_to_oni_keycode(SDL_Scancode sc)
+{
+	switch (sc)
+	{
+		// letter row block — QWERTY positions
+		case SDL_SCANCODE_A: return LIcKeyCode_A;
+		case SDL_SCANCODE_B: return LIcKeyCode_B;
+		case SDL_SCANCODE_C: return LIcKeyCode_C;
+		case SDL_SCANCODE_D: return LIcKeyCode_D;
+		case SDL_SCANCODE_E: return LIcKeyCode_E;
+		case SDL_SCANCODE_F: return LIcKeyCode_F;
+		case SDL_SCANCODE_G: return LIcKeyCode_G;
+		case SDL_SCANCODE_H: return LIcKeyCode_H;
+		case SDL_SCANCODE_I: return LIcKeyCode_I;
+		case SDL_SCANCODE_J: return LIcKeyCode_J;
+		case SDL_SCANCODE_K: return LIcKeyCode_K;
+		case SDL_SCANCODE_L: return LIcKeyCode_L;
+		case SDL_SCANCODE_M: return LIcKeyCode_M;
+		case SDL_SCANCODE_N: return LIcKeyCode_N;
+		case SDL_SCANCODE_O: return LIcKeyCode_O;
+		case SDL_SCANCODE_P: return LIcKeyCode_P;
+		case SDL_SCANCODE_Q: return LIcKeyCode_Q;
+		case SDL_SCANCODE_R: return LIcKeyCode_R;
+		case SDL_SCANCODE_S: return LIcKeyCode_S;
+		case SDL_SCANCODE_T: return LIcKeyCode_T;
+		case SDL_SCANCODE_U: return LIcKeyCode_U;
+		case SDL_SCANCODE_V: return LIcKeyCode_V;
+		case SDL_SCANCODE_W: return LIcKeyCode_W;
+		case SDL_SCANCODE_X: return LIcKeyCode_X;
+		case SDL_SCANCODE_Y: return LIcKeyCode_Y;
+		case SDL_SCANCODE_Z: return LIcKeyCode_Z;
+
+		// number row
+		case SDL_SCANCODE_1: return LIcKeyCode_1;
+		case SDL_SCANCODE_2: return LIcKeyCode_2;
+		case SDL_SCANCODE_3: return LIcKeyCode_3;
+		case SDL_SCANCODE_4: return LIcKeyCode_4;
+		case SDL_SCANCODE_5: return LIcKeyCode_5;
+		case SDL_SCANCODE_6: return LIcKeyCode_6;
+		case SDL_SCANCODE_7: return LIcKeyCode_7;
+		case SDL_SCANCODE_8: return LIcKeyCode_8;
+		case SDL_SCANCODE_9: return LIcKeyCode_9;
+		case SDL_SCANCODE_0: return LIcKeyCode_0;
+
+		// punctuation that shares the printable block
+		case SDL_SCANCODE_MINUS:        return LIcKeyCode_Minus;
+		case SDL_SCANCODE_EQUALS:       return LIcKeyCode_Equals;
+		case SDL_SCANCODE_LEFTBRACKET:  return LIcKeyCode_LeftBracket;
+		case SDL_SCANCODE_RIGHTBRACKET: return LIcKeyCode_RightBracket;
+		case SDL_SCANCODE_BACKSLASH:    return LIcKeyCode_BackSlash;
+		case SDL_SCANCODE_SEMICOLON:    return LIcKeyCode_Semicolon;
+		case SDL_SCANCODE_APOSTROPHE:   return LIcKeyCode_Apostrophe;
+		case SDL_SCANCODE_GRAVE:        return LIcKeyCode_Grave;
+		case SDL_SCANCODE_COMMA:        return LIcKeyCode_Comma;
+		case SDL_SCANCODE_PERIOD:       return LIcKeyCode_Period;
+		case SDL_SCANCODE_SLASH:        return LIcKeyCode_Slash;
+
+		default:
+		break;
+	}
+
+	// everything else keeps its position across layouts
+	return sdl_to_oni_keycode(SDL_GetKeyFromScancode(sc));
+}
+
+// #93 — the exact inverse of the table above, for the paths that start from a
+// bound oni key code and ask "is that key down?" (LIrPlatform_TestKey, which
+// drives the Oni_KeyBindings.c dev keys and the unit viewer). Without it those
+// would resolve through SDL_GetScancodeFromKey, which is layout-mapped, and the
+// dev keys would sit on different physical keys than the gameplay bindings on a
+// non-QWERTY layout. Non-printable keys fall back to the layout lookup, which
+// gives the same answer either way since they don't move.
+static SDL_Scancode oni_to_sdl_scancode(LItKeyCode key)
+{
+	switch (key)
+	{
+		// letter row block — QWERTY positions
+		case LIcKeyCode_A: return SDL_SCANCODE_A;
+		case LIcKeyCode_B: return SDL_SCANCODE_B;
+		case LIcKeyCode_C: return SDL_SCANCODE_C;
+		case LIcKeyCode_D: return SDL_SCANCODE_D;
+		case LIcKeyCode_E: return SDL_SCANCODE_E;
+		case LIcKeyCode_F: return SDL_SCANCODE_F;
+		case LIcKeyCode_G: return SDL_SCANCODE_G;
+		case LIcKeyCode_H: return SDL_SCANCODE_H;
+		case LIcKeyCode_I: return SDL_SCANCODE_I;
+		case LIcKeyCode_J: return SDL_SCANCODE_J;
+		case LIcKeyCode_K: return SDL_SCANCODE_K;
+		case LIcKeyCode_L: return SDL_SCANCODE_L;
+		case LIcKeyCode_M: return SDL_SCANCODE_M;
+		case LIcKeyCode_N: return SDL_SCANCODE_N;
+		case LIcKeyCode_O: return SDL_SCANCODE_O;
+		case LIcKeyCode_P: return SDL_SCANCODE_P;
+		case LIcKeyCode_Q: return SDL_SCANCODE_Q;
+		case LIcKeyCode_R: return SDL_SCANCODE_R;
+		case LIcKeyCode_S: return SDL_SCANCODE_S;
+		case LIcKeyCode_T: return SDL_SCANCODE_T;
+		case LIcKeyCode_U: return SDL_SCANCODE_U;
+		case LIcKeyCode_V: return SDL_SCANCODE_V;
+		case LIcKeyCode_W: return SDL_SCANCODE_W;
+		case LIcKeyCode_X: return SDL_SCANCODE_X;
+		case LIcKeyCode_Y: return SDL_SCANCODE_Y;
+		case LIcKeyCode_Z: return SDL_SCANCODE_Z;
+
+		// number row
+		case LIcKeyCode_1: return SDL_SCANCODE_1;
+		case LIcKeyCode_2: return SDL_SCANCODE_2;
+		case LIcKeyCode_3: return SDL_SCANCODE_3;
+		case LIcKeyCode_4: return SDL_SCANCODE_4;
+		case LIcKeyCode_5: return SDL_SCANCODE_5;
+		case LIcKeyCode_6: return SDL_SCANCODE_6;
+		case LIcKeyCode_7: return SDL_SCANCODE_7;
+		case LIcKeyCode_8: return SDL_SCANCODE_8;
+		case LIcKeyCode_9: return SDL_SCANCODE_9;
+		case LIcKeyCode_0: return SDL_SCANCODE_0;
+
+		// punctuation that shares the printable block
+		case LIcKeyCode_Minus:        return SDL_SCANCODE_MINUS;
+		case LIcKeyCode_Equals:       return SDL_SCANCODE_EQUALS;
+		case LIcKeyCode_LeftBracket:  return SDL_SCANCODE_LEFTBRACKET;
+		case LIcKeyCode_RightBracket: return SDL_SCANCODE_RIGHTBRACKET;
+		case LIcKeyCode_BackSlash:    return SDL_SCANCODE_BACKSLASH;
+		case LIcKeyCode_Semicolon:    return SDL_SCANCODE_SEMICOLON;
+		case LIcKeyCode_Apostrophe:   return SDL_SCANCODE_APOSTROPHE;
+		case LIcKeyCode_Grave:        return SDL_SCANCODE_GRAVE;
+		case LIcKeyCode_Comma:        return SDL_SCANCODE_COMMA;
+		case LIcKeyCode_Period:       return SDL_SCANCODE_PERIOD;
+		case LIcKeyCode_Slash:        return SDL_SCANCODE_SLASH;
+
+		default:
+		break;
+	}
+
+	return SDL_GetScancodeFromKey(oni_to_sdl_keycode(key));
+}
+
+// #93 — ONI_KEY_LAYOUT=1 restores the pre-#93 behaviour: keys translate through
+// the layout-mapped symbol rather than their physical position.
+static UUtBool LIiKeyLayoutMappingEnabled(void)
+{
+	static int cached = -1;
+	if (cached < 0) {
+		const char *v = getenv("ONI_KEY_LAYOUT");
+		cached = (v != NULL && v[0] != '\0' && v[0] != '0') ? 1 : 0;
+		if (cached) {
+			UUrStartupMessage("[input] ONI_KEY_LAYOUT set — keys mapped by layout symbol, not physical position (pre-#93 behaviour)");
+		}
+	}
+	return (UUtBool)cached;
+}
+
+// #93 — the single translation point the event sites share.
+static LItKeyCode sdl_keysym_to_oni_keycode(const SDL_Keysym *inKeysym)
+{
+	if (LIiKeyLayoutMappingEnabled())
+	{
+		return sdl_to_oni_keycode(inKeysym->sym);
+	}
+
+	return sdl_scancode_to_oni_keycode(inKeysym->scancode);
+}
+
 // ======================================================================
 #if 0
 #pragma mark -
@@ -299,13 +483,18 @@ LIiPlatform_Keyboard_GetData(
 	UUtUns8 nowDown[32] = {0};
 
 	const Uint8 *keyState = SDL_GetKeyboardState(&numkeys);
+	UUtBool byLayout = LIiKeyLayoutMappingEnabled();
 	for (i = 0; i < numkeys; ++i)
 	{
 		if (keyState[i])
 		{
 			LItDeviceInput			deviceInput;
 
-			deviceInput.input = sdl_to_oni_keycode(SDL_GetKeyFromScancode(i));
+			// #93 — keyState is indexed by scancode, so the positional path
+			// reads it straight; the lever goes back through the layout map.
+			deviceInput.input = byLayout
+				? sdl_to_oni_keycode(SDL_GetKeyFromScancode(i))
+				: sdl_scancode_to_oni_keycode((SDL_Scancode)i);
 			deviceInput.analogValue = 1.0f;
 
 			if (deviceInput.input != LIcKeyCode_None)
@@ -603,7 +792,7 @@ LIrPlatform_Update(
 				LIrInputEvent_Add(
 					eventType,
 					NULL,
-					sdl_to_oni_keycode(event.key.keysym.sym),
+					sdl_keysym_to_oni_keycode(&event.key.keysym),
 					sdl_to_oni_key_modifiers(current_modifiers)
 				);
 			break;
@@ -622,10 +811,13 @@ LIrPlatform_Update(
 					current_mouse_buttons = event.motion.state;
 				}
 
+				// note: this reads the key member of a motion event through the
+				// SDL_Event union, so the "key" here was never a real key —
+				// left on the same translation path as the key sites (#93).
 				LIrInputEvent_Add(
 					LIcInputEvent_MouseMove,
 					&where,
-					sdl_to_oni_keycode(event.key.keysym.sym),
+					sdl_keysym_to_oni_keycode(&event.key.keysym),
 					sdl_to_oni_mouse_modifiers(current_modifiers) | sdl_to_oni_mouse_button_modifiers(current_mouse_buttons)
 				);
 			break;
@@ -724,7 +916,11 @@ LIrPlatform_TestKey(
 	int numkeys = 0;
 	//TODO: capture in LIrPlatform_Update()?
 	const Uint8 *keyState = SDL_GetKeyboardState(&numkeys);
-	SDL_Scancode scancode = SDL_GetScancodeFromKey(oni_to_sdl_keycode(inKeyCode));
+	// #93 — same positional scheme as the event path, so a dev key bound to 'w'
+	// tests the W-position key rather than whatever types 'w' on this layout.
+	SDL_Scancode scancode = LIiKeyLayoutMappingEnabled()
+		? SDL_GetScancodeFromKey(oni_to_sdl_keycode(inKeyCode))
+		: oni_to_sdl_scancode(inKeyCode);
 	if (scancode > 0 && scancode < numkeys) {
 		keyDown = keyState[scancode];
 	}

@@ -56,6 +56,15 @@ GitHub release notes and gets stamped with the version + date.
   the list jump to a random position. The click was sending an uninitialised
   scroll position to the list (#102).
 
+### Input
+- Keys are now read by their physical position rather than by the character
+  your keyboard layout produces, so the default WASD movement works on AZERTY,
+  QWERTZ and other non-QWERTY layouts without rebinding anything (#93). Bind
+  names in `key_config.txt` refer to the key's QWERTY position, so `w` means
+  the key above `s` wherever you are. The dev console reads raw keys the same
+  way, so typing in it on a non-QWERTY layout gives you QWERTY letters; set
+  `ONI_KEY_LAYOUT=1` if you'd rather have the old layout-based mapping back.
+
 ## 1.3.0r5 — 2026-07-17
 
 ### Campaign progress

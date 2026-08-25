@@ -134,6 +134,8 @@ Chapters 1–9 (through level 10) verified playable end-to-end: combat, AI, weap
 
 *tested but hey verify.
 
+Non-QWERTY keyboards (AZERTY, QWERTZ, Dvorak) are handled by key position, so the default WASD movement sits on the same physical keys as on a US board (ZQSD on AZERTY) and bind names in `key_config.txt` refer to that QWERTY position.
+
 ### Build from source
 
 ```sh
