@@ -73,6 +73,10 @@ GitHub release notes and gets stamped with the version + date.
   render but await a full playthrough.
 
 ### Metal renderer
+- The game now remembers which renderer you picked. There's a new "Metal
+  renderer" toggle on the Options screen; switching takes effect next launch.
+  Holding Option at launch still works as a one-off try-it override, and
+  OpenGL stays the default until you choose otherwise (#89).
 - The Metal renderer is now feature-complete with OpenGL and carried the
   entire chapter 1–9 march. (Hold Option at launch to select it; OpenGL
   remains the default while it soaks.)
