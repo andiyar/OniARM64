@@ -472,6 +472,8 @@ set(SOURCE_FILES
         ../../OniGameSource/Oni_Persistance.c
         ../../OniGameSource/Oni_Persistance.h
         ../../OniGameSource/Oni_Platform.h
+        ../../OniGameSource/Oni_RendererPref.c
+        ../../OniGameSource/Oni_RendererPref.h
         ../../OniGameSource/Oni_Script.c
         ../../OniGameSource/Oni_Script.h
         ../../OniGameSource/Oni_Sky.c
