@@ -21,6 +21,8 @@
 #include "Oni_Windows.h"
 #include "Oni_Persistance.h"
 #include "Oni_Level.h"
+#include "Oni.h"
+#include "Oni_RendererPref.h"
 
 
 // ======================================================================
@@ -60,7 +62,8 @@ enum
 	ONcOptions_CB_SubtitlesOn		= 107,
 	ONcOptions_PM_Difficulty		= 108,
 	ONcOptions_CB_InvertMouseOn		= 109,
-	ONcOptions_Sldr_Gamma			= 110
+	ONcOptions_Sldr_Gamma			= 110,
+	ONcOptions_CB_MetalRenderer		= 111		/* #89: created at runtime, not in the shipping template */
 };
 
 enum
@@ -508,6 +511,80 @@ ONiOGU_Options_InitDialog(
 
 	// set the fields
 	ONiOBU_Options_SetControls(inDialog);
+
+#ifdef __APPLE__
+	/* #89: the shipping Options template can't gain controls by editing game
+	 * data, so the renderer toggle is created here. It is positioned by
+	 * measuring the gamma slider rather than by absolute coordinates, so it
+	 * lands inside the dialog art on whichever Options layout is on screen. */
+	{
+		extern UUtBool			metal_is_available(void);
+
+		WMtWindow				*anchor;
+
+		anchor = WMrDialog_GetItemByID(inDialog, ONcOptions_Sldr_Gamma);
+		if ((anchor != NULL) &&
+			(WMrDialog_GetItemByID(inDialog, ONcOptions_CB_MetalRenderer) == NULL))
+		{
+			WMtWindow			*checkbox;
+			UUtInt16			width;
+			UUtInt16			height;
+
+			WMrWindow_GetSize(anchor, &width, &height);
+
+			checkbox =
+				WMrWindow_New(
+					WMcWindowType_CheckBox,
+					"Metal renderer (restart required)",
+					WMcWindowFlag_Visible | WMcWindowFlag_Child,
+					WMcCheckBoxStyle_TextCheckBox,
+					ONcOptions_CB_MetalRenderer,
+					0,
+					0,
+					width,
+					height,
+					inDialog,
+					0);
+			if (checkbox != NULL)
+			{
+				WMtWindow		*font_donor;
+				UUtRect			anchor_rect;
+				UUtRect			checkbox_rect;
+				TStFontInfo		font_info;
+				ONtRendererPref	pref;
+				UUtBool			checked;
+
+				/* WMrWindow_New takes parent-relative coordinates and the WM has
+				 * no getter for them, so place the control by the difference of
+				 * two screen rects — it was created at the parent origin. */
+				WMrWindow_GetRect(anchor, &anchor_rect);
+				WMrWindow_GetRect(checkbox, &checkbox_rect);
+				WMrWindow_SetLocation(
+					checkbox,
+					(UUtInt16)(anchor_rect.left - checkbox_rect.left),
+					(UUtInt16)(anchor_rect.bottom + 4 - checkbox_rect.top));
+
+				// borrow the font from a checkbox that already draws a title
+				font_donor = WMrDialog_GetItemByID(inDialog, ONcOptions_CB_SubtitlesOn);
+				if (font_donor == NULL) { font_donor = anchor; }
+				WMrWindow_GetFontInfo(font_donor, &font_info);
+				WMrWindow_SetFontInfo(checkbox, &font_info);
+
+				pref = ONrRendererPref_Read();
+				checked =
+					(pref != ONcRendererPref_None) ?
+						(UUtBool)(pref == ONcRendererPref_Metal) :
+						ONgCommandLine.useMetal;
+				WMrCheckBox_SetCheck(checkbox, checked);
+
+				if (!metal_is_available())
+				{
+					WMrWindow_SetEnabled(checkbox, UUcFalse);
+				}
+			}
+		}
+	}
+#endif
 }
 
 // ----------------------------------------------------------------------
@@ -582,6 +659,26 @@ ONiOGU_Options_HandleCommand(
 			if (command_type != WMcNotify_Click) { break; }
 			ONrPersist_SetInvertMouseOn(WMrCheckBox_GetCheck(inControl));
 		break;
+
+#ifdef __APPLE__
+		case ONcOptions_CB_MetalRenderer:
+			if (command_type != WMcNotify_Click) { break; }
+			{
+				UUtBool			want_metal;
+
+				want_metal = WMrCheckBox_GetCheck(inControl);
+				if (!ONrRendererPref_Write(want_metal))
+				{
+					UUrStartupMessage("could not save the renderer preference");
+					break;
+				}
+				if (want_metal != ONgCommandLine.useMetal)
+				{
+					ONiOutGameUI_ChangeRestart_Display();
+				}
+			}
+		break;
+#endif
 
 		case WMcDialogItem_Cancel:
 			if (command_type != WMcNotify_Click) { break; }
