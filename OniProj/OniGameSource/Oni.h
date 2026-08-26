@@ -37,6 +37,9 @@ typedef struct
 	UUtBool						useOpenGL;
 	UUtBool						useGlide;
 	UUtBool						useMetal;
+	/* -metal / -renderer / ONI_RENDERER was given (#89): an explicit
+	   choice outranks the persisted renderer.txt preference. */
+	UUtBool						rendererExplicit;
 	UUtBool						useSound;
 
 	/* Level sweep harness (#103). sweepMode is what makes sweepLevel

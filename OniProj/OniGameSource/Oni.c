@@ -57,6 +57,7 @@
 #include "Oni_Weapon.h"
 #include "Oni_InGameUI.h"
 #include "Oni_Sweep.h"
+#include "Oni_RendererPref.h"
 
 #include "Oni_Bink.h"
 #include "gl_engine.h"
@@ -97,6 +98,7 @@ OniParseCommandLine(
 	ONgCommandLine.useOpenGL = UUcFalse;
 	ONgCommandLine.useGlide = UUcFalse;
 	ONgCommandLine.useMetal = UUcFalse;
+	ONgCommandLine.rendererExplicit = UUcFalse;
 	ONgCommandLine.useSound = UUcTrue;
 	ONgCommandLine.sweepMode = UUcFalse;
 	ONgCommandLine.sweepLevel = 0;
@@ -145,6 +147,7 @@ OniParseCommandLine(
 		else if (strcmp(current_parameter, "-metal") == 0)
 		{
 			ONgCommandLine.useMetal = UUcTrue;
+			ONgCommandLine.rendererExplicit = UUcTrue;
 		}
 		else if (strcmp(current_parameter, "-renderer") == 0)
 		{
@@ -152,6 +155,7 @@ OniParseCommandLine(
 			{
 				itr++;
 				ONgCommandLine.useMetal = (0 == strcmp(argv[itr], "metal"));
+				ONgCommandLine.rendererExplicit = UUcTrue;
 			}
 		}
 		else if (0 == strcmp(current_parameter, "-sweep"))
@@ -237,17 +241,41 @@ OniParseCommandLine(
 	}
 
 	/* Renderer selection (macOS Metal backend, issue #43).
-	 * Precedence: -metal/-renderer flag (set in the loop above) > ONI_RENDERER env > default OpenGL.
-	 * The hold-Option chooser dialog (Task 4) is layered on top of this in ONiMain. */
-	if (!ONgCommandLine.useMetal)
+	 * Precedence: -metal/-renderer flag (set in the loop above) > ONI_RENDERER env >
+	 * renderer.txt preference (#89) > default OpenGL. The hold-Option chooser dialog
+	 * is layered on top of this in ONiMain and does not persist. */
+	if (!ONgCommandLine.rendererExplicit)
 	{
 		const char *renderer_env = getenv("ONI_RENDERER");
-		if (renderer_env && (0 == strcmp(renderer_env, "metal")))
+		ONtRendererPref env_pref = ONrRendererPref_ParseToken(renderer_env);
+
+		if (env_pref != ONcRendererPref_None)
 		{
-			ONgCommandLine.useMetal = UUcTrue;
+			ONgCommandLine.useMetal = (env_pref == ONcRendererPref_Metal);
+			ONgCommandLine.rendererExplicit = UUcTrue;
 		}
 	}
-	UUrStartupMessage("renderer selection: %s", ONgCommandLine.useMetal ? "Metal" : "OpenGL");
+
+	{
+		const char *renderer_source = ONgCommandLine.rendererExplicit ? "flag/env" : "default";
+
+		/* The persisted preference is consulted only when nothing explicit was
+		 * given, and never in sweep mode — sweep GL cells pass no renderer flag
+		 * and must stay on the default or every GL baseline shifts. */
+		if ((!ONgCommandLine.rendererExplicit) && (!ONgCommandLine.sweepMode))
+		{
+			ONtRendererPref pref = ONrRendererPref_Read();
+
+			if (pref != ONcRendererPref_None)
+			{
+				ONgCommandLine.useMetal = (pref == ONcRendererPref_Metal);
+				renderer_source = "preference file";
+			}
+		}
+
+		UUrStartupMessage("renderer selection: %s (%s)",
+			ONgCommandLine.useMetal ? "Metal" : "OpenGL", renderer_source);
+	}
 
 	return UUcError_None;
 }
