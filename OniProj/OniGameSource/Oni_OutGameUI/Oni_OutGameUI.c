@@ -523,6 +523,11 @@ ONiOGU_Options_InitDialog(
 		WMtWindow				*anchor;
 
 		anchor = WMrDialog_GetItemByID(inDialog, ONcOptions_Sldr_Gamma);
+		// #89 diagnostics: the checkbox never rendered on the maintainer's
+		// machine with no visible failure — every step reports until the
+		// on-screen result is confirmed.
+		UUrStartupMessage("options renderer toggle: gamma anchor %s",
+			(anchor != NULL) ? "found" : "MISSING - no checkbox");
 		if ((anchor != NULL) &&
 			(WMrDialog_GetItemByID(inDialog, ONcOptions_CB_MetalRenderer) == NULL))
 		{
@@ -531,6 +536,7 @@ ONiOGU_Options_InitDialog(
 			UUtInt16			height;
 
 			WMrWindow_GetSize(anchor, &width, &height);
+			UUrStartupMessage("options renderer toggle: anchor size %dx%d", (int)width, (int)height);
 
 			checkbox =
 				WMrWindow_New(
@@ -545,7 +551,11 @@ ONiOGU_Options_InitDialog(
 					height,
 					inDialog,
 					0);
-			if (checkbox != NULL)
+			if (checkbox == NULL)
+			{
+				UUrStartupMessage("options renderer toggle: WMrWindow_New returned NULL - no checkbox");
+			}
+			else
 			{
 				WMtWindow		*font_donor;
 				UUtRect			anchor_rect;
@@ -563,6 +573,16 @@ ONiOGU_Options_InitDialog(
 					checkbox,
 					(UUtInt16)(anchor_rect.left - checkbox_rect.left),
 					(UUtInt16)(anchor_rect.bottom + 4 - checkbox_rect.top));
+				{
+					UUtRect final_rect;
+					WMrWindow_GetRect(checkbox, &final_rect);
+					UUrStartupMessage(
+						"options renderer toggle: anchor rect %d,%d-%d,%d; created at %d,%d-%d,%d; placed at %d,%d-%d,%d; visible=%d",
+						(int)anchor_rect.left, (int)anchor_rect.top, (int)anchor_rect.right, (int)anchor_rect.bottom,
+						(int)checkbox_rect.left, (int)checkbox_rect.top, (int)checkbox_rect.right, (int)checkbox_rect.bottom,
+						(int)final_rect.left, (int)final_rect.top, (int)final_rect.right, (int)final_rect.bottom,
+						(int)WMrWindow_GetVisible(checkbox));
+				}
 
 				// borrow the font from a checkbox that already draws a title
 				font_donor = WMrDialog_GetItemByID(inDialog, ONcOptions_CB_SubtitlesOn);
