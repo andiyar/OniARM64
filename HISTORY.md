@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-09-01 — Session 72: macOS 26 glass app icon
+
+- **feat(macos): Icon Composer glass icon**: the old `Oni.icns` was a transparent-background logo, which macOS 26 shrinks onto the white placeholder backdrop in the Dock. Added `macos/assets/Oni.icon` (hand-authored Icon Composer bundle: flat white "O" silhouette traced from the original art as a glass layer over a navy gradient fill) and taught `build-bundle.sh` to compile it with `actool` when the Xcode 26+ toolchain is present, emitting `Assets.car` + fallback `Oni.icns` and setting `CFBundleIconName`. Older toolchains fall back to the static `Oni.icns`, itself regenerated full-bleed on a dark background so it no longer hits the backdrop either. Verified end-to-end via `make oni_app`; the icon now renders in default/dark/clear/tinted styles.
+
 ### 2026-08-27 — Session 71: persisted renderer preference + Options toggle (#89, Metal M5)
 
 - **feat(render): renderer preference state file module** (8ffdf86, addresses #89): a small pure-C module owning a one-token `renderer.txt` under App Support (or cwd for the bare-binary workflow, via `ONiBundlePath_ResolveStateFile`). Standalone unit test, 28 assertions, including the oversized-line case where parsing a truncation could turn `metalxxx…` into a valid choice.

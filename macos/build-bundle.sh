@@ -58,7 +58,17 @@ if [ -n "$DEV_STAMP" ]; then
 fi
 
 # 3. Assets.
-cp "$SOURCE_DIR/macos/assets/Oni.icns"  "$RESOURCES/Oni.icns"
+# App icon: compile the Icon Composer bundle (Oni.icon) with actool when the
+# toolchain supports it (Xcode 26+) — gives the macOS 26 glass/clear/tinted
+# rendering. Falls back to the static Oni.icns otherwise.
+if xcrun actool "$SOURCE_DIR/macos/assets/Oni.icon" --compile "$RESOURCES" \
+        --app-icon Oni --platform macosx --minimum-deployment-target 26.0 \
+        --output-partial-info-plist /dev/null >/dev/null 2>&1; then
+    echo "App icon: compiled Oni.icon (glass) via actool"
+else
+    echo "App icon: actool unavailable/failed, using static Oni.icns"
+    cp "$SOURCE_DIR/macos/assets/Oni.icns" "$RESOURCES/Oni.icns"
+fi
 cp "$SOURCE_DIR/macos/assets/intro.mov" "$RESOURCES/intro.mov"
 cp "$SOURCE_DIR/macos/assets/outro.mov" "$RESOURCES/outro.mov"
 

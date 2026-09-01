@@ -8,6 +8,8 @@
     <string>Oni</string>
     <key>CFBundleIconFile</key>
     <string>Oni</string>
+    <key>CFBundleIconName</key>
+    <string>Oni</string>
     <key>CFBundleIdentifier</key>
     <string>com.andiyar.oniarm64</string>
     <key>CFBundleInfoDictionaryVersion</key>

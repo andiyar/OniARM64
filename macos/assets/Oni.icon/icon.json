@@ -1,0 +1,22 @@
+{
+  "fill" : {
+    "linear-gradient" : [ "extended-srgb:0.10,0.16,0.35,1.0", "extended-srgb:0.03,0.05,0.12,1.0" ]
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "O-flat.png",
+          "name" : "O",
+          "glass" : true
+        }
+      ],
+      "shadow" : { "kind" : "neutral", "opacity" : 0.5 },
+      "translucency" : { "enabled" : true, "value" : 0.5 }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [ "watchOS" ],
+    "squares" : "shared"
+  }
+}
