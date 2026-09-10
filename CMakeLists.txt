@@ -210,6 +210,7 @@ if (ONI_BINK_VIDEO)
 endif ()
 add_subdirectory(OniProj/OniCMakeProjs/TEVCProj/)
 add_subdirectory(tools/onipack/)
+add_subdirectory(tools/OniModInstaller/)
 add_subdirectory(OniProj/OniCMakeProjs/OniProj/)
 
 # macOS .app bundle assembly
