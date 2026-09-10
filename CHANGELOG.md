@@ -12,6 +12,15 @@ GitHub release notes and gets stamped with the version + date.
 
 - New app icon for macOS 26: the Oni "O" is now a proper layered glass icon, so it follows your system icon style (default, dark, clear, tinted) instead of sitting on the white placeholder tile. On older toolchains the build falls back to a refreshed static icon with a dark background.
 
+### Mods
+- New **OniMod Installer** app in the DMG. Drop a texture mod downloaded from
+  the Oni Mod Depot (the zip, or its unzipped folder) onto it and it builds the
+  pack and installs it into `TexturePacks/` for you. No Terminal needed. It
+  keeps only texture files (models, levels and scripts aren't loadable by this
+  port), screens out replacements that would wash out shiny surfaces (faces,
+  hair, glass) when your game data is installed, and offers to replace a pack
+  you've already installed (#20).
+
 ### Mod safety
 - Running out of engine object or physics slots no longer crashes the game.
   Mass-kill scripts and big `obj_create` ranges could exhaust the fixed pools

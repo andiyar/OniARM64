@@ -84,7 +84,7 @@ Chapters 1–9 (through level 10) verified playable end-to-end: combat, AI, weap
 - [x] HD texture-pack support — packs in `~/Library/Application Support/OniARM64/TexturePacks` override the originals; verified through the chapter 1–9 march ([#16](https://github.com/andiyar/OniARM64/issues/16), [#44](https://github.com/andiyar/OniARM64/issues/44), [#45](https://github.com/andiyar/OniARM64/issues/45), [#60](https://github.com/andiyar/OniARM64/issues/60), [#62](https://github.com/andiyar/OniARM64/issues/62), [#63](https://github.com/andiyar/OniARM64/issues/63))
 - [x] Crash-recovery dialog — after a crash, the next launch offers a pre-filled GitHub report + log reveal ([#74](https://github.com/andiyar/OniARM64/issues/74))
 - [x] Native texture-pack tooling (onipack) — pack build + verify with no Mono/OniSplit ([#88](https://github.com/andiyar/OniARM64/issues/88))
-- [ ] Mac-native pack installer (.zip drop → installed pack) ([#20](https://github.com/andiyar/OniARM64/issues/20))
+- [x] OniMod Installer — drop a depot mod zip on it, get an installed texture pack ([#20](https://github.com/andiyar/OniARM64/issues/20))
 - [ ] Game-controller support — in progress on a branch ([#73](https://github.com/andiyar/OniARM64/issues/73))
 - [ ] Anniversary Edition QoL improvements — ongoing, ideas as they come... very much TBD.
 - [x] Mac retail `GameDataFolder` drop-and-play (original 2001 Mac disc) — loads + plays natively; engine auto-detects Mac vs PC data by checksum (Apple IMA4 SNDD; OSBD/BINA/TXMP verified through the shared layout) ([#37](https://github.com/andiyar/OniARM64/issues/37))
@@ -130,7 +130,7 @@ Chapters 1–9 (through level 10) verified playable end-to-end: combat, AI, weap
 
    Prefer to place it yourself? Drop your `GameDataFolder` into `~/Library/Application Support/OniARM64/` - you'll likely need to create the folder first.
 
-   Optional: HD texture packs go in `~/Library/Application Support/OniARM64/TexturePacks/` — each pack's textures override the originals, your game data is untouched. Bring your own packs (the [oni2.net mod depot](https://mods.oni2.net/) is the place — no mod content is bundled or redistributed here); a friendlier installer is planned ([#20](https://github.com/andiyar/OniARM64/issues/20)). Depot downloads are usually raw mods rather than packs: a tree of `.oni` files under `oni/common/levelN_Final/`, which the engine ignores because it only loads `levelN_*.dat` packs. Build the packer with `make onipack`, then run `onipack import-sep <levelN_Final folder> <TexturePacks>/levelN_HD.dat` once per `levelN_Final` folder in the mod (any output suffix will do except `_Final`, which collides with the base game).
+   Optional: HD texture packs go in `~/Library/Application Support/OniARM64/TexturePacks/` — each pack's textures override the originals, your game data is untouched. Bring your own packs (the [oni2.net mod depot](https://mods.oni2.net/) is the place — no mod content is bundled or redistributed here); Depot downloads arrive as a folder of `.oni` files, which the game can't load directly. Drop the downloaded `.zip` (or its unzipped folder) onto **OniMod Installer** (in the DMG next to the game) and it builds the pack and puts it in `TexturePacks/` for you. Only texture mods are supported; character models, levels and script mods aren't loadable by this port. Building from source? `make onimod_installer` produces the app, or run `onipack import-sep <levelN_Final folder> <TexturePacks>/<Name>/levelN_<Name>.dat` by hand (any suffix except `_Final`).
 
 *tested but hey verify.
 

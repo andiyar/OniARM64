@@ -12,6 +12,8 @@ The README is intentionally light on this — most contributors will never need 
 2. **[`notarize-bundle.sh`](../macos/notarize-bundle.sh)** — `ditto`-zips the `.app` (plain `zip` strips macOS xattrs and notary rejects), submits to Apple via `xcrun notarytool submit --wait`, staples the ticket onto the `.app`, runs `spctl --assess` as the Gatekeeper acceptance check.
 3. **[`package-dmg.sh`](../macos/package-dmg.sh)** — wraps the stapled `.app` in a DMG via `create-dmg` (drag-to-Applications layout, default white background, Oni.icns volume icon), signs the DMG with Developer ID + timestamp, submits the DMG to Apple's notary as a separate round-trip, staples the ticket onto the DMG, runs `spctl --assess` on the DMG.
 
+Since #20 the target also assembles `OniMod Installer.app` (`build-installer.sh`, signed inside-out the same way), notarizes it with a second `notarize-bundle.sh` call, and `package-dmg.sh` stages both apps into the DMG. Budget one extra notary round-trip.
+
 End result: `build/OniARM64.dmg` with the same `source=Notarized Developer ID` Gatekeeper verdict at both layers.
 
 Total wall clock: ~7 min on a clean run. Apple's notary service dominates; both round-trips are typically 1–5 min each.
