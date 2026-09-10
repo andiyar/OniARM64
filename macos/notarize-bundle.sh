@@ -3,10 +3,12 @@
 # Assumes build-bundle.sh has already produced a Developer-ID-signed .app at
 # $BINARY_DIR/bin/OniARM64.app.
 #
-# Usage: notarize-bundle.sh <BINARY_DIR> [KEYCHAIN_PROFILE]
+# Usage: notarize-bundle.sh <BINARY_DIR> [KEYCHAIN_PROFILE] [APP_PATH]
 #   BINARY_DIR        - cmake binary dir (parent of bin/OniARM64.app)
 #   KEYCHAIN_PROFILE  - keychain entry from `xcrun notarytool store-credentials`
 #                       (default: oniarm64-notarize)
+#   APP_PATH          - .app to notarize (default: bin/OniARM64.app; the
+#                       release target also passes "OniMod Installer.app", #20)
 #
 # One-time setup (NOT done by this script):
 #   xcrun notarytool store-credentials oniarm64-notarize \
@@ -21,8 +23,8 @@ set -euo pipefail
 
 BINARY_DIR="${1:?binary dir required}"
 PROFILE="${2:-oniarm64-notarize}"
-APP="$BINARY_DIR/bin/OniARM64.app"
-ZIP="$BINARY_DIR/OniARM64-notarize.zip"
+APP="${3:-$BINARY_DIR/bin/OniARM64.app}"
+ZIP="$BINARY_DIR/$(basename "$APP" .app | tr -d " ")-notarize.zip"
 
 if [ ! -d "$APP" ]; then
     echo "notarize-bundle.sh: ERROR: $APP not found. Run build-bundle.sh first." >&2

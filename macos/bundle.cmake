@@ -61,7 +61,7 @@ if(ONI_SIGN_IDENTITY STREQUAL "")
     )
 else()
     add_custom_target(oni_app_release
-        DEPENDS Oni
+        DEPENDS Oni onipack txmp_format_index
         COMMAND ${CMAKE_COMMAND} -E echo "Assembling signed OniARM64.app..."
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/macos/build-bundle.sh
                 ${CMAKE_CURRENT_SOURCE_DIR}
@@ -70,6 +70,16 @@ else()
         COMMAND ${CMAKE_COMMAND} -E echo "Notarizing OniARM64.app..."
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/macos/notarize-bundle.sh
                 ${CMAKE_BINARY_DIR}
+        COMMAND ${CMAKE_COMMAND} -E echo "Assembling signed OniMod Installer.app..."
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/macos/build-installer.sh
+                ${CMAKE_CURRENT_SOURCE_DIR}
+                ${CMAKE_BINARY_DIR}
+                ${ONI_SIGN_IDENTITY}
+        COMMAND ${CMAKE_COMMAND} -E echo "Notarizing OniMod Installer.app..."
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/macos/notarize-bundle.sh
+                ${CMAKE_BINARY_DIR}
+                oniarm64-notarize
+                "${CMAKE_BINARY_DIR}/bin/OniMod Installer.app"
         COMMAND ${CMAKE_COMMAND} -E echo "Packaging OniARM64.dmg..."
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/macos/package-dmg.sh
                 ${CMAKE_BINARY_DIR}

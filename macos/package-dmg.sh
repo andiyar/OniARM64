@@ -17,15 +17,19 @@ BINARY_DIR="${1:?binary dir required}"
 SIGN_IDENTITY="${2:?sign identity required}"
 PROFILE="${3:-oniarm64-notarize}"
 APP="$BINARY_DIR/bin/OniARM64.app"
+INSTALLER="$BINARY_DIR/bin/OniMod Installer.app"
 DMG="$BINARY_DIR/OniARM64.dmg"
+STAGE="$BINARY_DIR/dmg-stage"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 VOLICON="$SCRIPT_DIR/assets/Oni.icns"
 
-# Preflight: app must already be stapled.
-if ! xcrun stapler validate "$APP" >/dev/null 2>&1; then
-    echo "package-dmg.sh: ERROR: $APP not stapled. Run notarize-bundle.sh first." >&2
-    exit 1
-fi
+# Preflight: both apps must already be stapled (#20 added the installer).
+for a in "$APP" "$INSTALLER"; do
+    if ! xcrun stapler validate "$a" >/dev/null 2>&1; then
+        echo "package-dmg.sh: ERROR: $a not stapled. Run notarize-bundle.sh on it first." >&2
+        exit 1
+    fi
+done
 
 # Preflight: create-dmg available.
 if ! command -v create-dmg >/dev/null 2>&1; then
@@ -36,18 +40,23 @@ fi
 # 1. Build the DMG. Default-white background, drag-to-Applications hint via
 #    a positioned Applications symlink. Custom background image is deferred
 #    polish (see spec out-of-scope).
-rm -f "$DMG"
+rm -rf "$STAGE" "$DMG"; mkdir -p "$STAGE"
+ditto "$APP" "$STAGE/OniARM64.app"
+ditto "$INSTALLER" "$STAGE/OniMod Installer.app"
 create-dmg \
     --volname "OniARM64" \
     --volicon "$VOLICON" \
-    --window-size 600 400 \
+    --window-size 600 480 \
     --icon-size 100 \
-    --icon "OniARM64.app" 150 200 \
-    --app-drop-link 450 200 \
+    --icon "OniARM64.app" 150 170 \
+    --app-drop-link 450 170 \
+    --icon "OniMod Installer.app" 150 360 \
     --hide-extension "OniARM64.app" \
+    --hide-extension "OniMod Installer.app" \
     --no-internet-enable \
     "$DMG" \
-    "$APP"
+    "$STAGE"
+rm -rf "$STAGE"
 
 # 2. Sign the DMG with Developer ID + timestamp.
 codesign --force --sign "$SIGN_IDENTITY" --timestamp "$DMG"
