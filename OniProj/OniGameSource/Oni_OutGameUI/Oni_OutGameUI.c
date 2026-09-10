@@ -584,6 +584,19 @@ ONiOGU_Options_InitDialog(
 						(int)WMrWindow_GetVisible(checkbox));
 				}
 
+				/* Z-order (#89 root cause): WMrWindow_New appends the new child at
+				 * the END of the dialog's child list, and WMiWindow_Draw paints that
+				 * list from last to first. The Options template's last item is
+				 * pict_options_background, so an appended control is painted before
+				 * the background art and ends up underneath it. Moving it to the
+				 * head of the list puts it on top, like every template control. */
+				WMrWindow_SetPosition(
+					checkbox,
+					NULL,
+					0, 0, 0, 0,
+					WMcPosChangeFlag_NoMove | WMcPosChangeFlag_NoSize);
+				UUrStartupMessage("options renderer toggle: moved to front of z-order (above pict_options_background)");
+
 				// borrow the font from a checkbox that already draws a title
 				font_donor = WMrDialog_GetItemByID(inDialog, ONcOptions_CB_SubtitlesOn);
 				if (font_donor == NULL) { font_donor = anchor; }
