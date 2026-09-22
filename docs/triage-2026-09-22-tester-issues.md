@@ -283,7 +283,7 @@ scripted music change mid-level and a cutscene fade-out (graceful stop path).
 
 ## Side notes from the same batch
 
-- simX commented on #49 that the sluggishness is transient within a level and
+- simX commented on #49 that the sluggishness is transient within a level and (root cause: [rca-2026-09-22-issue-49-sluggish.md](rca-2026-09-22-issue-49-sluggish.md))
   clears on its own with no obvious trigger. New datum for the profiling
   session; still renderer-independent by their account.
 - simX played chapters 10–14 end to end with only these four reports. That is
