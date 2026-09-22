@@ -218,3 +218,95 @@ simX's playthrough is the campaign verification the issue asks for. Chapter
 boxes 10–14 can be ticked on that testimony; the pending-verification
 verdict pass and the staged tests remain as written. The M2 fog spot-check
 and the #84 minute check are the two items nobody has done.
+
+---
+
+## #73 — controller support: what exists and what is left
+
+Read from `origin/feature/controller-73` (`8326a3f`, the July state; the
+August rebase onto `76447d8` exists only in the maintainer's worktree and
+still needs its `--force-with-lease` push) against the design locked on
+2026-07-11.
+
+### On the branch today (Tasks 1–3, ~470 lines, all input-layer)
+
+- `BFW_LI_Gamepad_SDL.c`: `SDL_INIT_GAMECONTROLLER`, one pad opened at
+  init or hot-plug (a second pad is ignored), `[pad]` connect/disconnect
+  log, `ONI_GAMEPAD=0` kill switch, a rumble helper with no callers yet.
+- Buttons and digitalised triggers feed `LIrActionBuffer_Add` through
+  new `pad_*` input codes (0x0100 block) and names, so every pad input is
+  rebindable in `key_config.txt` like a key. Default layout: fresh configs
+  get `bind pad_…` lines written; pre-pad configs (whose `unbindall` wiped
+  the programmatic set) get the built-in defaults applied after the file
+  runs. Binding table has room (100 slots, ~55 used with the pad).
+- `BFW_LI_GamepadLogic.c`: pure math for the left-stick quantiser with
+  hysteresis (0.35 on / 0.30 off), the right-stick aim curve (circular
+  dead zone 0.15, squared response), and the dash-gap state machine, with
+  a 20-case standalone test. **None of it is wired yet**: the poll emits
+  buttons only, sticks and dash are stubbed ("Task 4"), menu events are
+  stubbed ("Task 5").
+- CHECKPOINT A (pad in hand, buttons respond, Start opens the menu,
+  unplug/replug survives) has never been run. Nobody has pressed a pad
+  button on a build of this branch.
+
+### Remaining work, in the plan's order, with what each needs here
+
+4. **Sticks + dash.** Per poll: quantise the left stick and emit
+   `pad_ls_*`; emit `pad_rs_x/y` as analog deltas (the `aim_LR/UD`
+   bindings are `LIcIT_Axis_Delta`, so pad and mouse simply add). Dash:
+   R3 press suppresses the held direction for the gap and re-asserts it,
+   so the engine sees its own double-tap; no game-logic change. Two
+   interactions to design around:
+   - Input is sampled once per **frame**, not per tick
+     (`mac_get_input_in_game`), and #49 shows frames currently run 0, 1 or
+     2 ticks. A one-tick dash gap can therefore land as zero ticks (no
+     double-tap) or two. Either land the #49 clock fix first, or express
+     the gap in frames with a margin (2). The stick hysteresis is
+     frame-sampled too, which is fine.
+   - Gate pad polling on `LIcMode_Game` the way the mouse is
+     (`LIiPlatform_Devices_GetData`), so stick noise never reaches the
+     action buffer while a menu is up.
+5. **Menu cursor.** In `LIcMode_Normal`: left stick moves the WM cursor
+   via `LIrInputEvent_Add(MouseMove)`, A posts LMouse down/up, B posts an
+   Escape key event. Note for the #78 hold: B injects an *event*, which
+   is not the action bit #78 chases; `pad_start → escape` **is** that bit.
+   Extend `ONI_INPUT_TRACE` to name pad-originated Escape and the concern
+   is discharged. The #87 mouse-wheel scroll fold-in belongs here.
+6. **Rumble on hits.** One call to `LIrGamepad_Rumble` from the player's
+   damage path (a hook, so the character code stays vanilla). Switch Pro
+   rumble works over USB and Bluetooth in SDL 2.32.
+7. **Look-sensitivity slider + persist v16.** A runtime Options control
+   (the #89 checkbox is the precedent; its z-order fix in `6053051` is the
+   rule to follow), one float in `persist.dat`, a length-aware read so a
+   v15 file loads whole, and the #91 items: release-note line and the
+   v15→v16 unit test. **Sequencing constraint:** the downgrade backup
+   guard (`ace830e`) is still unreleased. Ship a cut that carries the
+   guard *before* the cut that carries the bump, so anyone rolling back
+   from v16 lands on a binary that backs their file up.
+8. **Hot-plug polish.** Second pad, Bluetooth reconnect after sleep, the
+   `[pad]` lines under the diag gate.
+9. **Docs.** README feature line, CHANGELOG entry, `key_config.txt`
+   comment block listing the `pad_*` names, Switch Pro as the reference
+   device with Xbox/PS via SDL's mapping database.
+10. **Checkpoints B–E.** Maintainer play with the pad after each slice;
+    the plan's gates.
+
+### Before the merge, whatever the order above
+
+- Push the rebased branch, then rebase again onto current `main`
+  (`6053051`); the last conflict was the SDL event switch and it will be
+  the same spot.
+- Decide the #78 hold: root cause is still open, so either accept the
+  sweep's snapshot-clearing hardening plus the trace extension as the
+  mitigation, or keep holding. Holding indefinitely means 1.0 ships
+  without the pad.
+- Land #49 first if the dash and stick feel are to be tuned honestly;
+  tuning on a 0/1/2-tick loop measures the wrong thing.
+
+### Size
+
+Tasks 4–5 are the bulk, roughly 300–400 lines of input-layer code plus
+the trace. Task 7 is the only one that touches persistence and a dialog.
+Three to five focused sessions, each ending in a pad-in-hand checkpoint,
+is a fair estimate; the calendar is set by those checkpoints, not the
+code.
