@@ -13,6 +13,12 @@ GitHub release notes and gets stamped with the version + date.
 - New app icon for macOS 26: the Oni "O" is now a proper layered glass icon, so it follows your system icon style (default, dark, clear, tinted) instead of sitting on the white placeholder tile. On older toolchains the build falls back to a refreshed static icon with a dark background.
 
 ### Mods
+- Texture packs with over-long file names no longer stop Oni from starting. A
+  pack file whose name runs past the engine's 31-character limit (`level10_` +
+  name + `.dat`) used to make the game quit silently on launch (or crash, on
+  r5); it is now skipped, with a line in `startup.txt` that says what to do. A
+  pack that can't be opened for another reason (a missing `.raw`, say) is
+  skipped the same way instead of taking the level down with it (#111, #112).
 - New **OniMod Installer** app in the DMG. Drop a texture mod downloaded from
   the Oni Mod Depot (the zip, or its unzipped folder) onto it and it builds the
   pack and installs it into `TexturePacks/` for you. No Terminal needed. It
