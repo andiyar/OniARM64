@@ -106,6 +106,12 @@ typedef struct TMtInstanceFile	TMtInstanceFile;
 
 	} TMtNameDescriptor;
 
+/* Descriptor sizes as instance files carry them (the 32-bit on-disk layout). On 32-bit
+   these equal the in-memory sizeofs; on 64-bit the pointer-bearing descriptors are wider. */
+#define TMcDisk_InstanceDescriptorSize	(20)
+#define TMcDisk_NameDescriptorSize		(8)
+#define TMcDisk_TemplateDescriptorSize	(16)
+
 /*
  * Instance file header
  */

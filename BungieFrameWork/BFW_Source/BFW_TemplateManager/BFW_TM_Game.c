@@ -1315,22 +1315,28 @@ TMiGame_InstanceFile_LoadHeaderFromMemory(
 		UUrSwap_4Byte(&inFileHeader->nameBlockLength);
 	}
 
+	/* The header is fixed-width (64 bytes on every target), but the descriptor
+	   sizes are compared with the on-disk 32-bit layout, not sizeof(): on 64-bit
+	   the in-memory instance/name descriptors carry pointers and are wider, so
+	   sizeof() rejected every file, and New_FromFileRef ignored the rejection
+	   until #111/#112 exposed it. */
 	if(inFileHeader->sizeofHeader != sizeof(TMtInstanceFile_Header)) return TMcError_DataCorrupt;
-	if(inFileHeader->sizeofInstanceDescriptor != sizeof(TMtInstanceDescriptor)) return TMcError_DataCorrupt;
-	if(inFileHeader->sizeofTemplateDescriptor != sizeof(TMtTemplateDescriptor)) return TMcError_DataCorrupt;
-	if(inFileHeader->sizeofNameDescriptor != sizeof(TMtNameDescriptor)) return TMcError_DataCorrupt;
+	if(inFileHeader->sizeofInstanceDescriptor != TMcDisk_InstanceDescriptorSize) return TMcError_DataCorrupt;
+	if(inFileHeader->sizeofTemplateDescriptor != TMcDisk_TemplateDescriptorSize) return TMcError_DataCorrupt;
+	if(inFileHeader->sizeofNameDescriptor != TMcDisk_NameDescriptorSize) return TMcError_DataCorrupt;
 
 	/* Promoted from UUmAssert (compiled out in release) — a truncated or
 	   corrupt .dat used to SIGBUS on the descriptor walk with no message (#66).
 	   64-bit intermediates prevent the multiply/add from wrapping on hostile
-	   counts — that wrap is exactly what a corrupt header supplies. */
+	   counts — that wrap is exactly what a corrupt header supplies.
+	   The descriptor terms use the on-disk sizes, as the checks above do. */
 	if (inFileHeader->numNameDescriptors > inFileHeader->numInstanceDescriptors) return TMcError_DataCorrupt;
 	{
 		UUtUns64 descriptorsEnd =
 			sizeof(TMtInstanceFile_Header) +
-			(UUtUns64)inFileHeader->numInstanceDescriptors * sizeof(TMtInstanceDescriptor) +
-			(UUtUns64)inFileHeader->numNameDescriptors * sizeof(TMtNameDescriptor) +
-			(UUtUns64)inFileHeader->numTemplateDescriptors * sizeof(TMtTemplateDescriptor);
+			(UUtUns64)inFileHeader->numInstanceDescriptors * TMcDisk_InstanceDescriptorSize +
+			(UUtUns64)inFileHeader->numNameDescriptors * TMcDisk_NameDescriptorSize +
+			(UUtUns64)inFileHeader->numTemplateDescriptors * TMcDisk_TemplateDescriptorSize;
 
 		if (inFileHeader->dataBlockOffset < descriptorsEnd) return TMcError_DataCorrupt;
 		if (inFileHeader->nameBlockOffset < descriptorsEnd + inFileHeader->dataBlockLength) return TMcError_DataCorrupt;
@@ -1653,7 +1659,7 @@ TMiGame_InstanceFile_New_FromFileRef(
 {
 	UUtError				error;
 	BFtFile*				instancePhysicalFile = NULL;
-	UUtBool					needsSwapping;
+	UUtBool					needsSwapping = UUcFalse;
 	TMtInstanceFile_Header*	fileHeader;
 	UUtUns32				totalFileLength;
 	TMtInstanceFile*		newInstanceFile;
@@ -1763,6 +1769,19 @@ TMiGame_InstanceFile_New_FromFileRef(
 
 	fileHeader = (TMtInstanceFile_Header *) mappingPtr;
 	error = TMiGame_InstanceFile_LoadHeaderFromMemory(fileHeader, &needsSwapping);
+	if (error != UUcError_None)
+	{
+		/* needsSwapping is only assigned on success; using it after a rejected
+		   header byte-swapped a little-endian file into reversed template
+		   tags and a level-0 segfault (#111, #112). */
+		UUrStartupMessage("[tm] %s: instance-file header rejected (error %d); corrupt, truncated, or not an Oni .dat",
+			BFrFileRef_GetLeafName(inInstanceFileRef), (int)error);
+		if (newInstanceFile->separateFile != NULL) BFrFile_Close(newInstanceFile->separateFile);
+		if (newInstanceFile->rawMapping != NULL) BFrFile_UnMap(newInstanceFile->rawMapping);
+		BFrFile_UnMap(newInstanceFile->mapping);
+		UUrMemory_Block_Delete(newInstanceFile);
+		UUmError_ReturnOnError(error);
+	}
 
 	/* Mac retail data detector: retain whether this file carries the Mac
 	   template-checksum family so the bridge translate site can select the
@@ -1770,6 +1789,10 @@ TMiGame_InstanceFile_New_FromFileRef(
 	   host-endian here (LoadHeaderFromMemory already applied any swap). */
 	newInstanceFile->isMac =
 		(fileHeader->totalTemplateChecksum == TMcMacTemplateChecksum) ? UUcTrue : UUcFalse;
+
+	UUrStartupMessage("[tm] header ok %s: %u instances, %u names, swap=%d, mac=%d",
+		BFrFileRef_GetLeafName(inInstanceFileRef), (unsigned)fileHeader->numInstanceDescriptors,
+		(unsigned)fileHeader->numNameDescriptors, (int)needsSwapping, (int)newInstanceFile->isMac);
 
 	UUmAssert(totalFileLength == fileHeader->nameBlockOffset + fileHeader->nameBlockLength);
 
