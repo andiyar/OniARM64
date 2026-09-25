@@ -12,6 +12,7 @@
 #include "Motoko_Manager.h"
 
 #include "WM_CheckBox.h"
+#include "WM_Text.h"
 #include "WM_PopupMenu.h"
 
 #include "Oni_GameState.h"
@@ -23,6 +24,15 @@
 #include "Oni_Level.h"
 #include "Oni.h"
 #include "Oni_RendererPref.h"
+
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#include <spawn.h>
+#include <string.h>
+#include <unistd.h>
+#include <limits.h>
+extern char **environ;
+#endif
 
 
 // ======================================================================
@@ -63,7 +73,8 @@ enum
 	ONcOptions_PM_Difficulty		= 108,
 	ONcOptions_CB_InvertMouseOn		= 109,
 	ONcOptions_Sldr_Gamma			= 110,
-	ONcOptions_CB_MetalRenderer		= 111		/* #89: created at runtime, not in the shipping template */
+	ONcOptions_CB_MetalRenderer		= 111,		/* #89: created at runtime, not in the shipping template */
+	ONcOptions_Txt_Renderer			= 112		/* #89: label for the runtime checkbox */
 };
 
 enum
@@ -128,6 +139,64 @@ ONiOGU_ChangeRestart_Callback(
 
 	return handled;
 }
+
+#ifdef __APPLE__
+// ----------------------------------------------------------------------
+// #89: "restart required" used to mean by hand. Spawn a detached shell that
+// waits for this process to exit, then opens the .app again (or execs the
+// bare binary from its cwd); the caller posts the normal quit afterwards, so
+// teardown is the ordinary path and the #74 crash sentinel clears.
+static void
+ONiOGU_RelaunchAfterQuit(
+	void)
+{
+	char				exe[PATH_MAX];
+	char				resolved[PATH_MAX];
+	char				cwd[PATH_MAX];
+	char				cmd[PATH_MAX * 3];
+	uint32_t			size = sizeof(exe);
+	const char			*macos_dir;
+	char				*argv[4];
+	pid_t				pid;
+	int					rc;
+
+	if (_NSGetExecutablePath(exe, &size) != 0) {
+		UUrStartupMessage("relaunch: executable path unavailable, restart by hand");
+		return;
+	}
+	if (realpath(exe, resolved) != NULL) {
+		strncpy(exe, resolved, sizeof(exe) - 1);
+		exe[sizeof(exe) - 1] = 0;
+	}
+	if (strchr(exe, '\'') != NULL) {
+		UUrStartupMessage("relaunch: path contains a quote, restart by hand");
+		return;
+	}
+
+	macos_dir = strstr(exe, ".app/Contents/MacOS/");
+	if (macos_dir != NULL) {
+		snprintf(cmd, sizeof(cmd),
+			"while kill -0 %d 2>/dev/null; do sleep 0.2; done; open '%.*s'",
+			(int)getpid(), (int)(macos_dir + 4 - exe), exe);
+	}
+	else {
+		if (getcwd(cwd, sizeof(cwd)) == NULL || strchr(cwd, '\'') != NULL) {
+			UUrStartupMessage("relaunch: cwd unavailable, restart by hand");
+			return;
+		}
+		snprintf(cmd, sizeof(cmd),
+			"while kill -0 %d 2>/dev/null; do sleep 0.2; done; cd '%s' && exec '%s'",
+			(int)getpid(), cwd, exe);
+	}
+
+	argv[0] = "/bin/sh";
+	argv[1] = "-c";
+	argv[2] = cmd;
+	argv[3] = NULL;
+	rc = posix_spawn(&pid, "/bin/sh", NULL, NULL, argv, environ);
+	UUrStartupMessage("relaunch: %s (%s)", (rc == 0) ? "armed" : "posix_spawn failed", cmd);
+}
+#endif
 
 // ----------------------------------------------------------------------
 static UUtUns32
@@ -514,94 +583,143 @@ ONiOGU_Options_InitDialog(
 
 #ifdef __APPLE__
 	/* #89: the shipping Options template can't gain controls by editing game
-	 * data, so the renderer toggle is created here. It is positioned by
-	 * measuring the gamma slider rather than by absolute coordinates, so it
-	 * lands inside the dialog art on whichever Options layout is on screen. */
+	 * data, so the renderer toggle is created here. The Graphics box has no
+	 * spare row (2026-09-11 screenshot: a control under the gamma slider
+	 * lands on the box border), so the row goes in the Sound box, which has
+	 * been mostly empty since the dialogue/music sliders were dropped. It
+	 * mirrors the "Subtitles:  [ ] On" rows: a text label in the label column
+	 * (x from the gamma slider's row) and a checkbox titled "On" in the
+	 * control column, one row pitch below Overall Volume. */
 	{
 		extern UUtBool			metal_is_available(void);
 
-		WMtWindow				*anchor;
+		WMtWindow				*row_anchor;		/* Overall Volume slider: row y + control column x */
+		WMtWindow				*col_anchor;		/* Gamma slider: its label sits at a known offset */
 
-		anchor = WMrDialog_GetItemByID(inDialog, ONcOptions_Sldr_Gamma);
-		// #89 diagnostics: the checkbox never rendered on the maintainer's
-		// machine with no visible failure — every step reports until the
-		// on-screen result is confirmed.
-		UUrStartupMessage("options renderer toggle: gamma anchor %s",
-			(anchor != NULL) ? "found" : "MISSING - no checkbox");
-		if ((anchor != NULL) &&
+		row_anchor = WMrDialog_GetItemByID(inDialog, ONcOptions_Sldr_OverallVol);
+		col_anchor = WMrDialog_GetItemByID(inDialog, ONcOptions_Sldr_Gamma);
+		UUrStartupMessage("options renderer toggle: anchors %s/%s",
+			(row_anchor != NULL) ? "volume found" : "volume MISSING",
+			(col_anchor != NULL) ? "gamma found" : "gamma MISSING");
+		if ((row_anchor != NULL) && (col_anchor != NULL) &&
 			(WMrDialog_GetItemByID(inDialog, ONcOptions_CB_MetalRenderer) == NULL))
 		{
+			WMtWindow			*label;
 			WMtWindow			*checkbox;
-			UUtInt16			width;
+			WMtWindow			*font_donor;
+			UUtRect				row_rect;
+			UUtRect				col_rect;
+			UUtRect				made_rect;
+			UUtInt16			row_pitch;
+			UUtInt16			label_left;
+			UUtInt16			row_top;
 			UUtInt16			height;
+			TStFontInfo			font_info;
+			ONtRendererPref		pref;
+			UUtBool				checked;
 
-			WMrWindow_GetSize(anchor, &width, &height);
-			UUrStartupMessage("options renderer toggle: anchor size %dx%d", (int)width, (int)height);
+			WMrWindow_GetRect(row_anchor, &row_rect);
+			WMrWindow_GetRect(col_anchor, &col_rect);
+			height = (UUtInt16)(row_rect.bottom - row_rect.top);
+			/* Template geometry (WMDD 152): label column starts 131 units left
+			 * of the sliders (measured on the Overall Volume row); rows are 25 units apart. */
+			label_left = (UUtInt16)(row_rect.left - 131);
+			row_pitch = 25;
+			row_top = (UUtInt16)(row_rect.top + row_pitch);
 
-			checkbox =
+			/* WMrWindow_New takes parent-relative coordinates and the WM has no
+			 * getter for them, so create at the parent origin, read the screen
+			 * rect back, and place by delta. */
+			label =
 				WMrWindow_New(
-					WMcWindowType_CheckBox,
-					"Metal renderer (restart required)",
+					WMcWindowType_Text,
+					"Metal Renderer:",
 					WMcWindowFlag_Visible | WMcWindowFlag_Child,
-					WMcCheckBoxStyle_TextCheckBox,
-					ONcOptions_CB_MetalRenderer,
-					0,
-					0,
-					width,
+					WMcTextStyle_HLeft | WMcTextStyle_VCenter | WMcTextStyle_SingleLine,
+					ONcOptions_Txt_Renderer,
+					0, 0,
+					(UUtInt16)(row_rect.left - label_left),
 					height,
 					inDialog,
 					0);
-			if (checkbox == NULL)
+			checkbox =
+				WMrWindow_New(
+					WMcWindowType_CheckBox,
+					"On",
+					WMcWindowFlag_Visible | WMcWindowFlag_Child,
+					WMcCheckBoxStyle_TextCheckBox,
+					ONcOptions_CB_MetalRenderer,
+					0, 0,
+					(UUtInt16)(row_rect.right - row_rect.left),
+					height,
+					inDialog,
+					0);
+			if ((label == NULL) || (checkbox == NULL))
 			{
-				UUrStartupMessage("options renderer toggle: WMrWindow_New returned NULL - no checkbox");
+				UUrStartupMessage("options renderer toggle: WMrWindow_New returned NULL (label %p, checkbox %p)",
+					(void *)label, (void *)checkbox);
+				if (label != NULL) { WMrWindow_Delete(label); }
+				if (checkbox != NULL) { WMrWindow_Delete(checkbox); }
 			}
 			else
 			{
-				WMtWindow		*font_donor;
-				UUtRect			anchor_rect;
-				UUtRect			checkbox_rect;
-				TStFontInfo		font_info;
-				ONtRendererPref	pref;
-				UUtBool			checked;
+				WMrWindow_GetRect(label, &made_rect);
+				WMrWindow_SetLocation(label,
+					(UUtInt16)(label_left - made_rect.left),
+					(UUtInt16)(row_top - made_rect.top));
+				WMrWindow_GetRect(checkbox, &made_rect);
+				WMrWindow_SetLocation(checkbox,
+					(UUtInt16)(row_rect.left - made_rect.left),
+					(UUtInt16)(row_top - made_rect.top));
 
-				/* WMrWindow_New takes parent-relative coordinates and the WM has
-				 * no getter for them, so place the control by the difference of
-				 * two screen rects — it was created at the parent origin. */
-				WMrWindow_GetRect(anchor, &anchor_rect);
-				WMrWindow_GetRect(checkbox, &checkbox_rect);
-				WMrWindow_SetLocation(
-					checkbox,
-					(UUtInt16)(anchor_rect.left - checkbox_rect.left),
-					(UUtInt16)(anchor_rect.bottom + 4 - checkbox_rect.top));
+				/* Z-order (#89 root cause): WMrWindow_New appends the new child
+				 * at the END of the dialog's child list, and WMiWindow_Draw
+				 * paints that list from last to first. The template's last item
+				 * is pict_options_background, so an appended control is painted
+				 * before the background art and ends up underneath it. Moving
+				 * both to the head of the list puts them on top like every
+				 * template control. */
+				WMrWindow_SetPosition(label, NULL, 0, 0, 0, 0,
+					WMcPosChangeFlag_NoMove | WMcPosChangeFlag_NoSize);
+				WMrWindow_SetPosition(checkbox, NULL, 0, 0, 0, 0,
+					WMcPosChangeFlag_NoMove | WMcPosChangeFlag_NoSize);
+
+				/* Fonts: the label borrows from a template label-style control
+				 * (the subtitles checkbox draws its "On" in the row font). */
+				font_donor = WMrDialog_GetItemByID(inDialog, ONcOptions_CB_SubtitlesOn);
+				if (font_donor == NULL) { font_donor = row_anchor; }
+				WMrWindow_GetFontInfo(font_donor, &font_info);
+				WMrWindow_SetFontInfo(label, &font_info);
+				WMrWindow_SetFontInfo(checkbox, &font_info);
+
+				/* The row lives in the Sound box, so say so in the heading. Template
+				 * labels all carry id 0; find it by title. Width grows to fit. */
 				{
-					UUtRect final_rect;
-					WMrWindow_GetRect(checkbox, &final_rect);
-					UUrStartupMessage(
-						"options renderer toggle: anchor rect %d,%d-%d,%d; created at %d,%d-%d,%d; placed at %d,%d-%d,%d; visible=%d",
-						(int)anchor_rect.left, (int)anchor_rect.top, (int)anchor_rect.right, (int)anchor_rect.bottom,
-						(int)checkbox_rect.left, (int)checkbox_rect.top, (int)checkbox_rect.right, (int)checkbox_rect.bottom,
-						(int)final_rect.left, (int)final_rect.top, (int)final_rect.right, (int)final_rect.bottom,
-						(int)WMrWindow_GetVisible(checkbox));
+					WMtWindow	*heading;
+
+					heading = WMrDialog_GetItemByTitle(inDialog, "Sound", WMcWindowType_Text);
+					if (heading != NULL)
+					{
+						UUtInt16	hw, hh;
+
+						WMrWindow_GetSize(heading, &hw, &hh);
+						WMrWindow_SetTitle(heading, "Sound + Other", WMcMaxTitleLength);
+						WMrWindow_SetSize(heading, (UUtInt16)(hw + 80), hh);
+					}
+					UUrStartupMessage("options renderer toggle: Sound heading %s", (heading != NULL) ? "renamed" : "not found");
 				}
 
-				/* Z-order (#89 root cause): WMrWindow_New appends the new child at
-				 * the END of the dialog's child list, and WMiWindow_Draw paints that
-				 * list from last to first. The Options template's last item is
-				 * pict_options_background, so an appended control is painted before
-				 * the background art and ends up underneath it. Moving it to the
-				 * head of the list puts it on top, like every template control. */
-				WMrWindow_SetPosition(
-					checkbox,
-					NULL,
-					0, 0, 0, 0,
-					WMcPosChangeFlag_NoMove | WMcPosChangeFlag_NoSize);
-				UUrStartupMessage("options renderer toggle: moved to front of z-order (above pict_options_background)");
-
-				// borrow the font from a checkbox that already draws a title
-				font_donor = WMrDialog_GetItemByID(inDialog, ONcOptions_CB_SubtitlesOn);
-				if (font_donor == NULL) { font_donor = anchor; }
-				WMrWindow_GetFontInfo(font_donor, &font_info);
-				WMrWindow_SetFontInfo(checkbox, &font_info);
+				{
+					UUtRect l, c;
+					WMrWindow_GetRect(label, &l);
+					WMrWindow_GetRect(checkbox, &c);
+					UUrStartupMessage(
+						"options renderer toggle: volume row %d,%d-%d,%d; gamma %d,%d-%d,%d; label at %d,%d-%d,%d; checkbox at %d,%d-%d,%d",
+						(int)row_rect.left, (int)row_rect.top, (int)row_rect.right, (int)row_rect.bottom,
+						(int)col_rect.left, (int)col_rect.top, (int)col_rect.right, (int)col_rect.bottom,
+						(int)l.left, (int)l.top, (int)l.right, (int)l.bottom,
+						(int)c.left, (int)c.top, (int)c.right, (int)c.bottom);
+				}
 
 				pref = ONrRendererPref_Read();
 				checked =
@@ -613,6 +731,7 @@ ONiOGU_Options_InitDialog(
 				if (!metal_is_available())
 				{
 					WMrWindow_SetEnabled(checkbox, UUcFalse);
+					WMrWindow_SetEnabled(label, UUcFalse);
 				}
 			}
 		}
@@ -708,6 +827,12 @@ ONiOGU_Options_HandleCommand(
 				if (want_metal != ONgCommandLine.useMetal)
 				{
 					ONiOutGameUI_ChangeRestart_Display();
+					/* The dialog only has OK. Do the restart for the player: quit
+					 * through the normal path with a relaunch armed behind it. */
+					ONiOGU_RelaunchAfterQuit();
+					WMrDialog_ModalEnd(inDialog, 0);
+					WMrMessage_Post(NULL, WMcMessage_Quit, 0, 0);
+					ONgTerminateGame = UUcTrue;
 				}
 			}
 		break;

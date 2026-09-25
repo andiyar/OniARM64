@@ -874,6 +874,36 @@ WMrDialog_GetItemByID(
 }
 
 // ----------------------------------------------------------------------
+// #89: template labels all carry id 0, so a runtime tweak to a heading has
+// to find it by title. First child whose title matches and whose window
+// type is inWindowType (WMcWindowType_None = any type).
+WMtWindow*
+WMrDialog_GetItemByTitle(
+	WMtDialog				*inDialog,
+	const char				*inTitle,
+	WMtWindowType			inWindowType)
+{
+	WMtWindow				*child;
+
+	UUmAssert(inDialog);
+	UUmAssert(inTitle);
+
+	child = inDialog->child;
+	while (child)
+	{
+		if (((inWindowType == WMcWindowType_None) || (child->window_class->type == inWindowType)) &&
+			(strcmp(child->title, inTitle) == 0))
+		{
+			break;
+		}
+
+		child = child->next;
+	}
+
+	return child;
+}
+
+// ----------------------------------------------------------------------
 uintptr_t
 WMrDialog_GetUserData(
 	WMtDialog				*inDialog)

@@ -131,6 +131,12 @@ WMrDialog_GetItemByID(
 	WMtDialog				*inDialog,
 	UUtUns16				inID);
 
+WMtWindow*
+WMrDialog_GetItemByTitle(
+	WMtDialog				*inDialog,
+	const char				*inTitle,
+	WMtWindowType			inWindowType);
+
 uintptr_t
 WMrDialog_GetUserData(
 	WMtDialog				*inDialog);
