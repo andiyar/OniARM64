@@ -1692,6 +1692,7 @@ TMiGame_InstanceFile_New_FromFileRef(
 		if (error != UUcError_None)
 		{
 			error = error != UUcError_OutOfMemory ? TMcError_DataCorrupt : UUcError_OutOfMemory;
+			UUrMemory_Block_Delete(newInstanceFile);	/* nothing mapped yet */
 			UUmError_ReturnOnErrorMsg(error, "Could not open instance file");
 		}
 
@@ -1701,7 +1702,16 @@ TMiGame_InstanceFile_New_FromFileRef(
 			UUtUns32 rawFileLength;
 
 			error = TMrUtility_DataRef_To_BinaryRef(inInstanceFileRef, &rawFileRef, "raw");
-			UUmError_ReturnOnError(error);
+			if (error != UUcError_None) {
+				/* The .dat's own leaf failed the file layer's 31-char cap
+				   while being duplicated (#111, #112). Release what this
+				   call mapped so the caller can skip the file cleanly. */
+				UUrStartupMessage("[tm] could not derive the .raw name for '%s' (file name too long?)",
+					BFrFileRef_GetLeafName(inInstanceFileRef));
+				BFrFile_UnMap(newInstanceFile->mapping);
+				UUrMemory_Block_Delete(newInstanceFile);
+				UUmError_ReturnOnError(error);
+			}
 
 			error = BFrFile_Map(rawFileRef, 0, &newInstanceFile->rawMapping, &newInstanceFile->rawPtr, &rawFileLength);
 
@@ -1726,7 +1736,14 @@ TMiGame_InstanceFile_New_FromFileRef(
 			BFtFileRef *separateFileRef;
 
 			error = TMrUtility_DataRef_To_BinaryRef(inInstanceFileRef, &separateFileRef, "sep");
-			UUmError_ReturnOnError(error);
+			if (error != UUcError_None) {
+				if (newInstanceFile->rawMapping != NULL) {
+					BFrFile_UnMap(newInstanceFile->rawMapping);
+				}
+				BFrFile_UnMap(newInstanceFile->mapping);
+				UUrMemory_Block_Delete(newInstanceFile);
+				UUmError_ReturnOnError(error);
+			}
 
 			error = BFrFile_Open(separateFileRef, "r", &newInstanceFile->separateFile);
 			if (error != UUcError_None) {
@@ -3151,8 +3168,35 @@ TMiGame_InstanceFileRef_LoadLevel(
 	{
 		if(TMmFileIndex_LevelNumber_Get(TMgGame_InstanceFileRefs_List[itr].fileIndex) == inLevelNumber)
 		{
+			UUtUns16 loadedBefore = TMgGame_LoadedInstanceFiles_Num;
+
 			error = TMiGame_LoadedInstanceFiles_Add(itr);
-			UUmError_ReturnOnError(error);
+			if(error != UUcError_None)
+			{
+				// An overlay (texture pack) that cannot be opened must not take
+				// the level down with it (#111, #112: a too-long leaf or a
+				// missing .raw used to abort level 0 and quit the game silently).
+				// Entries [0, TMgGame_OverlayRegistered_Num) are overlays. The
+				// skip is only safe when New_FromFileRef failed, i.e. nothing
+				// was appended to the loaded list: LoadedInstanceFiles_Add
+				// appends after New_FromFileRef succeeds and can still fail
+				// later in PrivateData_New, which would leave a half-initialised
+				// entry, so that case keeps the vanilla hard failure. No loaded
+				// record can refer to a skipped file: a pack's records live in
+				// that file and are never read. Retail files always keep the
+				// hard failure.
+				if(itr < TMgGame_OverlayRegistered_Num &&
+				   TMgGame_LoadedInstanceFiles_Num == loadedBefore)
+				{
+					UUrStartupMessage(
+						"[overlay] %s could not be loaded for level %d (error %d); "
+						"skipping this pack, the game continues without it.",
+						BFrFileRef_GetLeafName(&TMgGame_InstanceFileRefs_List[itr].instanceFileRef),
+						(int)inLevelNumber, (int)error);
+					continue;
+				}
+				UUmError_ReturnOnError(error);
+			}
 		}
 	}
 
@@ -3267,6 +3311,30 @@ TMiGame_OverlayDir_Scan(
 				"of this overlay dir (slots are reserved for the GameDataFolder).",
 				BFrFileRef_GetLeafName(&curDatFileRef));
 			break;
+		}
+
+		// Leaf-length guard (#111, #112). The file layer caps a leaf at
+		// BFcMaxFileNameLength-1 (31) characters, but directory iteration
+		// builds refs with sprintf and never runs that check. A 32-34 char
+		// leaf therefore registers here and then fails when its ref is
+		// duplicated at level load (BFrFileRef_Set), which used to abort
+		// level 0; a 35+ char leaf loses its ".dat" in LevelInfo_Get's
+		// 32-byte buffer and was skipped with an unhelpful message. Refuse
+		// both up front, with the fix a player can act on.
+		{
+			const char *leaf = BFrFileRef_GetLeafName(&curDatFileRef);
+			size_t leafLen = strlen(leaf);
+
+			if(leafLen >= BFcMaxFileNameLength)
+			{
+				UUrStartupMessage(
+					"[overlay] %s: file name too long (%u characters; the engine "
+					"allows at most %d including .dat). Shorten the mod name and "
+					"reinstall it with OniMod Installer, or rebuild the pack with "
+					"onipack import-sep under a shorter suffix. Skipping this file.",
+					leaf, (unsigned)leafLen, BFcMaxFileNameLength - 1);
+				continue;
+			}
 		}
 
 		error =
@@ -3417,6 +3485,24 @@ TMrGame_Initialize(
 				}
 			}
 #endif
+
+			// Leaf-length guard (#111, #112): same cap as the overlay scan.
+			// Unreachable with retail data (the longest retail leaf is
+			// level10_Final.dat, 17 chars); it protects a data folder that
+			// has had hand-built files dropped into it.
+			{
+				const char *leaf = BFrFileRef_GetLeafName(&curDatFileRef);
+				size_t leafLen = strlen(leaf);
+
+				if(leafLen >= BFcMaxFileNameLength)
+				{
+					UUrStartupMessage(
+						"%s: file name too long (%u characters, max %d including "
+						".dat); skipping.",
+						leaf, (unsigned)leafLen, BFcMaxFileNameLength - 1);
+					continue;
+				}
+			}
 
 			// Get the file info
 			error =
