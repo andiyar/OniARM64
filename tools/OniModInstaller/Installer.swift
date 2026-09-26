@@ -13,7 +13,7 @@ enum InstallError: Error, CustomStringConvertible {
     case notFound(String)
     case unzipFailed(String)
     case noTextures
-    case onlyScreenTiles(count: Int)  // every TXMP was a tile of a re-laid-out screen (#113)
+    case onlyScreenTiles(count: Int, chrome: Int)  // every TXMP was a tile of a re-laid-out screen, or its menu chrome (#113); count includes chrome
     case alreadyInstalled(String)     // pack folder path
     case toolMissing(String)
     case packFailed(String)
@@ -25,7 +25,7 @@ enum InstallError: Error, CustomStringConvertible {
         case .notFound(let p): return "Can't find \(p)."
         case .unzipFailed(let m): return "Couldn't unpack the zip: \(m)"
         case .noTextures: return "No texture files (TXMP*.oni) found in this mod. OniMod Installer only handles texture mods; character models, levels and scripts can't be installed."
-        case .onlyScreenTiles(let n): return "This mod only re-lays-out screens (\(n) tiles of screens with a different grid from the game's). Screen mods aren't supported yet, see https://github.com/andiyar/OniARM64/issues/121"
+        case .onlyScreenTiles(let n, let c): return "This mod only re-lays-out screens (\(n - c) tiles of screens with a different grid from the game's" + (c > 0 ? ", plus \(c) menu chrome textures" : "") + "). Screen mods aren't supported yet, see https://github.com/andiyar/OniARM64/issues/121"
         case .alreadyInstalled(let p): return "A pack with this name is already installed at \(p)."
         case .toolMissing(let t): return "The bundled helper '\(t)' is missing. Reinstall OniMod Installer."
         case .packFailed(let m): return "Packing failed: \(m)"
@@ -48,7 +48,7 @@ struct InstallReport {
     var modName = ""                       // display name (from Mod_Info or folder)
     var packName = ""                      // sanitised suffix + folder name
     var packFolder = ""                    // final on-disk path
-    var levels: [(level: Int, textures: Int, skipped: Int, screenSkipped: Int)] = []
+    var levels: [(level: Int, textures: Int, skipped: Int, screenSkipped: Int, chromeSkipped: Int)] = []
     var ignoredNonTexture = 0
     var duplicateNames = 0
     var alphaGuard = ""                    // one line: what happened
@@ -64,6 +64,8 @@ struct InstallReport {
         }
         let screenSkipped = levels.reduce(0) { $0 + $1.screenSkipped }
         if screenSkipped > 0 { s += "  screen tiles skipped: \(screenSkipped) (this mod re-lays-out the screen; not supported yet, see #121)\n" }
+        let chromeSkipped = levels.reduce(0) { $0 + $1.chromeSkipped }
+        if chromeSkipped > 0 { s += "  menu chrome skipped: \(chromeSkipped) (buttons/navi were restyled to match the re-laid-out screens; the vanilla blue chrome is kept)\n" }
         if ignoredNonTexture > 0 { s += "  \(ignoredNonTexture) non-texture file(s) ignored\n" }
         if duplicateNames > 0 { s += "  \(duplicateNames) duplicate texture name(s) dropped (first copy kept)\n" }
         if !alphaGuard.isEmpty { s += "  alpha guard: \(alphaGuard)\n" }
@@ -182,7 +184,20 @@ struct ModInstaller {
                 }
             }
         }
-        guard !byLevel.isEmpty else { throw InstallError.onlyScreenTiles(count: screenSkipped.values.reduce(0, +)) }
+        // The same mods restyle the dialog chrome (buttons, navi) red to match their
+        // screens; on the vanilla screens that gives red frames and plates, so the
+        // chrome goes with the tiles. A same-grid mod keeps its chrome (#113).
+        let screenTotal = screenSkipped.values.reduce(0, +)
+        var chromeSkipped: [Int: Int] = [:]
+        if screenTotal > 0 {
+            for (level, files) in byLevel {
+                let kept = files.filter { !["buttons", "navi"].contains(String($0.lastPathComponent.dropFirst(4).dropLast(4)).lowercased()) }
+                if kept.count < files.count { chromeSkipped[level] = files.count - kept.count }
+                byLevel[level] = kept.isEmpty ? nil : kept
+            }
+        }
+        let chromeTotal = chromeSkipped.values.reduce(0, +)
+        guard !byLevel.isEmpty else { throw InstallError.onlyScreenTiles(count: screenTotal + chromeTotal, chrome: chromeTotal) }
         // 4b. Engine file-id collision with an installed pack (#111, #112).
         try checkFileIDCollisions(levels: Array(byLevel.keys), packName: report.packName,
                                   excluding: replace ? [report.packName, legacy] : [])
@@ -212,10 +227,10 @@ struct ModInstaller {
                 throw InstallError.packFailed(r.stderr.split(separator: "\n").last.map(String.init) ?? "exit \(r.status)")
             }
             let (packed, skipped) = Self.parseOnipackSummary(r.stderr)
-            report.levels.append((level, packed, skipped, screenSkipped[level] ?? 0))
+            report.levels.append((level, packed, skipped, screenSkipped[level] ?? 0, chromeSkipped[level] ?? 0))
         }
-        for (level, n) in screenSkipped where byLevel[level] == nil {
-            report.levels.append((level, 0, 0, n))   // every TXMP of this level was a skipped tile
+        for level in Set(screenSkipped.keys).union(chromeSkipped.keys) where byLevel[level] == nil {
+            report.levels.append((level, 0, 0, screenSkipped[level] ?? 0, chromeSkipped[level] ?? 0))   // every TXMP of this level was a skipped tile or chrome
         }
 
         // 7. Credits / provenance file, then move into place.

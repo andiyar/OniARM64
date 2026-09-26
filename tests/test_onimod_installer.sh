@@ -187,6 +187,36 @@ N=$("$INDEX" "$DEST/screensextra/level0_screensextra.dat" 2>/dev/null | wc -l | 
 check '[ $rc -eq 0 ] && grep -q "screen tiles skipped: 13 " "$W/out13b"' "retail-only tile name screenB_extra is skipped too (rc=$rc): $(cat "$W/out13b")"
 check '[ "$N" = "6" ]' "variant level0 pack holds only the 6 same-grid tiles (got $N)"
 
+# 13c. the HD Screens chrome (#113): buttons/navi restyled to match the
+#      re-laid-out screens go with the skipped tiles; an ordinary texture stays.
+C="$W/chrome-a"; mkdir -p "$C/oni/level0_Final"
+cp "$W/scr/TXMBscreenB.oni" "$C/oni/level0_Final/"
+for i in 1 2 3 4 5 6 7 8 9 10 11 12; do cp "$W/scr/TXMPscreenB$i.oni" "$C/oni/level0_Final/"; done
+cp "$W/TXMPcliA.oni" "$C/oni/level0_Final/TXMPbuttons.oni"
+cp "$W/TXMPcliA.oni" "$C/oni/level0_Final/TXMPnavi.oni"
+cp "$W/TXMPcliA.oni" "$C/oni/level0_Final/"
+"$INST" --install "$C" --dest "$DEST" --gamedata "$W/gd13" > "$W/out13c" 2>&1; rc=$?
+N=$("$INDEX" "$DEST/chromea/level0_chromea.dat" 2>/dev/null | wc -l | tr -d ' ')
+check '[ $rc -eq 0 ] && grep -q "  menu chrome skipped: 2 " "$W/out13c"' "buttons/navi skipped with the re-laid-out screen (rc=$rc): $(cat "$W/out13c")"
+check '[ "$N" = "1" ]' "chrome-a level0 pack holds only the ordinary texture (got $N)"
+
+# 13d. no screen mismatch: the chrome installs unchanged, no chrome line.
+D="$W/chrome-b"; mkdir -p "$D/oni/level0_Final"
+cp "$W/TXMPcliA.oni" "$D/oni/level0_Final/TXMPbuttons.oni"
+cp "$W/TXMPcliA.oni" "$D/oni/level0_Final/TXMPnavi.oni"
+"$INST" --install "$D" --dest "$DEST" --gamedata "$W/gd13" > "$W/out13d" 2>&1; rc=$?
+N=$("$INDEX" "$DEST/chromeb/level0_chromeb.dat" 2>/dev/null | wc -l | tr -d ' ')
+check '[ $rc -eq 0 ] && ! grep -q "menu chrome skipped" "$W/out13d" && [ "$N" = "2" ]' "same-grid mod keeps buttons/navi (rc=$rc, got $N): $(cat "$W/out13d")"
+
+# 13e. re-laid-out screen plus chrome and nothing else: refused as a screen
+#      mod, and the message counts the chrome.
+E="$W/chrome-c"; mkdir -p "$E/oni/level0_Final"
+cp "$W/scr/TXMBscreenB.oni" "$E/oni/level0_Final/"
+for i in 1 2 3 4 5 6 7 8 9 10 11 12; do cp "$W/scr/TXMPscreenB$i.oni" "$E/oni/level0_Final/"; done
+cp "$W/TXMPcliA.oni" "$E/oni/level0_Final/TXMPbuttons.oni"
+"$INST" --install "$E" --dest "$DEST" --gamedata "$W/gd13" > "$W/out13e" 2>&1; rc=$?
+check '[ $rc -eq 1 ] && grep -q "(12 tiles" "$W/out13e" && grep -q "plus 1 menu chrome" "$W/out13e"' "screen-plus-chrome-only mod refused, chrome counted (rc=$rc): $(cat "$W/out13e")"
+
 # 14. same mod, no retail data: nothing is skipped, all 18 tiles packed.
 "$INST" --install "$S" --dest "$DEST" --gamedata none --replace > "$W/out14" 2>&1; rc=$?
 N=$("$INDEX" "$DEST/screensmod/level0_screensmod.dat" 2>/dev/null | wc -l | tr -d ' ')
