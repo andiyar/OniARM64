@@ -1220,9 +1220,17 @@ static void KeyConfig(void)
 						p++;
 					}
 
-					if (0 == strncmp(p, "bind pad_", 9)) {
-						has_pad_binding = UUcTrue;
-						break;
+					if (0 == strncasecmp(p, "bind", 4) && (' ' == p[4] || '\t' == p[4])) {
+						p += 4;
+
+						while (' ' == *p || '\t' == *p) {
+							p++;
+						}
+
+						if (0 == strncasecmp(p, "pad_", 4)) {
+							has_pad_binding = UUcTrue;
+							break;
+						}
 					}
 				}
 
