@@ -8,6 +8,7 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ### 2026-09-26 — Session 79: Session 6 of the tester wave (v1.3.0 pre-cut sweep; Task 4.1 deferred)
 
+- **docs: #78 record corrected** (no code change): an audit of the July transcripts showed the maintainer reported a stuck creep-strafe key, never a self-opening menu; the "phantom Escape" title came from a 10 July session misreading its own lldb capture of a deliberate Escape and Quit. Title restored, CHANGELOG line for the Session 5 hardening reworded, memory updated.
 - **docs: v1.3.0 pre-cut sweep** (docs-only): CHANGELOG `## Unreleased` re-read for player wording (two em-dashes removed, the OniMod Installer bullet moved to the head of the Mods section) and the README status paragraph lost a stray "(or either?)" editorial. Task 4.1 (#49 snap-and-carry) deferred again: no `[tick]` trace posted. #78, #89, #16 and #113 wait on the maintainer's verdicts; no fix task ran. Version not stamped (the maintainer cuts per docs/RELEASING.md).
 
 ### 2026-09-26 — Session 78: Session 5 of the tester wave (#78 Escape hardening, #89 Options toggle)
