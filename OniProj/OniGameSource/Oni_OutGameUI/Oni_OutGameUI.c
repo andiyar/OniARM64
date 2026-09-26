@@ -650,8 +650,8 @@ ONiOGU_RelaunchAfterQuit(
 	if (macos_dir != NULL)
 	{
 		written = snprintf(cmd, sizeof(cmd),
-			"unset ONI_RENDERER; n=0; while kill -0 %d 2>/dev/null && [ $n -lt 600 ]; do sleep 0.2; n=$((n+1)); done; exec /usr/bin/open -n '%.*s'",
-			(int)getpid(), (int)(macos_dir + 4 - exe), exe);
+			"unset ONI_RENDERER; n=0; while kill -0 %d 2>/dev/null && [ $n -lt 600 ]; do sleep 0.2; n=$((n+1)); done; kill -0 %d 2>/dev/null && exit 0; exec /usr/bin/open -n '%.*s'",
+			(int)getpid(), (int)getpid(), (int)(macos_dir + 4 - exe), exe);
 	}
 	else
 	{
@@ -661,8 +661,8 @@ ONiOGU_RelaunchAfterQuit(
 			return UUcFalse;
 		}
 		written = snprintf(cmd, sizeof(cmd),
-			"unset ONI_RENDERER; n=0; while kill -0 %d 2>/dev/null && [ $n -lt 600 ]; do sleep 0.2; n=$((n+1)); done; cd '%s' && exec '%s'",
-			(int)getpid(), cwd, exe);
+			"unset ONI_RENDERER; n=0; while kill -0 %d 2>/dev/null && [ $n -lt 600 ]; do sleep 0.2; n=$((n+1)); done; kill -0 %d 2>/dev/null && exit 0; cd '%s' && exec '%s'",
+			(int)getpid(), (int)getpid(), cwd, exe);
 	}
 	if ((written < 0) || ((size_t)written >= sizeof(cmd)))
 	{
