@@ -131,6 +131,7 @@ Chapters 1–9 (through level 10) verified playable end-to-end: combat, AI, weap
    Prefer to place it yourself? Drop your `GameDataFolder` into `~/Library/Application Support/OniARM64/` - you'll likely need to create the folder first.
 
    Optional: HD texture packs go in `~/Library/Application Support/OniARM64/TexturePacks/` — each pack's textures override the originals, your game data is untouched. Bring your own packs (the [oni2.net mod depot](https://mods.oni2.net/) is the place — no mod content is bundled or redistributed here); Depot downloads arrive as a folder of `.oni` files, which the game can't load directly. Drop the downloaded `.zip` (or its unzipped folder) onto **OniMod Installer** (in the DMG next to the game) and it builds the pack and puts it in `TexturePacks/` for you. Only texture mods are supported; character models, levels and script mods aren't loadable by this port. Building from source? `make onimod_installer` produces the app, or run `onipack import-sep <levelN_Final folder> <TexturePacks>/<Name>/levelN_<Name>.dat` by hand (any suffix except `_Final`).
+   Keep the suffix to 19 characters or fewer: Oni caps its file names at 31 characters (`level10_` + name + `.dat`), and a longer pack file is skipped with an `[overlay] … file name too long` line in `startup.txt`. OniMod Installer shortens long mod names for you.
 
 *tested but hey verify.
 

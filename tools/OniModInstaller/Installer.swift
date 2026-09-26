@@ -16,6 +16,7 @@ enum InstallError: Error, CustomStringConvertible {
     case alreadyInstalled(String)     // pack folder path
     case toolMissing(String)
     case packFailed(String)
+    case idCollision(pack: String, level: Int)   // engine file id equal to an installed pack's
 
     var description: String {
         switch self {
@@ -25,13 +26,15 @@ enum InstallError: Error, CustomStringConvertible {
         case .alreadyInstalled(let p): return "A pack with this name is already installed at \(p)."
         case .toolMissing(let t): return "The bundled helper '\(t)' is missing. Reinstall OniMod Installer."
         case .packFailed(let m): return "Packing failed: \(m)"
+        case .idCollision(let p, let l): return "Oni would confuse this mod with the installed pack '\(p)': both get the same file id for level \(l) (Oni tells packs apart by a small checksum of the name, and these two check out equal, so it would silently drop one). Rename the mod folder (or NameOfMod in Mod_Info.cfg) and try again."
         }
     }
-    /// CLI exit code. 4 is reserved for "already installed" so a caller can retry with --replace.
+    /// CLI exit code. 4 = already installed (retry with --replace), 5 = engine file-id collision with an installed pack, 1 = no textures, 2 = anything else.
     var exitCode: Int32 {
         switch self {
         case .alreadyInstalled: return 4
         case .noTextures: return 1
+        case .idCollision: return 5
         default: return 2
         }
     }
@@ -118,6 +121,10 @@ struct ModInstaller {
         let baseName = info?["NameOfMod"] ?? stripDepotID(input.deletingPathExtension().lastPathComponent)
         report.modName = baseName
         report.packName = Self.sanitise(baseName)
+        let alnumCount = baseName.unicodeScalars.filter { $0.isASCII && CharacterSet.alphanumerics.contains($0) }.count
+        if alnumCount > Self.maxPackNameLength {
+            report.warnings.append("name shortened to \(report.packName) so the pack's file names fit Oni's 31-character limit")
+        }
 
         // 3. Collect TXMP*.oni by level.
         var byLevel: [Int: [URL]] = [:]
@@ -140,6 +147,9 @@ struct ModInstaller {
         // 4. Destination check (before doing any expensive work).
         let finalDir = texturePacksDir.appendingPathComponent(report.packName)
         if fm.fileExists(atPath: finalDir.path) && !replace { throw InstallError.alreadyInstalled(finalDir.path) }
+        // 4b. Engine file-id collision with an installed pack (#111, #112).
+        try checkFileIDCollisions(levels: Array(byLevel.keys), packName: report.packName,
+                                  excluding: replace ? report.packName : nil)
 
         // 5. Alpha guard index from retail data (#63). Optional: warn and go on.
         var guardArgs: [String] = []
@@ -200,16 +210,99 @@ struct ModInstaller {
         return 0
     }
 
-    /// onipack suffix rules: [A-Za-z0-9]+, not "Final"; keep it short.
+    /// onipack suffix rules: [A-Za-z0-9]+, not "Final". The engine caps a file
+    /// leaf at 31 characters (BFcMaxFileNameLength is 32 including the NUL) and
+    /// the leaf is `level<N>_<name>.dat`, so with `level10_` (8) and `.dat` (4)
+    /// the name may be at most 19 (#111, #112). Longer names keep their first
+    /// 13 characters plus a 6-character base-36 FNV-1a digest of the full
+    /// sanitised name: deterministic, readable, and distinct for the depot's
+    /// seven `CharacterRetexture*` packs, which a plain prefix would fold into
+    /// one folder and one engine id. Never change this: the leaf is what an
+    /// installed pack is found by.
+    static let maxPackNameLength = 19
+    static let digestLength = 6
+
     static func sanitise(_ name: String) -> String {
-        var s = name.unicodeScalars
+        var out = String(name.unicodeScalars
             .filter { $0.isASCII && CharacterSet.alphanumerics.contains($0) }
-            .map { Character($0) }
-        if s.count > 32 { s = Array(s.prefix(32)) }
-        var out = String(s)
+            .map { Character($0) })
         if out.isEmpty { out = "Mod" }
         if out.lowercased() == "final" { out += "Mod" }
+        if out.count > maxPackNameLength {
+            out = String(out.prefix(maxPackNameLength - digestLength)) + shortDigest(out)
+        }
         return out
+    }
+
+    /// 32-bit FNV-1a of the UTF-8 bytes, reduced mod 36^6 and written as six
+    /// base-36 digits (0-9a-z), zero-padded.
+    static func shortDigest(_ s: String) -> String {
+        var h: UInt32 = 2166136261
+        for b in s.utf8 { h ^= UInt32(b); h = h &* 16777619 }
+        var v = h % 2176782336            // 36^6
+        let digits = Array("0123456789abcdefghijklmnopqrstuvwxyz")
+        var out = ""
+        for _ in 0..<digestLength { out = String(digits[Int(v % 36)]) + out; v /= 36 }
+        return out
+    }
+
+    /// Port of onipack's opk_file_id / the engine's TMrUtility_LevelInfo_Get:
+    /// level<<25 | (checksum & 0xFFFFFF)<<1 | 1, checksum the case-insensitive
+    /// weighted letter sum (toupper(c) - 'A' + 1) * position, "Final" = 0.
+    /// Digits give negative terms that wrap mod 2^32 exactly as the C does.
+    static func fileID(level: Int, suffix: String) -> UInt32 {
+        var hash: UInt32 = 0
+        if suffix != "Final" {
+            var factor: UInt32 = 1
+            for b in suffix.utf8 {
+                let up = (b >= 0x61 && b <= 0x7a) ? b - 0x20 : b          // ASCII toupper
+                let term = Int32(up) - Int32(UInt8(ascii: "A")) + 1
+                hash = hash &+ (UInt32(bitPattern: term) &* factor)
+                factor &+= 1
+            }
+        }
+        return (UInt32(level) << 25) | ((hash & 0xFFFFFF) << 1) | 1
+    }
+
+    /// Leaves already under TexturePacks/<Pack>/level<N>_<Suffix>.dat, as
+    /// (pack, level, suffix). Leaves of 32+ characters are ignored: the engine never
+    /// registers them, so they cannot collide with anything. Prefix and extension
+    /// match case-insensitively, like the engine's scan and the macOS file system.
+    func installedPackLeaves(excluding: String?) -> [(pack: String, level: Int, suffix: String)] {
+        let fm = FileManager.default
+        var out: [(pack: String, level: Int, suffix: String)] = []
+        guard let packs = try? fm.contentsOfDirectory(at: texturePacksDir, includingPropertiesForKeys: [.isDirectoryKey]) else { return out }
+        for p in packs {
+            let pack = p.lastPathComponent
+            if pack.hasPrefix(".") || (excluding.map { pack.caseInsensitiveCompare($0) == .orderedSame } ?? false) { continue }
+            guard let files = try? fm.contentsOfDirectory(atPath: p.path) else { continue }
+            for leaf in files where leaf.lowercased().hasPrefix("level") && leaf.lowercased().hasSuffix(".dat") && leaf.count <= 31 {
+                let stem = leaf.dropFirst(5).dropLast(4)                 // "<N>_<Suffix>"
+                guard let us = stem.firstIndex(of: "_"), let level = Int(stem[..<us]) else { continue }
+                let suffix = String(stem[stem.index(after: us)...])
+                if !suffix.isEmpty { out.append((pack, level, suffix)) }
+            }
+        }
+        return out
+    }
+
+    /// Refuse a pack whose engine file id equals an installed pack's for any
+    /// level it carries: the engine keeps whichever readdir yields first and
+    /// drops the other silently (BFW_TM_Game.c overlay scan, "file index
+    /// already registered"). `excluding` is the pack being replaced.
+    func checkFileIDCollisions(levels: [Int], packName: String, excluding: String?) throws {
+        let installed = installedPackLeaves(excluding: excluding)
+        for level in levels.sorted() {
+            let mine = Self.fileID(level: level, suffix: packName)
+            if (mine >> 1) & 0xFFFFFF == 0 {
+                // hash 0 is what "Final" hashes to: this name would take the game's
+                // own level<N>_Final.dat index and the scan would drop the retail file.
+                throw InstallError.idCollision(pack: "the game's own level\(level)_Final.dat", level: level)
+            }
+            if let other = installed.first(where: { $0.level == level && Self.fileID(level: level, suffix: $0.suffix) == mine }) {
+                throw InstallError.idCollision(pack: other.pack, level: level)
+            }
+        }
     }
 
     /// "23951-CharacterRetexture-Pt1" → "CharacterRetexture-Pt1"; a bare number stays.

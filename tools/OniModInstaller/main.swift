@@ -1,6 +1,8 @@
 // main.swift — OniMod Installer entry (#20).
 //   CLI:  OniModInstaller --install <zip-or-folder> [--dest <TexturePacks>]
 //                         [--gamedata <GameDataFolder>|none] [--replace]
+//         OniModInstaller --file-id <level> <suffix>   (test hook: prints the
+//         engine file id the installer computes, for the Swift/C parity check)
 //   GUI:  no --install → AppKit droplet: Finder drop / Open With, or an open
 //         panel when double-clicked with nothing dropped.
 // Helper tools: bundled beside the executable, or ONIMOD_ONIPACK /
@@ -35,6 +37,14 @@ func runCLI(_ args: [String]) -> Never {
         case "--dest":    i += 1; if i < args.count { inst.texturePacksDir = URL(fileURLWithPath: args[i]) }
         case "--gamedata": i += 1; if i < args.count { inst.gameDataDir = args[i] == "none" ? nil : URL(fileURLWithPath: args[i]) }
         case "--replace": inst.replace = true
+        case "--file-id":
+            // Debug/test hook: print the engine file id the installer computes
+            // for <level> <suffix>, so tests can compare it with onipack's C.
+            guard i + 2 < args.count, let level = Int(args[i + 1]), (0..<128).contains(level) else {
+                stderrLine("usage: OniModInstaller --file-id <level> <suffix>"); exit(2)
+            }
+            print(String(format: "0x%08x", ModInstaller.fileID(level: level, suffix: args[i + 2])))
+            exit(0)
         case "--help": input = nil; i = args.count
         default:
             stderrLine("unknown argument \(args[i])")
@@ -60,7 +70,7 @@ func runCLI(_ args: [String]) -> Never {
 }
 
 let argv = Array(CommandLine.arguments.dropFirst())
-if argv.contains("--install") || argv.contains("--help") {
+if argv.contains("--install") || argv.contains("--help") || argv.contains("--file-id") {
     runCLI(argv)
 }
 

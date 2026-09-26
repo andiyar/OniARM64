@@ -82,4 +82,61 @@ for ext in dat raw sep; do [ -f "$W/gd2/level0_RT.$ext" ] && mv "$W/gd2/level0_R
 "$INST" --install "$B" --dest "$DEST" --gamedata "$W/gd2" --replace > "$W/out7" 2>&1; rc=$?
 check '[ $rc -eq 0 ] && grep -q "alpha guard: on" "$W/out7"' "retail index built from level*_Final.dat, guard on (rc=$rc): $(grep -i alpha "$W/out7")"
 
+# 8. long names (#111, #112): a 30-char NameOfMod becomes a 19-char pack name
+#    (13-char prefix + 6-char digest), every leaf stays <= 31 even for level10_,
+#    the report says so, and the shortening is deterministic (re-install hits
+#    the already-installed check).
+E="$W/long-a"; mkdir -p "$E/oni/common/level0_Final" "$E/oni/common/level10_Final"
+printf 'NameOfMod -> BetterWarehouseTrainingRooms12\n' > "$E/Mod_Info.cfg"    # 30 chars
+cp "$W/TXMPcliA.oni" "$E/oni/common/level0_Final/"; cp "$W/TXMPcliB.oni" "$E/oni/common/level10_Final/"
+"$INST" --install "$E" --dest "$DEST" --gamedata none > "$W/out8" 2>&1; rc=$?
+PACK8=$(ls "$DEST" | grep '^BetterWarehou' | head -1)
+check '[ $rc -eq 0 ] && [ "${#PACK8}" -eq 19 ]' "30-char name shortened to a 19-char pack name (rc=$rc, got '$PACK8')"
+LONGLEAF=0; for f in "$DEST/$PACK8"/level*; do b=$(basename "$f"); [ "${#b}" -le 31 ] || LONGLEAF=1; done
+check '[ "$LONGLEAF" = 0 ] && [ -f "$DEST/$PACK8/level10_$PACK8.dat" ]' "every leaf <= 31 chars, level10_ included"
+check 'grep -qi "shortened" "$W/out8"' "report says the name was shortened"
+"$INST" --install "$E" --dest "$DEST" --gamedata none >/dev/null 2>&1; rc=$?
+check '[ $rc -eq 4 ]' "shortened name is deterministic: re-install is refused as already installed (rc=$rc)"
+
+# 9. two long names sharing a 19-char prefix install as two distinct packs
+#    with the pinned digests (the leaf must never change between versions,
+#    or re-installs would duplicate packs).
+for n in CharacterRetexturePt1KonokoCops CharacterRetexturePt3TCTF; do
+    mkdir -p "$W/$n/oni/level0_Final"; cp "$W/TXMPcliA.oni" "$W/$n/oni/level0_Final/"
+done
+"$INST" --install "$W/CharacterRetexturePt1KonokoCops" --dest "$DEST" --gamedata none >/dev/null 2>&1; rc1=$?
+"$INST" --install "$W/CharacterRetexturePt3TCTF" --dest "$DEST" --gamedata none >/dev/null 2>&1; rc2=$?
+check '[ $rc1 -eq 0 ] && [ $rc2 -eq 0 ] && [ -f "$DEST/CharacterRetee5cm8v/level0_CharacterRetee5cm8v.dat" ] && [ -f "$DEST/CharacterRete9je5ta/level0_CharacterRete9je5ta.dat" ]' "prefix-sharing names get distinct pinned digests (rc=$rc1/$rc2): $(ls "$DEST" | grep CharacterRete | tr '\n' ' ')"
+
+# 10. engine file-id collision: the id is level<<25 | weighted-letter-sum<<1 | 1,
+#     and A*1+B*2 == C*1+A*2 == 5, so "AB" and "CA" collide at level 0. The
+#     second install is refused with exit 5 naming the first; nothing is written.
+for n in AB CA; do mkdir -p "$W/$n/oni/level0_Final"; cp "$W/TXMPcliA.oni" "$W/$n/oni/level0_Final/"; done
+"$INST" --install "$W/AB" --dest "$DEST" --gamedata none >/dev/null 2>&1; rc1=$?
+"$INST" --install "$W/CA" --dest "$DEST" --gamedata none > "$W/out10" 2>&1; rc2=$?
+check '[ $rc1 -eq 0 ] && [ $rc2 -eq 5 ] && grep -q "AB" "$W/out10"' "id collision refused with exit 5 naming the installed pack (rc=$rc1/$rc2): $(cat "$W/out10")"
+check '[ ! -d "$DEST/CA" ]' "nothing written on collision"
+"$INST" --install "$W/AB" --dest "$DEST" --gamedata none --replace >/dev/null 2>&1; rc=$?
+check '[ $rc -eq 0 ]' "--replace does not collide with the pack it replaces (rc=$rc)"
+mkdir -p "$W/0H/oni/level0_Final"; cp "$W/TXMPcliA.oni" "$W/0H/oni/level0_Final/"
+"$INST" --install "$W/0H" --dest "$DEST" --gamedata none > "$W/out10b" 2>&1; rc=$?
+check '[ $rc -eq 5 ] && grep -q "level0_Final" "$W/out10b"' "a name hashing to 0 ('0H': -16*1 + 8*2), the retail Final id, is refused with exit 5 (rc=$rc)"
+
+# 11. the Swift port of the engine file id matches onipack's C (opk_file_id)
+cat > "$W/fid.c" <<'EOF'
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <stdint.h>
+#include <string.h>
+#include "onipack_format.h"
+int main(int argc, char **argv) { (void)argc; printf("0x%08x\n", opk_file_id(atoi(argv[1]), argv[2])); return 0; }
+EOF
+cc -I tools/onipack -o "$W/fid" "$W/fid.c" || echo "FAIL: fid.c did not compile"
+PARITY=""
+for lv in 0 10; do for s in HD1 CharacterRetextureP Pt4Synd1 CharacterRetee5cm8v z9 Final; do
+    a=$("$INST" --file-id $lv $s); b=$("$W/fid" $lv $s); [ "$a" = "$b" ] || PARITY="$PARITY $lv/$s:$a!=$b"
+done; done
+check '[ -z "$PARITY" ] && [ "$("$INST" --file-id 0 HD1)" = "0x01ffffc7" ]' "Swift file id == C opk_file_id for letters, digits, Final, level 10 (mismatches:$PARITY)"
+
 echo "$PASS passed, $FAIL failed"; rm -rf "$W"; exit $((FAIL>0))
