@@ -93,6 +93,11 @@ GitHub release notes and gets stamped with the version + date.
   backup is never overwritten, so the earliest copy is the one you keep (#91).
 
 ### In-game
+- Music with several parts no longer gets stuck repeating one short part (most
+  obvious at TCTF Science Prison, Save Point 4). The OpenAL sound layer had
+  been looping the first part at the hardware level; it now moves on to the
+  next part like the original Mac and PC builds did. There can be a tiny gap
+  between parts (#115, reported by simX).
 - Controls respond one frame sooner: the game now reads the keyboard and mouse
   before building each frame's input instead of after, which removed a constant
   16 ms of input lag. Part of the #49 "feels sluggish" investigation; a
