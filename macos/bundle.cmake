@@ -70,16 +70,16 @@ else()
         COMMAND ${CMAKE_COMMAND} -E echo "Notarizing OniARM64.app..."
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/macos/notarize-bundle.sh
                 ${CMAKE_BINARY_DIR}
-        COMMAND ${CMAKE_COMMAND} -E echo "Assembling signed OniMod Installer.app..."
+        COMMAND ${CMAKE_COMMAND} -E echo "Assembling signed Oni Texture Installer.app..."
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/macos/build-installer.sh
                 ${CMAKE_CURRENT_SOURCE_DIR}
                 ${CMAKE_BINARY_DIR}
                 ${ONI_SIGN_IDENTITY}
-        COMMAND ${CMAKE_COMMAND} -E echo "Notarizing OniMod Installer.app..."
+        COMMAND ${CMAKE_COMMAND} -E echo "Notarizing Oni Texture Installer.app..."
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/macos/notarize-bundle.sh
                 ${CMAKE_BINARY_DIR}
                 oniarm64-notarize
-                "${CMAKE_BINARY_DIR}/bin/OniMod Installer.app"
+                "${CMAKE_BINARY_DIR}/bin/Oni Texture Installer.app"
         COMMAND ${CMAKE_COMMAND} -E echo "Packaging OniARM64.dmg..."
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/macos/package-dmg.sh
                 ${CMAKE_BINARY_DIR}

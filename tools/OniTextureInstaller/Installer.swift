@@ -1,4 +1,4 @@
-// Installer.swift — OniMod Installer core (#20). No AppKit; drives the
+// Installer.swift — Oni Texture Installer core (#20). No AppKit; drives the
 // bundled onipack + txmp-format-index tools. Both the CLI and the droplet
 // call `ModInstaller.install`.
 //
@@ -24,10 +24,10 @@ enum InstallError: Error, CustomStringConvertible {
         switch self {
         case .notFound(let p): return "Can't find \(p)."
         case .unzipFailed(let m): return "Couldn't unpack the zip: \(m)"
-        case .noTextures: return "No texture files (TXMP*.oni) found in this mod. OniMod Installer only handles texture mods; character models, levels and scripts can't be installed."
+        case .noTextures: return "No texture files (TXMP*.oni) found in this mod. Oni Texture Installer only handles texture mods; character models, levels and scripts can't be installed."
         case .onlyScreenTiles(let n, let c): return "This mod only re-lays-out screens (\(n) tiles of screens with a different grid from the game's" + (c > 0 ? ", plus \(c) menu chrome texture\(c == 1 ? "" : "s")" : "") + "). Screen mods aren't supported yet, see https://github.com/andiyar/OniARM64/issues/121"
         case .alreadyInstalled(let p): return "A pack with this name is already installed at \(p)."
-        case .toolMissing(let t): return "The bundled helper '\(t)' is missing. Reinstall OniMod Installer."
+        case .toolMissing(let t): return "The bundled helper '\(t)' is missing. Reinstall Oni Texture Installer."
         case .packFailed(let m): return "Packing failed: \(m)"
         case .idCollision(let p, let l): return "Oni would confuse this mod with the installed pack '\(p)': both get the same file id for level \(l) (Oni tells packs apart by a small checksum of the name, and these two check out equal, so it would silently drop one). Change NameOfMod in Mod_Info.cfg (or, if the mod has no Mod_Info.cfg, rename the zip or folder) and try again."
         case .idCollisionWithRetail(let l): return "Oni would confuse this mod with its own level\(l)_Final.dat: the name's checksum is zero, the same as 'Final', so the game would drop its own level data. Change NameOfMod in Mod_Info.cfg (or, if the mod has no Mod_Info.cfg, rename the zip or folder) and try again."
@@ -234,7 +234,7 @@ struct ModInstaller {
         }
 
         // 7. Credits / provenance file, then move into place.
-        var meta = "Installed by OniMod Installer from \(input.lastPathComponent)\n"
+        var meta = "Installed by Oni Texture Installer from \(input.lastPathComponent)\n"
         if let info = info { for (k, v) in info.sorted(by: { $0.key < $1.key }) { meta += "\(k): \(v)\n" } }
         try meta.write(to: stagedPack.appendingPathComponent("Mod_Info.txt"), atomically: true, encoding: .utf8)
 
@@ -244,7 +244,7 @@ struct ModInstaller {
         report.packFolder = finalDir.path
         if hasLegacy {
             try fm.removeItem(at: legacyDir)
-            report.warnings.append("removed old pack folder \(legacy) (installed by an earlier OniMod Installer under its long name)")
+            report.warnings.append("removed old pack folder \(legacy) (installed by an earlier version of this installer under its long name)")
         }
 
         let lower = baseName.lowercased()
@@ -289,7 +289,7 @@ struct ModInstaller {
         return out
     }
 
-    /// The pack name an OniMod Installer from before the cap (#111, #112) gave
+    /// The pack name the installer from before the cap (#111, #112) gave
     /// this mod: same filter, capped at 32 characters with a plain prefix. Only
     /// used to find and migrate such a folder on reinstall (#120).
     static let legacyMaxPackNameLength = 32

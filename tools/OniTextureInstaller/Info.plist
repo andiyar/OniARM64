@@ -5,17 +5,17 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
-    <string>OniModInstaller</string>
+    <string>OniTextureInstaller</string>
     <key>CFBundleIconFile</key>
-    <string>OniModInstaller</string>
+    <string>OniTextureInstaller</string>
     <key>CFBundleIdentifier</key>
-    <string>com.andiyar.onimodinstaller</string>
+    <string>com.andiyar.onitextureinstaller</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>OniMod Installer</string>
+    <string>Oni Texture Installer</string>
     <key>CFBundleDisplayName</key>
-    <string>OniMod Installer</string>
+    <string>Oni Texture Installer</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -51,6 +51,19 @@
         </dict>
     </array>
     <key>NSHumanReadableCopyright</key>
-    <string>OniMod Installer, part of the OniARM64 fan port. Not affiliated with Bungie or Take-Two.</string>
+    <string>Oni Texture Installer, part of the OniARM64 fan port. Not affiliated with Bungie or Take-Two.</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>mods.oni2.net</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
 </dict>
 </plist>

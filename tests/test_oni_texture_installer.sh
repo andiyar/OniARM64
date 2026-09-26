@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# test_onimod_installer.sh — end-to-end test of the OniMod Installer CLI
+# test_oni_texture_installer.sh — end-to-end test of the Oni Texture Installer CLI
 # mode against generated fixtures laid out like real depot downloads.
-# Usage: tests/test_onimod_installer.sh [path-to-onipack] [path-to-txmp-format-index]
+# Usage: tests/test_oni_texture_installer.sh [path-to-onipack] [path-to-txmp-format-index]
 # Run from the OniARM64 repo root.
 set -u
 ONIPACK="${1:-build/bin/onipack}"
@@ -10,9 +10,11 @@ W=$(mktemp -d); PASS=0; FAIL=0
 check() { if eval "$1"; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); echo "FAIL: $2"; fi }
 
 # Build the installer binary headless (same sources the bundle uses).
-swiftc -O tools/OniModInstaller/Installer.swift tools/OniModInstaller/main.swift \
+swiftc -O $(ls tools/OniTextureInstaller/*.swift | grep -v /main.swift) tools/OniTextureInstaller/main.swift \
     -framework AppKit -framework UniformTypeIdentifiers -o "$W/inst" || { echo "swiftc failed"; exit 1; }
 INST="$W/inst"
+# Keep the report log ($HOME/Library/Logs/OniARM64/installer.txt, #123) out of the real home.
+export HOME="$W/home"; mkdir -p "$HOME"
 export ONIMOD_ONIPACK="$ONIPACK" ONIMOD_INDEX="$INDEX"
 
 # Fixture textures.
@@ -262,5 +264,14 @@ mkdir -p "$W/TestModA16/oni/level0_Final"; cp "$W/TXMPcliA.oni" "$W/TestModA16/o
 "$INST" --install "$W/TestModA16" --dest "$DEST16" --gamedata none > "$W/out16c" 2>&1; rc=$?
 check '[ $rc -eq 0 ] && [ -d "$DEST16/TestModA16" ] && ! grep -q "old pack folder" "$W/out16c"' "short name installs with no migration note (rc=$rc)"
 
+
+# 17. every CLI run appends its report to $HOME/Library/Logs/OniARM64/installer.txt (#123)
+H17="$W/home17"; mkdir -p "$H17"
+HOME="$H17" "$INST" --install "$W/23999-Test-Mod-A.zip" --dest "$W/dest17" --gamedata none > "$W/out17" 2>&1; rc=$?
+LOG17="$H17/Library/Logs/OniARM64/installer.txt"
+check '[ $rc -eq 0 ] && [ -f "$LOG17" ]' "install writes the log file under HOME (rc=$rc)"
+check 'grep -q "^=== " "$LOG17" && grep -q "23999-Test-Mod-A.zip" "$LOG17" && grep -q "Installed \"Test Mod A!\"" "$LOG17"' "log entry has a timestamped header, the source, and the report text"
+HOME="$H17" "$INST" --install "$W/empty-mod" --dest "$W/dest17" --gamedata none >/dev/null 2>&1
+check '[ "$(grep -c "^=== " "$LOG17")" = "2" ] && grep -qi "no texture" "$LOG17"' "a failed run is logged too (2 entries)"
 
 echo "$PASS passed, $FAIL failed"; rm -rf "$W"; exit $((FAIL>0))

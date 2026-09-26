@@ -17,7 +17,7 @@ BINARY_DIR="${1:?binary dir required}"
 SIGN_IDENTITY="${2:?sign identity required}"
 PROFILE="${3:-oniarm64-notarize}"
 APP="$BINARY_DIR/bin/OniARM64.app"
-INSTALLER="$BINARY_DIR/bin/OniMod Installer.app"
+INSTALLER="$BINARY_DIR/bin/Oni Texture Installer.app"
 DMG="$BINARY_DIR/OniARM64.dmg"
 STAGE="$BINARY_DIR/dmg-stage"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -42,7 +42,7 @@ fi
 #    polish (see spec out-of-scope).
 rm -rf "$STAGE" "$DMG"; mkdir -p "$STAGE"
 ditto "$APP" "$STAGE/OniARM64.app"
-ditto "$INSTALLER" "$STAGE/OniMod Installer.app"
+ditto "$INSTALLER" "$STAGE/Oni Texture Installer.app"
 create-dmg \
     --volname "OniARM64" \
     --volicon "$VOLICON" \
@@ -50,9 +50,9 @@ create-dmg \
     --icon-size 100 \
     --icon "OniARM64.app" 150 170 \
     --app-drop-link 450 170 \
-    --icon "OniMod Installer.app" 150 360 \
+    --icon "Oni Texture Installer.app" 150 360 \
     --hide-extension "OniARM64.app" \
-    --hide-extension "OniMod Installer.app" \
+    --hide-extension "Oni Texture Installer.app" \
     --no-internet-enable \
     "$DMG" \
     "$STAGE"
