@@ -10,6 +10,7 @@ GitHub release notes and gets stamped with the version + date.
 
 ## Unreleased (since 1.3.0r5, 2026-07-17)
 
+- The "Metal renderer" checkbox in Options now sits inside the third box under Invert Mouse, styled like the other checkboxes with a one-line label, instead of straddling the panel borders (#89).
 - The in-game menu should no longer open by itself mid-fight. Only a real Escape key press (or whatever you bound to escape) can raise the menu now; a phantom Escape from the keyboard state is ignored and, with `ONI_INPUT_TRACE=1`, logged so we can see where it came from (#78).
 - Fixed a memory leak on level load: every death reload, save-point load and level change used to keep about 15 to 26 MB of the previous level in memory for good. Long sessions with many reloads should stay flat now (#30).
 - New app icon for macOS 26: the Oni "O" is now a proper layered glass icon, so it follows your system icon style (default, dark, clear, tinted) instead of sitting on the white placeholder tile. On older toolchains the build falls back to a refreshed static icon with a dark background.

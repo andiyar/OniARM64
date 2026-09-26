@@ -596,6 +596,7 @@ ONiOGU_Options_InitDialog(
 				if (top + height > dialog_rect.bottom)
 				{
 					top = (UUtInt16)(dialog_rect.bottom - height - gap);
+					if (top < anchor_rect.bottom) { top = anchor_rect.bottom; }	/* review: never overlap the anchor row */
 					UUrStartupMessage("options renderer toggle: clamped (dialog bottom %d)", (int)dialog_rect.bottom);
 				}
 				WMrWindow_SetLocation(
