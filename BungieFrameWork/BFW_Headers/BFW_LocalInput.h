@@ -461,6 +461,12 @@ LIrBinding_Add(
 	UUtUns32			inBoundInput,
 	const char			*inActionName);
 
+// #78 -- true when inKey is bound to a button action whose bit is inBit.
+UUtBool
+LIrBinding_KeyIsBoundToBit(
+	LItKeyCode			inKey,
+	UUtUns16			inBit);
+
 void
 LIrBindings_Enumerate(
 	LItEnumBindings		inBindingEnumerator,

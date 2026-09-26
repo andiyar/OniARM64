@@ -457,6 +457,34 @@ LIiBindings_GetFreeBinding(
 }
 
 // ----------------------------------------------------------------------
+// #78 -- lets the SDL layer ask whether a key raises a given button bit
+// (e.g. escape) without hard-coding the default bindings.
+UUtBool
+LIrBinding_KeyIsBoundToBit(
+	LItKeyCode			inKey,
+	UUtUns16			inBit)
+{
+	UUtUns16			i;
+
+	if (inKey == LIcKeyCode_None) return UUcFalse;
+
+	for (i = 0; i < LIcMaxBindings; i++)
+	{
+		const LItBinding *binding = &LIgBindingArray[i];
+
+		if ((binding->boundInput == (UUtUns32)inKey) &&
+			(binding->action != NULL) &&
+			(binding->action->inputType == LIcIT_Button) &&
+			(binding->action->actionData == inBit))
+		{
+			return UUcTrue;
+		}
+	}
+
+	return UUcFalse;
+}
+
+// ----------------------------------------------------------------------
 UUtError
 LIrBinding_Add(
 	UUtUns32			inBoundInput,
