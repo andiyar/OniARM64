@@ -13,6 +13,13 @@ GitHub release notes and gets stamped with the version + date.
 - New app icon for macOS 26: the Oni "O" is now a proper layered glass icon, so it follows your system icon style (default, dark, clear, tinted) instead of sitting on the white placeholder tile. On older toolchains the build falls back to a refreshed static icon with a dark background.
 
 ### Mods
+- HD Screens packs no longer break the Load Game and Options screens. Those
+  mods re-lay-out the menu backgrounds on a bigger grid than the game draws,
+  which is why the picture came out as four corners in the middle. The
+  installer (and the HD overlay build script) now skip the tiles of any screen
+  the mod re-lays-out and say so in the report; same-grid retextures still
+  install. Proper support for re-laid-out screens is tracked as #121 (#113,
+  reported by simX).
 - A texture pack whose `.dat` file is cut short (a bad download or copy) is
   now skipped with a `[tm] … header rejected (truncated …)` line in the log
   instead of crashing the game at level load (#119).
