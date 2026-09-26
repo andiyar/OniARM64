@@ -47,3 +47,12 @@ int LIrPadLogic_DashTick(LItPadDashState *s, int dash_went_down,
 	}
 	return 0;
 }
+
+int LIrPadLogic_DashPoll(LItPadDashState *s, int dash_went_down,
+	int direction_held, int gap_polls)
+{
+	if (!direction_held) { s->gap_remaining = 0; return 0; }
+	if (s->gap_remaining > 0) { s->gap_remaining--; return 1; }
+	if (dash_went_down && gap_polls > 0) { s->gap_remaining = gap_polls; }
+	return 0;
+}

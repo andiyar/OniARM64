@@ -3,20 +3,25 @@
 // inputs are rebindable exactly like keyboard/mouse (bind pad_a to jump).
 #include "BFW_LI_Gamepad_SDL.h"
 #include "BFW_LI_GamepadLogic.h"
+#include "BFW_LI_Private.h"          // LIgMouse_Invert
 #include <stdlib.h>
 #include <string.h>
 
 static SDL_GameController *LIgPad = NULL;
 static UUtBool LIgPad_Disabled = UUcFalse;
 static UUtBool LIgPad_HasRumble = UUcFalse;
+static unsigned int LIgPad_StickBits = 0;     // left-stick hysteresis state
+static int LIgPad_PrevR3 = 0;                 // R3 edge detect
+static LItPadDashState LIgPad_Dash = { 0 };   // dash-gap state
 
 // tunables — maintainer checkpoint adjusts these (#73)
 #define LIcPadTriggerThreshold   8000     // of 32767, digitalize ZL/ZR
 #define LIcPadStickOnFrac        0.35f
 #define LIcPadStickOffFrac       0.30f
 #define LIcPadAimDeadFrac        0.15f
-#define LIcPadAimScale           8.0f     // mouse-equivalent units/tick at full deflection
-#define LIcGamepadDashGapTicks   1        // ticks to suppress direction for dash synth
+#define LIcPadAimScale           8.0f     // mouse-equivalent units per poll (frame) at full deflection
+#define LIcGamepadDashGapFrames  2        // polls (frames) of direction suppression for dash synth;
+                                          // polls, not ticks: a 0-tick frame discards its poll (#49)
 
 static void LIiPad_Open(int inDeviceIndex)
 {
@@ -39,6 +44,9 @@ static void LIiPad_Close(void)
 		SDL_GameControllerClose(LIgPad);
 		LIgPad = NULL;
 		LIgPad_HasRumble = UUcFalse;
+		LIgPad_StickBits = 0;
+		LIgPad_PrevR3 = 0;
+		LIgPad_Dash.gap_remaining = 0;
 	}
 }
 
@@ -126,9 +134,50 @@ void LIrGamepad_GetData(LItAction *outAction)
 	if (SDL_GameControllerGetAxis(LIgPad, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > LIcPadTriggerThreshold) {
 		LIiPad_EmitButton(outAction, LIcGamepadCode_ZR);
 	}
-	// NOTE: R3 (dash) is deliberately NOT emitted as a binding input —
-	// Task 4's synthesis consumes it directly.
-	// Sticks land in Task 4.
+	// Left stick: quantise with hysteresis into pad_ls_* held inputs.
+	// R3 (dash) is NOT emitted as a binding input: its press edge opens a
+	// short gap in which the held directions are withheld, so the engine sees
+	// release + re-press of the direction, i.e. its own double-tap dash.
+	{
+		static const struct { unsigned int bit; UUtUns32 code; } dirs[] = {
+			{ LIcPadDir_Up,    LIcGamepadCode_LSUp    },
+			{ LIcPadDir_Down,  LIcGamepadCode_LSDown  },
+			{ LIcPadDir_Left,  LIcGamepadCode_LSLeft  },
+			{ LIcPadDir_Right, LIcGamepadCode_LSRight },
+		};
+		const int lx = SDL_GameControllerGetAxis(LIgPad, SDL_CONTROLLER_AXIS_LEFTX);
+		const int ly = SDL_GameControllerGetAxis(LIgPad, SDL_CONTROLLER_AXIS_LEFTY);
+		const int r3 = SDL_GameControllerGetButton(LIgPad, SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+		const int r3_went_down = r3 && !LIgPad_PrevR3;
+		LIgPad_PrevR3 = r3;
+		// +y is SDL down; the quantiser maps -y to Up (forward)
+		LIgPad_StickBits = LIrPadLogic_QuantizeStick(lx, ly,
+			LIcPadStickOnFrac, LIcPadStickOffFrac, LIgPad_StickBits);
+		if (!LIrPadLogic_DashPoll(&LIgPad_Dash, r3_went_down,
+			LIgPad_StickBits != 0, LIcGamepadDashGapFrames)) {
+			for (i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++) {
+				if (LIgPad_StickBits & dirs[i].bit) {
+					LIiPad_EmitButton(outAction, dirs[i].code);
+				}
+			}
+		}
+	}
+	// Right stick: dead zone + curve, added as axis deltas on the same path
+	// and sign convention as the mouse (+x right, +y up, then invert flip).
+	{
+		const int rx = SDL_GameControllerGetAxis(LIgPad, SDL_CONTROLLER_AXIS_RIGHTX);
+		const int ry = SDL_GameControllerGetAxis(LIgPad, SDL_CONTROLLER_AXIS_RIGHTY);
+		LItDeviceInput deviceInput;
+		deviceInput.input = LIcGamepadCode_RSX;
+		deviceInput.analogValue = LIrPadLogic_AimDelta(rx, ry, LIcPadAimDeadFrac, LIcPadAimScale);
+		LIrActionBuffer_Add(outAction, &deviceInput);
+		deviceInput.input = LIcGamepadCode_RSY;
+		deviceInput.analogValue = -LIrPadLogic_AimDelta(ry, rx, LIcPadAimDeadFrac, LIcPadAimScale);
+		if (LIgMouse_Invert) {
+			deviceInput.analogValue = -deviceInput.analogValue;
+		}
+		LIrActionBuffer_Add(outAction, &deviceInput);
+	}
 }
 
 void LIrGamepad_PumpMenuEvents(void)

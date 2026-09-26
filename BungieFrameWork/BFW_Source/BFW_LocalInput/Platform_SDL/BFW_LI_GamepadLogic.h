@@ -31,4 +31,12 @@ typedef struct { int gap_remaining; } LItPadDashState;
 int LIrPadLogic_DashTick(LItPadDashState *s, int dash_went_down,
 	int direction_held, int gap_ticks);
 
+// Dash gap, poll-shaped (#73 Task 4). Call once per input poll (one per
+// frame; a frame runs 0, 1 or 2 ticks, #49). The press poll itself still
+// emits; the next gap_polls polls return nonzero (do NOT emit direction
+// inputs), then directions re-assert, so the engine sees a double-tap.
+// A press inside the gap is ignored; direction_held == 0 clears the gap.
+int LIrPadLogic_DashPoll(LItPadDashState *s, int dash_went_down,
+	int direction_held, int gap_polls);
+
 #endif

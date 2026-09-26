@@ -1,7 +1,7 @@
 // tests/test_gamepad_logic.c — build:
 //   cc -Wall -Wextra tests/test_gamepad_logic.c \
 //      BungieFrameWork/BFW_Source/BFW_LocalInput/Platform_SDL/BFW_LI_GamepadLogic.c \
-//      -o /tmp/test_gamepad_logic && /tmp/test_gamepad_logic
+//      -o $SCRATCH/tgl && $SCRATCH/tgl
 #include <stdio.h>
 #include "../BungieFrameWork/BFW_Source/BFW_LocalInput/Platform_SDL/BFW_LI_GamepadLogic.h"
 
@@ -64,8 +64,41 @@ static void test_dash(void) {
       CHECK(LIrPadLogic_DashTick(&s2, 0, 1, 3) == 0, "gap ends"); }
 }
 
+static void test_dash_poll(void) {
+    // Poll-based shape (gap counted in polls/frames, #49): the press poll
+    // still emits; the next gap_polls polls are suppressed; then re-assert.
+    { LItPadDashState s = {0};
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) == 0, "poll: idle held emits");
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 2) == 0, "poll n: press poll emits");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) != 0, "poll n+1 suppressed");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) != 0, "poll n+2 suppressed");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) == 0, "poll n+3 re-asserts");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) == 0, "poll n+4 still emits"); }
+    // second press inside the gap is ignored (no extension)
+    { LItPadDashState s = {0};
+      LIrPadLogic_DashPoll(&s, 1, 1, 2);
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 2) != 0, "poll: re-press n+1 suppressed");
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 2) != 0, "poll: re-press n+2 suppressed");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) == 0, "poll: re-press did not extend"); }
+    // press with no direction held does nothing
+    { LItPadDashState s = {0};
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 0, 2) == 0, "poll: no direction no-op");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) == 0, "poll: no gap armed by idle press"); }
+    // releasing the stick during the gap ends it cleanly
+    { LItPadDashState s = {0};
+      LIrPadLogic_DashPoll(&s, 1, 1, 2);
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) != 0, "poll: release case n+1 suppressed");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 0, 2) == 0, "poll: released mid-gap");
+      CHECK(s.gap_remaining == 0, "poll: release clears gap");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) == 0, "poll: re-hold emits, no stuck suppression"); }
+    // gap_polls 0 disables synthesis
+    { LItPadDashState s = {0};
+      LIrPadLogic_DashPoll(&s, 1, 1, 0);
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 0) == 0, "poll: gap 0 no-op"); }
+}
+
 int main(void) {
-    test_quantize(); test_aim(); test_dash();
+    test_quantize(); test_aim(); test_dash(); test_dash_poll();
     printf("%d passed, %d failed\n", g_pass, g_fail);
     if (g_fail == 0) printf("ALL GAMEPAD LOGIC TESTS PASSED\n");
     return g_fail == 0 ? 0 : 1;
