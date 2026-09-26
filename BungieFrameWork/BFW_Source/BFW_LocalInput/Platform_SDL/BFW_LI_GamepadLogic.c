@@ -34,25 +34,21 @@ float LIrPadLogic_AimDelta(int axis, int other, float dead_frac, float scale)
 	return scale * t * t * (fa / (mag > 0.0f ? mag : 1.0f));
 }
 
-int LIrPadLogic_DashTick(LItPadDashState *s, int dash_went_down,
-	int direction_held, int gap_ticks)
-{
-	if (dash_went_down && direction_held && s->gap_remaining == 0) {
-		s->gap_remaining = gap_ticks;
-	}
-	if (s->gap_remaining > 0) {
-		int r = s->gap_remaining;
-		s->gap_remaining--;
-		return r;
-	}
-	return 0;
-}
-
 int LIrPadLogic_DashPoll(LItPadDashState *s, int dash_went_down,
-	int direction_held, int gap_polls)
+	int up_held, unsigned int now_ms, unsigned int phase_ms)
 {
-	if (!direction_held) { s->gap_remaining = 0; return 0; }
-	if (s->gap_remaining > 0) { s->gap_remaining--; return 1; }
-	if (dash_went_down && gap_polls > 0) { s->gap_remaining = gap_polls; }
-	return 0;
+	// phase: 0 idle, 1 OFF1, 2 ON1, 3 OFF2. A phase is entered on some poll
+	// and can only advance on a later poll, so each lasts at least one poll.
+	if (!up_held) { s->phase = 0; return 0; }
+	if (s->phase == 0) {
+		if (!dash_went_down || phase_ms == 0) { return 0; }
+		s->phase = 1;
+		s->phase_start_ms = now_ms;
+		return 1;
+	}
+	if (now_ms - s->phase_start_ms >= phase_ms) {   // unsigned: wrap-safe
+		s->phase = (s->phase == 3) ? 0 : s->phase + 1;
+		s->phase_start_ms = now_ms;
+	}
+	return (s->phase == 1 || s->phase == 3);
 }

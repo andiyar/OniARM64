@@ -24,19 +24,15 @@ unsigned int LIrPadLogic_QuantizeStick(
 // perpendicular axis (for the circular dead-zone radius test).
 float LIrPadLogic_AimDelta(int axis, int other, float dead_frac, float scale);
 
-// Dash gap: tiny state machine. Call once per tick with "dash button went
-// down this tick" and "any direction held". Returns the number of remaining
-// suppression ticks (>0 means: do NOT emit direction inputs this tick).
-typedef struct { int gap_remaining; } LItPadDashState;
-int LIrPadLogic_DashTick(LItPadDashState *s, int dash_went_down,
-	int direction_held, int gap_ticks);
-
-// Dash gap, poll-shaped (#73 Task 4). Call once per input poll (one per
-// frame; a frame runs 0, 1 or 2 ticks, #49). The press poll itself still
-// emits; the next gap_polls polls return nonzero (do NOT emit direction
-// inputs), then directions re-assert, so the engine sees a double-tap.
-// A press inside the gap is ignored; direction_held == 0 clears the gap.
+// Dash synthesis (#73). The engine's only double-tap is the forward sprint
+// (two forward went-downs under 15 ticks apart), so an R3 press while Up is
+// held plays a full two-tap: OFF1 (withhold Up), ON1 (emit), OFF2 (withhold),
+// then normal emission, which is the second press. Each phase lasts at least
+// one poll AND phase_ms of wall time (a frame runs 0, 1 or 2 ticks, #49).
+// Call once per poll. Returns nonzero: do NOT emit Up this poll. Releasing
+// Up aborts; an R3 press during the sequence is ignored; phase_ms 0 disables.
+typedef struct { int phase; unsigned int phase_start_ms; } LItPadDashState;
 int LIrPadLogic_DashPoll(LItPadDashState *s, int dash_went_down,
-	int direction_held, int gap_polls);
+	int up_held, unsigned int now_ms, unsigned int phase_ms);
 
 #endif

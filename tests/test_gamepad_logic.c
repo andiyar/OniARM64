@@ -43,62 +43,49 @@ static void test_aim(void) {
     CHECK(half > 0.0f && half < 4.0f, "squared curve");
 }
 
-static void test_dash(void) {
-    LItPadDashState s = {0};
-    // no dash press: no suppression
-    CHECK(LIrPadLogic_DashTick(&s, 0, 1, 2) == 0, "idle");
-    // dash pressed while moving: suppress for gap_ticks ticks
-    CHECK(LIrPadLogic_DashTick(&s, 1, 1, 2) == 2, "gap starts");
-    CHECK(LIrPadLogic_DashTick(&s, 0, 1, 2) == 1, "gap counts down");
-    CHECK(LIrPadLogic_DashTick(&s, 0, 1, 2) == 0, "gap ends");
-    // dash pressed while NOT moving: no-op
-    CHECK(LIrPadLogic_DashTick(&s, 1, 0, 2) == 0, "needs direction held");
-    // gap_ticks == 0: dash synthesis disabled, never suppress
-    { LItPadDashState s0 = {0};
-      CHECK(LIrPadLogic_DashTick(&s0, 1, 1, 0) == 0, "gap_ticks 0 no-op"); }
-    // re-press mid-gap must not extend the gap
-    { LItPadDashState s2 = {0};
-      LIrPadLogic_DashTick(&s2, 1, 1, 3);              // starts: returns 3, now 2 left
-      CHECK(LIrPadLogic_DashTick(&s2, 1, 1, 3) == 2, "re-press ignored mid-gap");
-      CHECK(LIrPadLogic_DashTick(&s2, 0, 1, 3) == 1, "gap continues");
-      CHECK(LIrPadLogic_DashTick(&s2, 0, 1, 3) == 0, "gap ends"); }
-}
-
 static void test_dash_poll(void) {
-    // Poll-based shape (gap counted in polls/frames, #49): the press poll
-    // still emits; the next gap_polls polls are suppressed; then re-assert.
+    // Two-tap sequence (#73): OFF1, ON1, OFF2, then normal. Each phase lasts
+    // at least one poll AND phase_ms of wall time. Return != 0 = withhold Up.
     { LItPadDashState s = {0};
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) == 0, "poll: idle held emits");
-      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 2) == 0, "poll n: press poll emits");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) != 0, "poll n+1 suppressed");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) != 0, "poll n+2 suppressed");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) == 0, "poll n+3 re-asserts");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) == 0, "poll n+4 still emits"); }
-    // second press inside the gap is ignored (no extension)
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 0, 20) == 0, "held Up, no press: emit");
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 0, 20) != 0, "R3 at t=0: OFF1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 10, 20) != 0, "t=10: still OFF1 (time)");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 25, 20) == 0, "t=25: ON1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 30, 20) == 0, "t=30: still ON1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 50, 20) != 0, "t=50: OFF2");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 60, 20) != 0, "t=60: still OFF2");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 75, 20) == 0, "t=75: normal (second press)");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 200, 20) == 0, "t=200: stays normal"); }
+    // one poll minimum: a poll whose time already elapsed still sees the phase once
     { LItPadDashState s = {0};
-      LIrPadLogic_DashPoll(&s, 1, 1, 2);
-      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 2) != 0, "poll: re-press n+1 suppressed");
-      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 2) != 0, "poll: re-press n+2 suppressed");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) == 0, "poll: re-press did not extend"); }
-    // press with no direction held does nothing
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 0, 20) != 0, "OFF1 entered");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 100, 20) == 0, "late poll: ON1 entered");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 200, 20) != 0, "late poll: OFF2 entered, not skipped");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 300, 20) == 0, "late poll: normal"); }
+    // press with Up not held does nothing
     { LItPadDashState s = {0};
-      CHECK(LIrPadLogic_DashPoll(&s, 1, 0, 2) == 0, "poll: no direction no-op");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) == 0, "poll: no gap armed by idle press"); }
-    // releasing the stick during the gap ends it cleanly
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 0, 0, 20) == 0, "no Up: no-op");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 5, 20) == 0, "no Up: nothing armed"); }
+    // Up release at t=25 aborts; re-hold emits immediately
     { LItPadDashState s = {0};
-      LIrPadLogic_DashPoll(&s, 1, 1, 2);
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) != 0, "poll: release case n+1 suppressed");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 0, 2) == 0, "poll: released mid-gap");
-      CHECK(s.gap_remaining == 0, "poll: release clears gap");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 2) == 0, "poll: re-hold emits, no stuck suppression"); }
-    // gap_polls 0 disables synthesis
+      LIrPadLogic_DashPoll(&s, 1, 1, 0, 20);
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 0, 25, 20) == 0, "release aborts");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 30, 20) == 0, "re-hold: no stuck suppression");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 60, 20) == 0, "re-hold: still normal"); }
+    // second R3 during the sequence is ignored
     { LItPadDashState s = {0};
-      LIrPadLogic_DashPoll(&s, 1, 1, 0);
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 0) == 0, "poll: gap 0 no-op"); }
+      LIrPadLogic_DashPoll(&s, 1, 1, 0, 20);
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 25, 20) == 0, "re-press case: ON1");
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 30, 20) == 0, "R3 at t=30 ignored: still ON1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 50, 20) != 0, "re-press case: OFF2 on schedule");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 75, 20) == 0, "re-press case: normal on schedule"); }
+    // phase_ms 0 disables synthesis
+    { LItPadDashState s = {0};
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 0, 0) == 0, "phase 0: no-op"); }
 }
 
 int main(void) {
-    test_quantize(); test_aim(); test_dash(); test_dash_poll();
+    test_quantize(); test_aim(); test_dash_poll();
     printf("%d passed, %d failed\n", g_pass, g_fail);
     if (g_fail == 0) printf("ALL GAMEPAD LOGIC TESTS PASSED\n");
     return g_fail == 0 ? 0 : 1;

@@ -137,7 +137,8 @@ GitHub release notes and gets stamped with the version + date.
   buttons, triggers and D-pad, including with an existing key_config.txt. The
   new `pad_*` names can be rebound like keys. Menu control comes in a later
   build. (#73)
-- Game controllers: the left stick moves and the right stick aims (invert mouse applies to it too); click the right stick to dash. (#73)
+- Game controllers: the left stick moves and the right stick aims (invert
+  mouse applies to it too); click the right stick to dash. (#73)
 
 ## 1.3.0r5 — 2026-07-17
 

@@ -20,8 +20,17 @@ static LItPadDashState LIgPad_Dash = { 0 };   // dash-gap state
 #define LIcPadStickOffFrac       0.30f
 #define LIcPadAimDeadFrac        0.15f
 #define LIcPadAimScale           8.0f     // mouse-equivalent units per poll (frame) at full deflection
-#define LIcGamepadDashGapFrames  2        // polls (frames) of direction suppression for dash synth;
-                                          // polls, not ticks: a 0-tick frame discards its poll (#49)
+#define LIcGamepadDashPhaseMs    20       // min wall time per dash phase (OFF1, ON1, OFF2), and at
+                                          // least one poll each; ~60 ms total, well under the
+                                          // engine's 15-tick (~250 ms) sprint double-tap window
+
+static void LIiPad_ResetStickState(void)
+{
+	LIgPad_StickBits = 0;
+	LIgPad_PrevR3 = 0;
+	LIgPad_Dash.phase = 0;
+	LIgPad_Dash.phase_start_ms = 0;
+}
 
 static void LIiPad_Open(int inDeviceIndex)
 {
@@ -44,9 +53,7 @@ static void LIiPad_Close(void)
 		SDL_GameControllerClose(LIgPad);
 		LIgPad = NULL;
 		LIgPad_HasRumble = UUcFalse;
-		LIgPad_StickBits = 0;
-		LIgPad_PrevR3 = 0;
-		LIgPad_Dash.gap_remaining = 0;
+		LIiPad_ResetStickState();
 	}
 }
 
@@ -120,7 +127,7 @@ void LIrGamepad_GetData(LItAction *outAction)
 	};
 	UUtUns32 i;
 
-	if (LIgPad == NULL) { return; }
+	if (LIgPad == NULL) { LIiPad_ResetStickState(); return; }
 
 	for (i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i++) {
 		if (SDL_GameControllerGetButton(LIgPad, buttons[i].sdl)) {
@@ -135,9 +142,9 @@ void LIrGamepad_GetData(LItAction *outAction)
 		LIiPad_EmitButton(outAction, LIcGamepadCode_ZR);
 	}
 	// Left stick: quantise with hysteresis into pad_ls_* held inputs.
-	// R3 (dash) is NOT emitted as a binding input: its press edge opens a
-	// short gap in which the held directions are withheld, so the engine sees
-	// release + re-press of the direction, i.e. its own double-tap dash.
+	// R3 (dash) is NOT emitted as a binding input. The engine's only double-tap
+	// is the forward sprint (Oni_Character.c), so R3 while Up is held plays a
+	// full two-tap on Up (see LIrPadLogic_DashPoll); strafes keep emitting.
 	{
 		static const struct { unsigned int bit; UUtUns32 code; } dirs[] = {
 			{ LIcPadDir_Up,    LIcGamepadCode_LSUp    },
@@ -149,16 +156,20 @@ void LIrGamepad_GetData(LItAction *outAction)
 		const int ly = SDL_GameControllerGetAxis(LIgPad, SDL_CONTROLLER_AXIS_LEFTY);
 		const int r3 = SDL_GameControllerGetButton(LIgPad, SDL_CONTROLLER_BUTTON_RIGHTSTICK);
 		const int r3_went_down = r3 && !LIgPad_PrevR3;
+		unsigned int emit;
 		LIgPad_PrevR3 = r3;
 		// +y is SDL down; the quantiser maps -y to Up (forward)
 		LIgPad_StickBits = LIrPadLogic_QuantizeStick(lx, ly,
 			LIcPadStickOnFrac, LIcPadStickOffFrac, LIgPad_StickBits);
-		if (!LIrPadLogic_DashPoll(&LIgPad_Dash, r3_went_down,
-			LIgPad_StickBits != 0, LIcGamepadDashGapFrames)) {
-			for (i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++) {
-				if (LIgPad_StickBits & dirs[i].bit) {
-					LIiPad_EmitButton(outAction, dirs[i].code);
-				}
+		emit = LIgPad_StickBits;
+		if (LIrPadLogic_DashPoll(&LIgPad_Dash, r3_went_down,
+			(LIgPad_StickBits & LIcPadDir_Up) != 0, (unsigned int)SDL_GetTicks(),
+			LIcGamepadDashPhaseMs)) {
+			emit &= ~LIcPadDir_Up;
+		}
+		for (i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++) {
+			if (emit & dirs[i].bit) {
+				LIiPad_EmitButton(outAction, dirs[i].code);
 			}
 		}
 	}
