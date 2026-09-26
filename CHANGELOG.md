@@ -19,6 +19,15 @@ GitHub release notes and gets stamped with the version + date.
   r5); it is now skipped, with a line in `startup.txt` that says what to do. A
   pack that can't be opened for another reason (a missing `.raw`, say) is
   skipped the same way instead of taking the level down with it (#111, #112).
+- OniMod Installer keeps pack names short enough for the engine: a name longer
+  than 19 characters becomes its first 13 characters plus a short code. It also
+  refuses a mod whose name would make Oni confuse it with a pack you already
+  have, and tells you which one (#111, #112).
+- `onipack` refuses to write a pack file the engine could never load.
+- Heads-up: six of the depot's Character Retexture packs never actually loaded
+  before (their file names were too long), so after a reinstall through the
+  fixed installer you will see them applied for the first time.
+
 - New **OniMod Installer** app in the DMG. Drop a texture mod downloaded from
   the Oni Mod Depot (the zip, or its unzipped folder) onto it and it builds the
   pack and installs it into `TexturePacks/` for you. No Terminal needed. It
