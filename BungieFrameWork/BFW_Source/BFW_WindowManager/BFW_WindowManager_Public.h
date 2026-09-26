@@ -602,6 +602,12 @@ WMrWindow_SetSize(
 	UUtInt16				inWidth,
 	UUtInt16				inHeight);
 
+/* #89: change a template item's style word at runtime (text alignment) */
+void
+WMrWindow_SetStyle(
+	WMtWindow				*inWindow,
+	UUtUns32				inStyle);
+
 UUtBool
 WMrWindow_SetTitle(
 	WMtWindow				*inWindow,

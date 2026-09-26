@@ -31,6 +31,7 @@
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #include <spawn.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <limits.h>
 #include <stdio.h>
@@ -200,6 +201,28 @@ ONiOGU_MeasureTitle(
 	if (error != UUcError_None) { return -1; }
 
 	return (UUtInt16)(rect.right - rect.left);
+}
+
+// ----------------------------------------------------------------------
+/* Move an item so its screen-space left edge is inLeft, keeping its top.
+ * SetLocation is parent-relative and the WM has no getter for that: park the
+ * item at the parent origin to learn where it is. */
+static void
+ONiOGU_SetScreenLeft(
+	WMtWindow				*inItem,
+	UUtInt16				inLeft)
+{
+	UUtRect					rect;
+	UUtRect					parked;
+
+	WMrWindow_GetRect(inItem, &rect);
+	if (rect.left == inLeft) { return; }
+	WMrWindow_SetLocation(inItem, 0, 0);
+	WMrWindow_GetRect(inItem, &parked);
+	WMrWindow_SetLocation(
+		inItem,
+		(UUtInt16)(inLeft - parked.left),
+		(UUtInt16)(rect.top - parked.top));
 }
 
 // ----------------------------------------------------------------------
@@ -603,6 +626,7 @@ ONiOGU_RelaunchAfterQuit(
 	int						rc;
 	int						written;
 	posix_spawnattr_t		attr;
+	posix_spawn_file_actions_t	actions;
 
 	size = sizeof(exe);
 	if (_NSGetExecutablePath(exe, &size) != 0)
@@ -626,7 +650,7 @@ ONiOGU_RelaunchAfterQuit(
 	if (macos_dir != NULL)
 	{
 		written = snprintf(cmd, sizeof(cmd),
-			"while kill -0 %d 2>/dev/null; do sleep 0.2; done; exec /usr/bin/open -n '%.*s'",
+			"unset ONI_RENDERER; n=0; while kill -0 %d 2>/dev/null && [ $n -lt 600 ]; do sleep 0.2; n=$((n+1)); done; exec /usr/bin/open -n '%.*s'",
 			(int)getpid(), (int)(macos_dir + 4 - exe), exe);
 	}
 	else
@@ -637,7 +661,7 @@ ONiOGU_RelaunchAfterQuit(
 			return UUcFalse;
 		}
 		written = snprintf(cmd, sizeof(cmd),
-			"while kill -0 %d 2>/dev/null; do sleep 0.2; done; cd '%s' && exec '%s'",
+			"unset ONI_RENDERER; n=0; while kill -0 %d 2>/dev/null && [ $n -lt 600 ]; do sleep 0.2; n=$((n+1)); done; cd '%s' && exec '%s'",
 			(int)getpid(), cwd, exe);
 	}
 	if ((written < 0) || ((size_t)written >= sizeof(cmd)))
@@ -651,10 +675,41 @@ ONiOGU_RelaunchAfterQuit(
 	argv[2] = cmd;
 	argv[3] = NULL;
 
-	/* own session, so the waiter isn't tied to this process's group */
-	posix_spawnattr_init(&attr);
-	posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSID);
-	rc = posix_spawn(&pid, "/bin/sh", NULL, &attr, argv, environ);
+	/* own session, so the waiter isn't tied to this process's group; no
+	 * inherited descriptors (CLOEXEC_DEFAULT) except /dev/null on 0-2, so it
+	 * doesn't hold the game's log files or pipes open */
+	rc = posix_spawnattr_init(&attr);
+	if (rc != 0)
+	{
+		UUrStartupMessage("relaunch: not armed - posix_spawnattr_init failed (%d)", rc);
+		return UUcFalse;
+	}
+	rc = posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSID | POSIX_SPAWN_CLOEXEC_DEFAULT);
+	if (rc != 0)
+	{
+		UUrStartupMessage("relaunch: not armed - posix_spawnattr_setflags failed (%d)", rc);
+		posix_spawnattr_destroy(&attr);
+		return UUcFalse;
+	}
+	rc = posix_spawn_file_actions_init(&actions);
+	if (rc != 0)
+	{
+		UUrStartupMessage("relaunch: not armed - posix_spawn_file_actions_init failed (%d)", rc);
+		posix_spawnattr_destroy(&attr);
+		return UUcFalse;
+	}
+	rc = posix_spawn_file_actions_addopen(&actions, 0, "/dev/null", O_RDONLY, 0);
+	if (rc == 0) { rc = posix_spawn_file_actions_addopen(&actions, 1, "/dev/null", O_WRONLY, 0); }
+	if (rc == 0) { rc = posix_spawn_file_actions_addopen(&actions, 2, "/dev/null", O_WRONLY, 0); }
+	if (rc != 0)
+	{
+		UUrStartupMessage("relaunch: not armed - posix_spawn_file_actions_addopen failed (%d)", rc);
+		posix_spawn_file_actions_destroy(&actions);
+		posix_spawnattr_destroy(&attr);
+		return UUcFalse;
+	}
+	rc = posix_spawn(&pid, "/bin/sh", &actions, &attr, argv, environ);
+	posix_spawn_file_actions_destroy(&actions);
 	posix_spawnattr_destroy(&attr);
 	if (rc != 0)
 	{
@@ -696,7 +751,9 @@ ONiOGU_ChangeRestart_Callback(
 				text = ONiOGU_FindTextByTitle(inDialog, old_text, UUcTrue);
 				if (text != NULL)
 				{
-					ONiOGU_RetitleAndFit(text, new_text, (UUtInt16)(sizeof(old_text) - 1), NULL);
+					/* same length, and the item is likely a wrapped multi-line box:
+					 * a plain retitle, no fitting */
+					WMrWindow_SetTitle(text, new_text, WMcMaxTitleLength);
 				}
 				UUrStartupMessage("restart dialog: \"take affect\" text %s", (text != NULL) ? "retitled to \"take effect\"" : "not found, unchanged");
 			}
@@ -731,6 +788,8 @@ ONiOutGameUI_ChangeRestart_Display(
 	// set the ui to the out of game ui
 	temp_ui = PSrPartSpecUI_GetByName(ONcOutGameUIName);
 	if (temp_ui != NULL) { PSrPartSpecUI_SetActive(temp_ui); }
+
+	message = 0;
 
 	// display the dialog
 	WMrDialog_ModalBegin(
@@ -833,7 +892,6 @@ ONiOGU_RelaunchYesNo_Callback(
 			UUtBool				want_metal;
 			WMtWindow			*text;
 			WMtWindow			*child;
-			WMtWindow			*button;
 			UUtRect				dialog_rect;
 			int					text_count;
 
@@ -869,13 +927,65 @@ ONiOGU_RelaunchYesNo_Callback(
 			}
 			if (text != NULL)
 			{
+				UUtRect			text_rect;
+				UUtInt16		text_width;
+				UUtInt16		text_height;
+				UUtInt16		centre;
+				UUtInt16		new_left;
+				UUtUns32		text_style;
+
 				ONiOGU_RetitleAndFit(text, prompt, (UUtInt16)(sizeof(old_prompt) - 1), &dialog_rect);
+
+				/* centre the prompt on the dialog, and its glyphs in the item */
+				text_style = WMrWindow_GetStyle(text);
+				if ((text_style & (WMcTextStyle_HCenter | WMcTextStyle_HRight)) == 0)
+				{
+					WMrWindow_SetStyle(text, (text_style & ~WMcTextStyle_HLeft) | WMcTextStyle_HCenter);
+				}
+				WMrWindow_GetSize(text, &text_width, &text_height);
+				centre = (UUtInt16)((dialog_rect.left + dialog_rect.right) / 2);
+				new_left = (UUtInt16)(centre - text_width / 2);
+				if (new_left < dialog_rect.left) { new_left = dialog_rect.left; }
+				if (new_left + text_width > dialog_rect.right) { new_left = (UUtInt16)(dialog_rect.right - text_width); }
+				ONiOGU_SetScreenLeft(text, new_left);
+				WMrWindow_GetRect(text, &text_rect);
+				UUrStartupMessage("relaunch dialog: prompt rect %d,%d-%d,%d (centre %d); dialog centre %d; style 0x%x -> 0x%x",
+					(int)text_rect.left, (int)text_rect.top, (int)text_rect.right, (int)text_rect.bottom,
+					(int)((text_rect.left + text_rect.right) / 2), (int)centre,
+					(unsigned)text_style, (unsigned)WMrWindow_GetStyle(text));
 			}
 
-			button = WMrDialog_GetItemByID(inDialog, ONcQuitYesNo_Btn_Yes);
-			if (button != NULL) { ONiOGU_RetitleAndFit(button, "Relaunch", 3, &dialog_rect); }
-			button = WMrDialog_GetItemByID(inDialog, ONcQuitYesNo_Btn_No);
-			if (button != NULL) { ONiOGU_RetitleAndFit(button, "Cancel", 2, &dialog_rect); }
+			{
+				WMtWindow		*ok_button;
+				WMtWindow		*cancel_button;
+
+				ok_button = WMrDialog_GetItemByID(inDialog, ONcQuitYesNo_Btn_Yes);
+				cancel_button = WMrDialog_GetItemByID(inDialog, ONcQuitYesNo_Btn_No);
+				if (ok_button != NULL) { ONiOGU_RetitleAndFit(ok_button, "Relaunch", 3, &dialog_rect); }
+				if (cancel_button != NULL) { ONiOGU_RetitleAndFit(cancel_button, "Cancel", 2, &dialog_rect); }
+
+				/* macOS order: Cancel on the left, Relaunch (OK, the Enter
+				 * default) on the right. The IDs stay put; the windows move. */
+				if ((ok_button != NULL) && (cancel_button != NULL))
+				{
+					UUtRect		ok_rect;
+					UUtRect		cancel_rect;
+					UUtInt16	row_left;
+					UUtInt16	row_right;
+
+					WMrWindow_GetRect(ok_button, &ok_rect);
+					WMrWindow_GetRect(cancel_button, &cancel_rect);
+					row_left = (ok_rect.left < cancel_rect.left) ? ok_rect.left : cancel_rect.left;
+					row_right = (ok_rect.right > cancel_rect.right) ? ok_rect.right : cancel_rect.right;
+					ONiOGU_SetScreenLeft(cancel_button, row_left);
+					ONiOGU_SetScreenLeft(ok_button, (UUtInt16)(row_right - (ok_rect.right - ok_rect.left)));
+					WMrWindow_GetRect(ok_button, &ok_rect);
+					WMrWindow_GetRect(cancel_button, &cancel_rect);
+					UUrStartupMessage("relaunch dialog: buttons Cancel %d,%d-%d,%d; Relaunch %d,%d-%d,%d",
+						(int)cancel_rect.left, (int)cancel_rect.top, (int)cancel_rect.right, (int)cancel_rect.bottom,
+						(int)ok_rect.left, (int)ok_rect.top, (int)ok_rect.right, (int)ok_rect.bottom);
+				}
+			}
 
 			UUrStartupMessage("relaunch dialog: %d text item(s); prompt %s -> \"%s\"; OK -> Relaunch %s; Cancel %s",
 				text_count,
@@ -1395,8 +1505,10 @@ ONiOGU_Options_HandleCommand(
 					break;
 				}
 
-				/* quit through the normal path: close Options (the main menu
-				 * sees the result and closes itself), post quit, end the game */
+				/* quit as the main menu's Quit does: ONgTerminateGame and the main
+				 * menu's ONcOptions_Result_Relaunch ('RLNC') handling end the game.
+				 * The posted WMcMessage_Quit is drained by the Options modal loop and
+				 * is a no-op; it is kept to match upstream HandleQuit. */
 				WMrDialog_ModalEnd(inDialog, ONcOptions_Result_Relaunch);
 				WMrMessage_Post(NULL, WMcMessage_Quit, 0, 0);
 				ONgTerminateGame = UUcTrue;

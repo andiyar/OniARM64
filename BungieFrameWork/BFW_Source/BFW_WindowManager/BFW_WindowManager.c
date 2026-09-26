@@ -1709,6 +1709,21 @@ WMrWindow_SetSize(
 }
 
 // ----------------------------------------------------------------------
+/* #89: the style word is read at paint time, so changing it (e.g. a text
+ * item's alignment) takes effect on the next draw */
+void
+WMrWindow_SetStyle(
+	WMtWindow				*inWindow,
+	UUtUns32				inStyle)
+{
+	UUmAssert(inWindow);
+
+	if (!WMiWA_Valid(inWindow)) { return; }
+
+	inWindow->style = inStyle;
+}
+
+// ----------------------------------------------------------------------
 UUtBool
 WMrWindow_SetTitle(
 	WMtWindow				*inWindow,
