@@ -4285,20 +4285,23 @@ SSiPAUpdate_BodyStart(
 static void
 SSiPAUpdate_RepickGroup(
 	SStPlayingAmbient			*inPlayingAmbient,
-	SStSoundChannel				*inChannel)
+	SStSoundChannel				*inChannel,
+	SStGroup					*inGroup)
 {
 	UUtUns32					num_permutations;
 
 	if (inChannel == NULL) { return; }
 	if (SSiSoundChannel_IsLooping(inChannel) == UUcFalse) { return; }
 	if (SSiSoundChannel_IsPlaying(inChannel) == UUcTrue) { return; }
-	if (inChannel->group == NULL) { return; }
+	// the ambient's own base track, not inChannel->group: if BodyStart's play
+	// failed (SOUND NOT FOUND) the channel still holds an earlier sound's group
+	if (inGroup == NULL) { return; }
 	if ((inPlayingAmbient->ambient->flags & SScAmbientFlag_PlayOnce) != 0) { return; }
 
-	num_permutations = SSrGroup_GetNumPermutations(inChannel->group);
+	num_permutations = SSrGroup_GetNumPermutations(inGroup);
 	if (num_permutations <= 1) { return; }
 
-	SSrGroup_Play(inChannel->group, inChannel, "ambient re-pick",
+	SSrGroup_Play(inGroup, inChannel, "ambient re-pick",
 					inPlayingAmbient->ambient->ambient_name);
 
 	if (SSiSoundTraceEnabled() && (SSiSoundChannel_IsPlaying(inChannel) == UUcTrue))
@@ -4321,8 +4324,8 @@ SSiPAUpdate_BodyPlaying(
 
 	// Issue #115 — re-pick the next part of a looping multi-part group first,
 	// so the captures below see the channel as playing again
-	SSiPAUpdate_RepickGroup(inPlayingAmbient, inPlayingAmbient->channel1);
-	SSiPAUpdate_RepickGroup(inPlayingAmbient, inPlayingAmbient->channel2);
+	SSiPAUpdate_RepickGroup(inPlayingAmbient, inPlayingAmbient->channel1, inPlayingAmbient->ambient->base_track1);
+	SSiPAUpdate_RepickGroup(inPlayingAmbient, inPlayingAmbient->channel2, inPlayingAmbient->ambient->base_track2);
 
 	// determine if the sound channels are playing
 	channel1_playing = SSiSoundChannel_IsPlaying(inPlayingAmbient->channel1);
