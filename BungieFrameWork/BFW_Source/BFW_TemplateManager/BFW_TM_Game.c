@@ -1619,6 +1619,10 @@ TMiGame_InstanceFile_Dynamic_New(
 	newInstanceFile->rawMapping= NULL;
 	newInstanceFile->rawPtr = NULL;
 	newInstanceFile->separateFile = NULL;
+#if UUmPlatform_PointerSize == 8
+	newInstanceFile->translatedBlock = NULL;		/* Block_New does not zero; Delete frees this (#30) */
+	newInstanceFile->translatedBlockSize = 0;
+#endif
 
 	newInstanceFile->dataBlock = NULL;
 	newInstanceFile->nameBlock = NULL;
@@ -1684,6 +1688,10 @@ TMiGame_InstanceFile_New_FromFileRef(
 		newInstanceFile->rawMapping = NULL;
 		newInstanceFile->rawPtr = NULL;
 		newInstanceFile->separateFile = NULL;
+#if UUmPlatform_PointerSize == 8
+		newInstanceFile->translatedBlock = NULL;	/* Block_New does not zero; Delete frees this (#30) */
+		newInstanceFile->translatedBlockSize = 0;
+#endif
 
 	/*
 	 * map the file
@@ -1876,6 +1884,10 @@ TMiGame_InstanceFile_New_FromFileRef(
 		newInstanceFile->translatedBlockSize = total_dst_size_estimate + 4096;
 		newInstanceFile->translatedBlock =
 			(UUtUns8*)UUrMemory_Block_New(newInstanceFile->translatedBlockSize);
+		if (UUrDiagVerbose()) {
+			UUrStartupMessage("[tm] translated block %u for %s",
+				(unsigned)newInstanceFile->translatedBlockSize, newInstanceFile->fileName);
+		}
 
 		/* Side table: map on-disk src pointer → translated dst pointer,
 		   used for resolving duplicates in pass 2. */
@@ -2231,6 +2243,31 @@ TMiGame_InstanceFile_Delete(
 		UUrMemory_Pool_Delete(inInstanceFile->dynamicPool);
 		UUrMemory_Block_Delete(inInstanceFile->instanceDescriptors);
 	}
+
+#if UUmPlatform_PointerSize == 8
+	/* #30: the 64-bit loader heap-allocates the translated instance data and,
+	   for disk-loaded files, both descriptor tables. Freed last because the
+	   dispose callbacks above still read instance data in translatedBlock.
+	   Dynamic files (dynamicPool != NULL) had instanceDescriptors freed above. */
+	if (inInstanceFile->translatedBlock != NULL)
+	{
+		UUrMemory_Block_Delete(inInstanceFile->translatedBlock);
+		inInstanceFile->translatedBlock = NULL;
+	}
+	if (inInstanceFile->dynamicPool == NULL)
+	{
+		if (inInstanceFile->instanceDescriptors != NULL)
+		{
+			UUrMemory_Block_Delete(inInstanceFile->instanceDescriptors);
+			inInstanceFile->instanceDescriptors = NULL;
+		}
+		if (inInstanceFile->nameDescriptors != NULL)
+		{
+			UUrMemory_Block_Delete(inInstanceFile->nameDescriptors);
+			inInstanceFile->nameDescriptors = NULL;
+		}
+	}
+#endif
 
 	UUrMemory_Block_Delete(inInstanceFile);
 }
