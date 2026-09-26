@@ -16,6 +16,12 @@ GitHub release notes and gets stamped with the version + date.
 - New app icon for macOS 26: the Oni "O" is now a proper layered glass icon, so it follows your system icon style (default, dark, clear, tinted) instead of sitting on the white placeholder tile. On older toolchains the build falls back to a refreshed static icon with a dark background.
 
 ### Mods
+- Installing an HD Screens mod no longer leaves the Load Game, main menu and
+  Options dialogs with red frames, highlights and button plates. When the
+  installer skips a mod's re-laid-out screens it now also skips that mod's
+  restyled menu chrome (`buttons` and `navi`) and says so in its report, so the
+  vanilla blue dialogs stay blue. Same-grid retextures keep their chrome (#113,
+  reported by simX).
 - New **OniMod Installer** app in the DMG. Drop a texture mod downloaded from
   the Oni Mod Depot (the zip, or its unzipped folder) onto it and it builds the
   pack and installs it into `TexturePacks/` for you. No Terminal needed. It
