@@ -26,6 +26,9 @@ final class MainWindowController: NSWindowController {
     let installedBox = NSBox()
     let reportBox = NSBox()
     private let queue = DispatchQueue(label: "installer.work")
+    // Installed-list scans get their own serial queue so they never wait behind an install batch,
+    // and stay in order (a later scan can not be overwritten by an earlier one).
+    private let scanQueue = DispatchQueue(label: "installer.scan", qos: .userInitiated)
     // Main-thread only. Batches can overlap (a second drop while one runs); the bar stays up
     // until the last finishes, and later reports in the series append rather than replace.
     private var runningBatches = 0
@@ -297,10 +300,10 @@ extension MainWindowController: NSTableViewDataSource, NSTableViewDelegate {
         ])
     }
 
-    /// Scans TexturePacks on the work queue, then updates the table on main, keeping the selection by name.
+    /// Scans TexturePacks on the scan queue (not behind installs), then updates the table on main, keeping the selection by name.
     func reloadInstalled() {
         let dir = ModInstaller.defaultTexturePacksDir()
-        queue.async { [weak self] in
+        scanQueue.async { [weak self] in
             let packs = InstalledPacks.scan(dir: dir)
             DispatchQueue.main.async {
                 guard let self = self else { return }
@@ -388,7 +391,13 @@ extension MainWindowController: NSTableViewDataSource, NSTableViewDelegate {
                 DispatchQueue.main.async { e.beginSheetModal(for: window, completionHandler: nil) }
                 return
             }
-            self.showReport("Moved \(p.name) to the Trash.")
+            // During a batch the note joins the running series instead of wiping it.
+            if self.runningBatches > 0 {
+                self.showReport("Moved \(p.name) to the Trash.", append: self.seriesHasReport)
+                self.seriesHasReport = true
+            } else {
+                self.showReport("Moved \(p.name) to the Trash.")
+            }
             ReportLog.append(source: p.folder.path, text: "Moved to the Trash.")
             self.reloadInstalled()
         }
