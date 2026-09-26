@@ -1789,8 +1789,12 @@ MSiSprite_Draw_Unoriented(
 	UUtUns16 drawWidth = M3rDraw_GetWidth();
 	UUtUns16 drawHeight = M3rDraw_GetHeight();
 
-	float xScale = drawWidth * 0.78125f; // S.S. (500.f / 640.f);
-	float yScale = drawHeight * 1.041666667f; // S.S. (500.f / 480.f);
+	/* #114: scale by height only, as Oni_Cinematics.c does for the
+	   letterbox (OCcCinematic_ScreenHeight / 480). The 500/640 x-factor
+	   assumed 4:3; on 16:9 and 21:9 it stretched every screen-space
+	   sprite (reticle, muzzle flash) horizontally. */
+	float xScale = drawHeight * (500.f / 480.f);
+	float yScale = drawHeight * (500.f / 480.f);
 
 	float preClipWidth, preClipHeight;
 
@@ -2295,8 +2299,12 @@ MSrGeomContext_Method_SpriteArray_Draw(
 	UUtUns16				drawWidth = M3rDraw_GetWidth();
 	UUtUns16				drawHeight = M3rDraw_GetHeight();
 
-	float					xScale = drawWidth * 0.78125f; // S.S. (500.f / 640.f);
-	float					yScale = drawHeight * 1.04166667f; // S.S. (500.f / 480.f);
+	/* #114: scale by height only, as Oni_Cinematics.c does for the
+	   letterbox (OCcCinematic_ScreenHeight / 480). The 500/640 x-factor
+	   assumed 4:3; on 16:9 and 21:9 it stretched every screen-space
+	   sprite (reticle, muzzle flash) horizontally. */
+	float					xScale = drawHeight * (500.f / 480.f);
+	float					yScale = drawHeight * (500.f / 480.f);
 	UUtUns32				i;
 	UUtBool					old_sorting;
 	float					preClipWidth, preClipHeight;

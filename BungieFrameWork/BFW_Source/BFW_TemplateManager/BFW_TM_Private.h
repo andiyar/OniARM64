@@ -112,6 +112,14 @@ typedef struct TMtInstanceFile	TMtInstanceFile;
 #define TMcDisk_NameDescriptorSize		(8)
 #define TMcDisk_TemplateDescriptorSize	(16)
 
+/* #119: the on-disk layout is fixed; pin it so a header edit cannot drift it.
+   Instance = 3 pointer slots + size + flags, name = index + name slot, all
+   32-bit on disk. The template descriptor carries no pointers, so its
+   in-memory size matches disk on both targets. */
+_Static_assert(TMcDisk_InstanceDescriptorSize == 5 * sizeof(UUtUns32), "on-disk instance descriptor is 20 bytes");
+_Static_assert(TMcDisk_NameDescriptorSize == 2 * sizeof(UUtUns32), "on-disk name descriptor is 8 bytes");
+_Static_assert(TMcDisk_TemplateDescriptorSize == sizeof(TMtTemplateDescriptor), "on-disk template descriptor is 16 bytes");
+
 /*
  * Instance file header
  */
@@ -138,6 +146,8 @@ typedef struct TMtInstanceFile	TMtInstanceFile;
 		UUtUns32		pad2[4];
 
 	} TMtInstanceFile_Header;
+
+_Static_assert(sizeof(TMtInstanceFile_Header) == 64, "on-disk instance-file header is 64 bytes (#119)");
 
 extern UUtBool					TMgInGame;
 extern BFtFileRef				TMgDataFolderRef;

@@ -1783,6 +1783,21 @@ TMiGame_InstanceFile_New_FromFileRef(
 		UUmError_ReturnOnError(error);
 	}
 
+	/* #119: the header is self-consistent, but is the file as long as it
+	   claims? A .dat cut short after a good header still SIGBUSes on the
+	   descriptor walk (the #66 case). Compare against the mapped length. */
+	if ((UUtUns64)fileHeader->nameBlockOffset + fileHeader->nameBlockLength > (UUtUns64)totalFileLength)
+	{
+		UUrStartupMessage("[tm] %s: instance-file header rejected (truncated: header claims %llu bytes, file is %u)",
+			BFrFileRef_GetLeafName(inInstanceFileRef),
+			(unsigned long long)fileHeader->nameBlockOffset + fileHeader->nameBlockLength, (unsigned)totalFileLength);
+		if (newInstanceFile->separateFile != NULL) BFrFile_Close(newInstanceFile->separateFile);
+		if (newInstanceFile->rawMapping != NULL) BFrFile_UnMap(newInstanceFile->rawMapping);
+		BFrFile_UnMap(newInstanceFile->mapping);
+		UUrMemory_Block_Delete(newInstanceFile);
+		return TMcError_DataCorrupt;
+	}
+
 	/* Mac retail data detector: retain whether this file carries the Mac
 	   template-checksum family so the bridge translate site can select the
 	   Mac on-disk layout for the templates that differ. The checksum is
@@ -1793,8 +1808,6 @@ TMiGame_InstanceFile_New_FromFileRef(
 	UUrStartupMessage("[tm] header ok %s: %u instances, %u names, swap=%d, mac=%d",
 		BFrFileRef_GetLeafName(inInstanceFileRef), (unsigned)fileHeader->numInstanceDescriptors,
 		(unsigned)fileHeader->numNameDescriptors, (int)needsSwapping, (int)newInstanceFile->isMac);
-
-	UUmAssert(totalFileLength == fileHeader->nameBlockOffset + fileHeader->nameBlockLength);
 
 	UUrString_Copy(newInstanceFile->fileName, BFrFileRef_GetLeafName(inInstanceFileRef), BFcMaxFileNameLength);
 

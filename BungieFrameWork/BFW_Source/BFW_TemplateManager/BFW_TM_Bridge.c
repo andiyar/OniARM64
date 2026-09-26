@@ -696,7 +696,7 @@ TMrBridge_TranslateInstanceDescriptorArray(
 
     const UUtUns8* src = (const UUtUns8*)inSrc;
 
-    for (UUtUns32 i = 0; i < inCount; i++, src += 20) {
+    for (UUtUns32 i = 0; i < inCount; i++, src += TMcDisk_InstanceDescriptorSize) {
         UUtUns32 templatePtr32, dataPtr32, namePtr32, size32, flags32;
         memcpy(&templatePtr32, src +  0, 4);
         memcpy(&dataPtr32,     src +  4, 4);
@@ -740,7 +740,7 @@ TMrBridge_TranslateNameDescriptorArray(
     const UUtUns8* src = (const UUtUns8*)inSrc;
     memset(dst, 0, inCount * sizeof(TMtNameDescriptor));
 
-    for (UUtUns32 i = 0; i < inCount; i++, src += 8) {
+    for (UUtUns32 i = 0; i < inCount; i++, src += TMcDisk_NameDescriptorSize) {
         UUtUns32 instanceDescIndex32, namePtr32;
         memcpy(&instanceDescIndex32, src + 0, 4);
         memcpy(&namePtr32,           src + 4, 4);
