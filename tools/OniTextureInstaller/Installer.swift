@@ -1,6 +1,6 @@
 // Installer.swift — Oni Texture Installer core (#20). No AppKit; drives the
-// bundled onipack + txmp-format-index tools. Both the CLI and the droplet
-// call `ModInstaller.install`.
+// bundled onipack + txmp-format-index tools. The packing pipeline shared by the
+// Oni Texture Installer window and its CLI; both call `ModInstaller.install`.
 //
 // What a depot mod looks like (surveyed 2026-09-10 in HDTextureMods/):
 //   <Name>/[Mod_Info.cfg] + oni/[common/]level<N>_Final/[subdir/...]/TXMP*.oni

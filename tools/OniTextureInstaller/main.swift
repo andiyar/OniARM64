@@ -91,9 +91,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ note: Notification) {
         NSApp.setActivationPolicy(.regular)
+        NSApp.mainMenu = buildMainMenu(controller: ensureController())
         NSApp.activate(ignoringOtherApps: true)
         ensureController().showWindow(nil)
     }
+
+    /// The standard menu bar, built in code (no nib): app, File, Edit, Window.
+    private func buildMainMenu(controller c: MainWindowController) -> NSMenu {
+        let name = "Oni Texture Installer"
+        let main = NSMenu()
+        func submenu(_ title: String) -> NSMenu {
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            let m = NSMenu(title: title)
+            item.submenu = m
+            main.addItem(item)
+            return m
+        }
+
+        let appMenu = submenu(name)
+        appMenu.addItem(withTitle: "About \(name)", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Hide \(name)", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: "Quit \(name)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+
+        let file = submenu("File")
+        let choose = file.addItem(withTitle: "Choose file…", action: #selector(MainWindowController.chooseFile), keyEquivalent: "o")
+        choose.target = c
+        file.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+
+        let edit = submenu("Edit")
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+
+        let window = submenu("Window")
+        window.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        NSApp.windowsMenu = window
+        return main
+    }
+
 
     // Finder can deliver files before didFinishLaunching, so make the window on demand.
     func application(_ app: NSApplication, open urls: [URL]) {
