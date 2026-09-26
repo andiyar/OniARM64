@@ -109,11 +109,36 @@ static void test_dash_poll(void) {
       CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 345, 40) == 0, "t300: ON1");
       CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 390, 40) != 0, "t300: OFF2");
       CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 435, 40) == 0, "t300: normal"); }
-    // R3 on the same poll Up comes on counts as inside the window
+    // R3 on the same poll Up comes on: OFF1 withholds that push, so the engine
+    // never saw it as a tap; full path (no window hold, no real tap to wait on)
     { LItPadDashState s = {0};
-      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 500, 40) != 0, "same poll: OFF");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 545, 40) == 0, "same poll: normal");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 590, 40) == 0, "same poll: no OFF2"); }
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 500, 40) != 0, "same poll: OFF1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 545, 40) == 0, "same poll: ON1 (full path)");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 590, 40) != 0, "same poll: OFF2");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 635, 40) == 0, "same poll: normal"); }
+    // Up on at t=0 emitted, R3 at t=50: short path
+    { LItPadDashState s = {0};
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 0, 40) == 0, "t50: Up on emitted");
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 50, 40) != 0, "t50: OFF");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 90, 40) == 0, "t50: normal");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 130, 40) == 0, "t50: no OFF2"); }
+    // R3 at t=150: re-press at ~190 ms, inside window minus margin: short path
+    { LItPadDashState s = {0};
+      LIrPadLogic_DashPoll(&s, 0, 1, 0, 40);
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 150, 40) != 0, "t150: OFF");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 190, 40) == 0, "t150: normal");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 240, 40) == 0, "t150: no OFF2"); }
+    // R3 at t=200: re-press would land at ~240 ms, in the jitter band: full path,
+    // OFF1 held until the push is at least window + margin (284 ms) old
+    { LItPadDashState s = {0};
+      LIrPadLogic_DashPoll(&s, 0, 1, 0, 40);
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 200, 40) != 0, "t200: OFF1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 245, 40) != 0, "t200: OFF1 held past phase min");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 283, 40) != 0, "t200: OFF1 held at 283");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 284, 40) == 0, "t200: ON1 at 284");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 300, 40) == 0, "t200: still ON1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 324, 40) != 0, "t200: OFF2");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 364, 40) == 0, "t200: normal"); }
     // wrap-around: now_ms crosses zero (SDL_GetTicks 32-bit wrap)
     { const unsigned int W = 0xFFFFFFF0u;
       LItPadDashState s = {0};

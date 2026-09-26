@@ -39,30 +39,49 @@ int LIrPadLogic_DashPoll(LItPadDashState *s, int dash_went_down,
 {
 	// A phase is entered on some poll and can only advance on a later poll,
 	// so each lasts at least one poll.
+	const unsigned int short_limit =
+		LIcGamepadSprintWindowMs - LIcGamepadSprintMarginMs;
+	int up_went_on = 0;
+	int withhold;
 	if (!up_held) { s->phase = 0; s->up_prev = 0; return 0; }
 	if (!s->up_prev) {
 		s->up_prev = 1;
-		s->up_on_ms = now_ms;           // the real push is a tap
-		s->up_on_valid = 1;
+		s->up_on_valid = 0;             // a tap only once it is emitted (below)
+		up_went_on = 1;
 	}
 	if (s->phase == 0) {
-		if (!dash_went_down || phase_ms == 0) { return 0; }
-		s->phase = 1;
-		s->phase_start_ms = now_ms;
-		// the re-press lands >= phase_ms from now: short path only if that
-		// is still inside the window after the real push
-		s->short_path = s->up_on_valid && phase_ms < LIcGamepadSprintWindowMs &&
-			(now_ms - s->up_on_ms) < LIcGamepadSprintWindowMs - phase_ms;
-		return 1;
-	}
-	if (now_ms - s->phase_start_ms >= phase_ms) {   // unsigned: wrap-safe
-		if (s->phase == 3 || (s->phase == 1 && s->short_path)) {
-			s->phase = 0;
-			s->up_on_valid = 0;         // engine now sprinting; the push no longer counts
+		if (!dash_went_down || phase_ms == 0) {
+			withhold = 0;
 		} else {
-			s->phase++;
+			// the re-press lands >= phase_ms from now: short path only if
+			// that is inside the window, less the jitter margin, after an
+			// emitted push
+			s->phase = 1;
+			s->phase_start_ms = now_ms;
+			s->short_path = s->up_on_valid && phase_ms < short_limit &&
+				(now_ms - s->up_on_ms) < short_limit - phase_ms;
+			// full path after an emitted push: hold OFF1 until that push is
+			// out of the window (plus margin) so ON1 cannot sprint early
+			s->hold_off1 = s->up_on_valid && !s->short_path;
+			withhold = 1;
 		}
-		s->phase_start_ms = now_ms;
+	} else {
+		if (now_ms - s->phase_start_ms >= phase_ms &&   // unsigned: wrap-safe
+			!(s->phase == 1 && s->hold_off1 && (now_ms - s->up_on_ms) <
+				LIcGamepadSprintWindowMs + LIcGamepadSprintMarginMs)) {
+			if (s->phase == 3 || (s->phase == 1 && s->short_path)) {
+				s->phase = 0;
+				s->up_on_valid = 0;     // engine now sprinting; the push no longer counts
+			} else {
+				s->phase++;
+			}
+			s->phase_start_ms = now_ms;
+		}
+		withhold = (s->phase == 1 || s->phase == 3);
 	}
-	return (s->phase == 1 || s->phase == 3);
+	if (up_went_on && !withhold) {      // the engine saw this push: it is a tap
+		s->up_on_valid = 1;
+		s->up_on_ms = now_ms;
+	}
+	return withhold;
 }
