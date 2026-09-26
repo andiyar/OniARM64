@@ -1,6 +1,7 @@
 // MainWindow.swift — the Oni Texture Installer window (#124).
 // Layout (top to bottom): Depot catalogue (tick packages, Install Selected), installed-packs table
-// (InstalledPacks.swift scan, Reveal / Remove to the Trash), report box. Dropping a zip or folder anywhere on the window installs it.
+// (InstalledPacks.swift scan, Reveal / Remove to the Trash), report box. The catalogue comes from the cached index (DepotCache.swift)
+// at once, then a background refresh; Refresh re-fetches. Dropping a zip or folder anywhere on the window installs it.
 import AppKit
 import UniformTypeIdentifiers
 
@@ -47,8 +48,15 @@ final class MainWindowController: NSWindowController {
     let statusLabel = NSTextField(labelWithString: "")
     let descriptionField = NSTextField(wrappingLabelWithString: "")
     var packages: [DepotPackage] = []
-    var visible: [DepotPackage] = []       // packages after the search filter
+    var visible: [DepotPackage] = []       // packages after the search and Show installed only filters
     var ticked: Set<Int> = []              // nids
+    let installedOnlyBox = NSButton(checkboxWithTitle: "Show installed only", target: nil, action: nil)
+    let cache = DepotCache(dir: DepotCache.defaultDir())
+    var indexDate: String?                 // ISO 8601, from the cache or the last refresh
+    var refreshing = false
+    // Index fetch and cache reads: serial (the cached load lands before the first refresh), and
+    // apart from scanQueue so a slow or failing fetch never holds up the installed list.
+    private let catalogueQueue = DispatchQueue(label: "installer.catalogue", qos: .userInitiated)
 
     init() {
         let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 820),
@@ -317,7 +325,8 @@ extension MainWindowController: NSTableViewDataSource, NSTableViewDelegate {
                     self.installedTable.deselectAll(nil)
                 }
                 self.updateInstalledButtons()
-                self.catalogueTable.reloadData()   // Installed marks follow the new list
+                // Installed marks (and the Show installed only filter) follow the new list
+                if self.installedOnlyBox.state == .on { self.applyFilter() } else { self.catalogueTable.reloadData() }
             }
         }
     }
@@ -427,7 +436,10 @@ extension MainWindowController {
         searchField.target = self
         searchField.action = #selector(filterChanged)
         searchField.widthAnchor.constraint(equalToConstant: 240).isActive = true
-        refreshButton.isEnabled = false   // wired up with the index cache
+        refreshButton.target = self
+        refreshButton.action = #selector(refreshCatalogue)
+        installedOnlyBox.target = self
+        installedOnlyBox.action = #selector(installedOnlyChanged)
         installButton.target = self
         installButton.action = #selector(installSelected)
         installButton.isEnabled = false
@@ -436,7 +448,7 @@ extension MainWindowController {
         statusLabel.alignment = .right
         statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         statusLabel.setContentHuggingPriority(.init(1), for: .horizontal)
-        let top = NSStackView(views: [searchField, refreshButton, installButton, statusLabel])
+        let top = NSStackView(views: [searchField, installedOnlyBox, refreshButton, installButton, statusLabel])
         top.orientation = .horizontal
         top.spacing = 8
         top.alignment = .centerY
@@ -493,35 +505,82 @@ extension MainWindowController {
         ])
     }
 
-    /// For now: parse the index zip named by OTI_INDEX_ZIP, off main. The index cache replaces this hook.
+    /// Shows the cached index at once (if any), then fetches a fresh one in the background.
     func loadCatalogue() {
-        guard let path = ProcessInfo.processInfo.environment["OTI_INDEX_ZIP"], !path.isEmpty else {
-            statusLabel.stringValue = "The Depot catalogue arrives in a later step."
-            return
-        }
         statusLabel.stringValue = "Reading the Depot catalogue…"
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = Result { try DepotIndex.parse(zipURL: URL(fileURLWithPath: path)) }
+        let cache = self.cache
+        catalogueQueue.async { [weak self] in
+            let cached = cache.load()
             DispatchQueue.main.async {
                 guard let self = self else { return }
-                switch result {
-                case .success(let p):
-                    self.packages = p
-                    self.statusLabel.stringValue = "\(p.count) texture packages"
-                case .failure(let e):
-                    self.packages = []
-                    self.statusLabel.stringValue = (e as? DepotError)?.description ?? e.localizedDescription
-                }
-                self.applyFilter()
+                if let c = cached { self.showCatalogue(c.packages, date: c.date) }
+                self.refreshCatalogue()
             }
         }
     }
 
+    /// The Refresh button's action: download the index, and on success replace the catalogue.
+    /// A failed fetch leaves both the cache and the shown catalogue alone.
+    @objc func refreshCatalogue() {
+        guard !refreshing else { return }
+        refreshing = true
+        refreshButton.isEnabled = false
+        statusLabel.stringValue = "Checking the Mod Depot…"
+        let cache = self.cache
+        catalogueQueue.async { [weak self] in
+            let result = Result { try cache.refresh() }
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.refreshing = false
+                self.refreshButton.isEnabled = true
+                switch result {
+                case .success(let r):
+                    self.showCatalogue(r.packages, date: r.date)
+                case .failure(let e):
+                    var why = (e as? DepotError)?.description ?? e.localizedDescription
+                    while why.hasSuffix(".") { why.removeLast() }
+                    if self.packages.isEmpty {
+                        self.statusLabel.stringValue = "Couldn't reach the Mod Depot: \(why)."
+                        self.refreshButton.title = "Retry"
+                    } else {
+                        self.statusLabel.stringValue = self.catalogueStatus() + ". Couldn't reach the Mod Depot just now: \(why)."
+                    }
+                }
+                self.statusLabel.toolTip = self.statusLabel.stringValue
+            }
+        }
+    }
+
+    /// Main only: replaces the catalogue, keeping ticks for packages still listed.
+    private func showCatalogue(_ p: [DepotPackage], date: String) {
+        packages = p
+        indexDate = date
+        ticked.formIntersection(Set(p.map { $0.nid }))
+        refreshButton.title = "Refresh"
+        statusLabel.stringValue = catalogueStatus()
+        statusLabel.toolTip = statusLabel.stringValue
+        applyFilter()
+    }
+
+    /// "N texture packages, index from <local short date and time>" (raw string if it is not ISO 8601).
+    private func catalogueStatus() -> String {
+        var when = indexDate ?? "unknown date"
+        if let d = ISO8601DateFormatter().date(from: when) {
+            let f = DateFormatter(); f.dateStyle = .short; f.timeStyle = .short
+            when = f.string(from: d)
+        }
+        return "\(packages.count) texture packages, index from \(when)"
+    }
+
+    @objc func installedOnlyChanged() { applyFilter() }
+
     private func applyFilter() {
         let q = searchField.stringValue.trimmingCharacters(in: .whitespaces)
-        visible = q.isEmpty ? packages : packages.filter {
+        var v = q.isEmpty ? packages : packages.filter {
             $0.title.localizedCaseInsensitiveContains(q) || $0.creator.localizedCaseInsensitiveContains(q)
         }
+        if installedOnlyBox.state == .on { v = v.filter { isInstalled($0) } }
+        visible = v
         catalogueTable.reloadData()
         catalogueTable.deselectAll(nil)
         updateDescription()

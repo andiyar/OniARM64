@@ -2,6 +2,7 @@
 // The AE Installer reads http://mods.oni2.net/jsoncache/jsoncache.zip: four Drupal
 // dumps (vocabulary.json, terms.json, nodes.json, files.json). We keep packages whose
 // "Mod type" includes Texture and whose "Install method" is Package.
+// Hand-test hook: OTI_INDEX_URL overrides the index URL (e.g. http://127.0.0.1:9/x to simulate offline).
 import Foundation
 
 struct DepotPackage: Equatable {
@@ -29,7 +30,7 @@ enum DepotError: Error, CustomStringConvertible {
 }
 
 enum DepotIndex {
-    static let indexURL = URL(string: "http://mods.oni2.net/jsoncache/jsoncache.zip")!
+    static let indexURL = ProcessInfo.processInfo.environment["OTI_INDEX_URL"].flatMap { $0.isEmpty ? nil : URL(string: $0) } ?? URL(string: "http://mods.oni2.net/jsoncache/jsoncache.zip")!
     static let downloadBase = "http://mods.oni2.net/system/files/"
 
     /// Unzips with ditto into a temp folder, parses, filters, sorts by title (case-insensitive).
@@ -43,13 +44,16 @@ enum DepotIndex {
         let err = Pipe(); p.standardError = err
         try p.run(); p.waitUntilExit()
         guard p.terminationStatus == 0 else {
-            throw DepotError.unzipFailed(String(data: err.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "exit \(p.terminationStatus)")
+            let msg = (String(data: err.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            throw DepotError.unzipFailed(msg.isEmpty ? "exit \(p.terminationStatus)" : msg)
         }
         func load(_ name: String) throws -> [[String: Any]] {
             // entries sit at the zip root; also look one level down in case of a wrapper folder
             let candidates = [work.appendingPathComponent(name)] + ((try? fm.contentsOfDirectory(at: work, includingPropertiesForKeys: nil)) ?? []).map { $0.appendingPathComponent(name) }
             guard let url = candidates.first(where: { fm.fileExists(atPath: $0.path) }) else { throw DepotError.missingFile(name) }
-            guard let arr = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [[String: Any]] else { throw DepotError.badJSON(name) }
+            // not valid JSON, or valid JSON that is not an array of objects: both are the shape error
+            guard let data = try? Data(contentsOf: url), let obj = try? JSONSerialization.jsonObject(with: data),
+                  let arr = obj as? [[String: Any]] else { throw DepotError.badJSON(name) }
             return arr
         }
         let vocab = try load("vocabulary.json"), terms = try load("terms.json")
@@ -86,9 +90,9 @@ enum DepotIndex {
             guard !fileName.isEmpty, let url = URL(string: urlString), let nid = int(n["nid"]) else { continue }
             out.append(DepotPackage(nid: nid,
                                     packageNumber: Int(firstValue(n, "field_package_number")) ?? 0,
-                                    title: (n["title"] as? String) ?? "",
-                                    creator: firstValue(n, "field_creator"),
-                                    version: firstValue(n, "field_version"),
+                                    title: ((n["title"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
+                                    creator: firstValue(n, "field_creator").trimmingCharacters(in: .whitespacesAndNewlines),
+                                    version: firstValue(n, "field_version").trimmingCharacters(in: .whitespacesAndNewlines),
                                     description: stripHTML(firstValue(n, "body")),
                                     fileName: fileName,
                                     fileSize: int(f?["filesize"]) ?? int(up["filesize"]) ?? 0,
