@@ -286,10 +286,10 @@ extension MainWindowController: NSTableViewDataSource, NSTableViewDelegate {
         revealButton.target = self; revealButton.action = #selector(revealSelected)
         removeButton.target = self; removeButton.action = #selector(removeSelected)
         revealButton.isEnabled = false; removeButton.isEnabled = false
-        let refreshButton = NSButton(title: "Refresh", target: self, action: #selector(refreshInstalled))
+        let rescanButton = NSButton(title: "Rescan", target: self, action: #selector(refreshInstalled))
         let spacer = NSView()
         spacer.setContentHuggingPriority(.init(1), for: .horizontal)
-        let row = NSStackView(views: [revealButton, removeButton, spacer, refreshButton])
+        let row = NSStackView(views: [revealButton, removeButton, spacer, rescanButton])
         row.orientation = .horizontal
         row.spacing = 8
         row.alignment = .centerY
@@ -525,7 +525,8 @@ extension MainWindowController {
         guard !refreshing else { return }
         refreshing = true
         refreshButton.isEnabled = false
-        statusLabel.stringValue = "Checking the Mod Depot…"
+        statusLabel.stringValue = packages.isEmpty ? "Checking the Mod Depot…" : catalogueStatus() + ". Checking the Mod Depot…"
+        statusLabel.toolTip = statusLabel.stringValue
         let cache = self.cache
         catalogueQueue.async { [weak self] in
             let result = Result { try cache.refresh() }
@@ -537,13 +538,14 @@ extension MainWindowController {
                 case .success(let r):
                     self.showCatalogue(r.packages, date: r.date)
                 case .failure(let e):
-                    var why = (e as? DepotError)?.description ?? e.localizedDescription
+                    let depot = e as? DepotError
+                    var why = depot?.description ?? e.localizedDescription
                     while why.hasSuffix(".") { why.removeLast() }
                     if self.packages.isEmpty {
-                        self.statusLabel.stringValue = "Couldn't reach the Mod Depot: \(why)."
+                        self.statusLabel.stringValue = (depot != nil ? "Couldn't read the Mod Depot index: " : "Couldn't reach the Mod Depot: ") + "\(why)."
                         self.refreshButton.title = "Retry"
                     } else {
-                        self.statusLabel.stringValue = self.catalogueStatus() + ". Couldn't reach the Mod Depot just now: \(why)."
+                        self.statusLabel.stringValue = self.catalogueStatus() + (depot != nil ? ". Couldn't read the Mod Depot index just now: " : ". Couldn't reach the Mod Depot just now: ") + "\(why)."
                     }
                 }
                 self.statusLabel.toolTip = self.statusLabel.stringValue
@@ -569,7 +571,7 @@ extension MainWindowController {
             let f = DateFormatter(); f.dateStyle = .short; f.timeStyle = .short
             when = f.string(from: d)
         }
-        return "\(packages.count) texture packages, index from \(when)"
+        return "\(packages.count) texture package\(packages.count == 1 ? "" : "s"), index from \(when)"
     }
 
     @objc func installedOnlyChanged() { applyFilter() }
