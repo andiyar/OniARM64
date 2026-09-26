@@ -133,6 +133,9 @@ GitHub release notes and gets stamped with the version + date.
   the key above `s` wherever you are. The dev console reads raw keys the same
   way, so typing in it on a non-QWERTY layout gives you QWERTY letters; set
   `ONI_KEY_LAYOUT=1` if you'd rather have the old layout-based mapping back.
+- Game controllers: a plugged-in pad (Switch Pro tested) drives the action
+  buttons, triggers and D-pad through the normal key bindings, with new `pad_*`
+  names in key_config.txt. Sticks and menu control follow in later builds. (#73)
 
 ## 1.3.0r5 — 2026-07-17
 

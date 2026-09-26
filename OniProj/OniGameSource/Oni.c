@@ -1200,10 +1200,12 @@ static void KeyConfig(void)
 #if defined(__APPLE__) && UUmSDL
 		// A pre-gamepad key_config only carries keyboard/mouse binds; its
 		// leading "unbindall" wiped the programmatic setup, so nothing on the
-		// pad is bound. If the file mentions no pad_ input, apply the built-in
-		// gamepad defaults now (after RunKeyConfigFile, so the unbindall can't
-		// clobber them). Fresh configs written above already carry pad_ lines,
-		// so they match here and are left alone (no double-binding).
+		// pad is bound. If no line binds a pad_ input (a line starting
+		// "bind pad_", leading whitespace allowed; a comment that merely
+		// mentions pad_ doesn't count), apply the built-in gamepad defaults
+		// now (after RunKeyConfigFile, so the unbindall can't clobber them).
+		// Fresh configs written above already carry bind pad_ lines, so they
+		// match here and are left alone (no double-binding).
 		{
 			FILE *pad_scan = fopen(key_config_path, "r");
 
@@ -1212,7 +1214,13 @@ static void KeyConfig(void)
 				UUtBool has_pad_binding = UUcFalse;
 
 				while (NULL != fgets(line, sizeof(line), pad_scan)) {
-					if (NULL != strstr(line, "pad_")) {
+					const char *p = line;
+
+					while (' ' == *p || '\t' == *p) {
+						p++;
+					}
+
+					if (0 == strncmp(p, "bind pad_", 9)) {
 						has_pad_binding = UUcTrue;
 						break;
 					}
