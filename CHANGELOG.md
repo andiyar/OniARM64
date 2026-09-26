@@ -93,6 +93,10 @@ GitHub release notes and gets stamped with the version + date.
   backup is never overwritten, so the earliest copy is the one you keep (#91).
 
 ### In-game
+- Controls respond one frame sooner: the game now reads the keyboard and mouse
+  before building each frame's input instead of after, which removed a constant
+  16 ms of input lag. Part of the #49 "feels sluggish" investigation; a
+  diagnostic (ONI_TICK_TRACE=1) is in for the rest.
 - The aiming reticle and muzzle flashes are round again on widescreen
   displays (16:9, 21:9). Sprites were scaled with a 4:3 assumption, so they
   came out stretched sideways at anything wider (#114, reported by simX).
