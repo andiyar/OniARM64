@@ -1,5 +1,5 @@
 // MainWindow.swift — the Oni Texture Installer window (#124).
-// Layout (top to bottom): catalogue box (later tasks fill it), installed-packs table
+// Layout (top to bottom): Depot catalogue (tick packages, Install Selected), installed-packs table
 // (InstalledPacks.swift scan, Reveal / Remove to the Trash), report box. Dropping a zip or folder anywhere on the window installs it.
 import AppKit
 import UniformTypeIdentifiers
@@ -39,12 +39,22 @@ final class MainWindowController: NSWindowController {
     private let revealButton = NSButton(title: "Reveal in Finder", target: nil, action: nil)
     private let removeButton = NSButton(title: "Remove…", target: nil, action: nil)
     private let sizeFormatter: ByteCountFormatter = { let f = ByteCountFormatter(); f.countStyle = .file; return f }()
+    // Depot catalogue (main-thread only).
+    let catalogueTable = NSTableView()
+    let searchField = NSSearchField()
+    let refreshButton = NSButton(title: "Refresh", target: nil, action: nil)
+    let installButton = NSButton(title: "Install Selected", target: nil, action: nil)
+    let statusLabel = NSTextField(labelWithString: "")
+    let descriptionField = NSTextField(wrappingLabelWithString: "")
+    var packages: [DepotPackage] = []
+    var visible: [DepotPackage] = []       // packages after the search filter
+    var ticked: Set<Int> = []              // nids
 
     init() {
-        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
+        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 820),
                          styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         w.title = "Oni Texture Installer"
-        w.minSize = NSSize(width: 820, height: 600)
+        w.minSize = NSSize(width: 820, height: 680)
         super.init(window: w)
         let root = DropView(frame: w.contentView!.bounds)
         root.autoresizingMask = [.width, .height]
@@ -53,30 +63,12 @@ final class MainWindowController: NSWindowController {
         buildLayout(in: root)
         w.center()
         reloadInstalled()
+        loadCatalogue()
     }
     required init?(coder: NSCoder) { fatalError() }
 
-    /// Puts a single centred, wrapping grey label inside a box (placeholder until a later task fills it).
-    private func fill(_ box: NSBox, title: String, note: String) {
-        box.title = title
-        box.titlePosition = .atTop
-        box.translatesAutoresizingMaskIntoConstraints = false
-        let label = NSTextField(wrappingLabelWithString: note)
-        label.alignment = .center
-        label.textColor = .secondaryLabelColor
-        label.translatesAutoresizingMaskIntoConstraints = false
-        let content = box.contentView!
-        content.addSubview(label)
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: content.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: content.centerYAnchor),
-            label.leadingAnchor.constraint(greaterThanOrEqualTo: content.leadingAnchor, constant: 12),
-            label.trailingAnchor.constraint(lessThanOrEqualTo: content.trailingAnchor, constant: -12),
-        ])
-    }
-
     private func buildLayout(in root: NSView) {
-        fill(catalogueBox, title: "Mod Depot texture packages", note: "The Depot catalogue arrives in a later step.")
+        buildCatalogueBox()
         buildInstalledBox()
         catalogueBox.setContentHuggingPriority(.defaultLow, for: .vertical)
         catalogueBox.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
@@ -177,31 +169,39 @@ final class MainWindowController: NSWindowController {
 
     /// Runs the pipeline for dropped or chosen files, one after another, and shows one combined report.
     func install(files: [URL]) {
+        runBatch(files.map { .file($0) }, label: "Installing \(files.count) item(s)…")
+    }
+
+    /// One path for dropped files and ticked Depot packages: BatchRunner on the work queue,
+    /// Replace prompts and progress bridged to main. `then` runs on main after the report shows.
+    func runBatch(_ items: [BatchItem], label: String, then: (() -> Void)? = nil) {
         runningBatches += 1
-        setBusy(true, label: "Installing \(files.count) item(s)…")
+        updateInstallButton()
+        setBusy(true, label: label)
+        let runner = BatchRunner(
+            makeInstaller: { makeInstaller() },
+            askReplace: { [weak self] path in self?.askReplace(path) ?? false },
+            progress: { [weak self] _, fraction, text in
+                DispatchQueue.main.async { self?.showProgress(fraction, text) }
+            })
         queue.async { [self] in
-            var sections: [String] = []
-            var installed = 0, skipped = 0, failed = 0
-            for url in files {
-                var inst = makeInstaller()
-                do {
-                    var report: InstallReport
-                    do { inst.replace = false; report = try inst.install(url) }
-                    catch InstallError.alreadyInstalled(let path) {
-                        guard askReplace(path) else { sections.append("\(url.lastPathComponent): skipped (already installed)."); skipped += 1; continue }
-                        inst.replace = true; report = try inst.install(url)
-                    }
-                    sections.append(report.text); installed += 1
-                    ReportLog.append(source: url.path, text: report.text)
-                } catch {
-                    let msg = (error as? InstallError)?.description ?? "\(error)"
-                    sections.append("\(url.lastPathComponent): Nothing installed: \(msg)"); failed += 1
-                    ReportLog.append(source: url.path, text: "Nothing installed: \(msg)")
-                }
-            }
-            var text = sections.joined(separator: "\n\n") + "\n\n\(installed) installed, \(skipped) skipped, \(failed) failed."
-            if installed > 0 { text += "\nThe pack loads next time Oni starts." }
-            DispatchQueue.main.async { self.finishBatch(text) }
+            let outcome = runner.run(items)
+            DispatchQueue.main.async { self.finishBatch(outcome.text); then?() }
+        }
+    }
+
+    /// Determinate bar when a fraction is known (downloads), indeterminate otherwise.
+    private func showProgress(_ fraction: Double?, _ text: String) {
+        guard runningBatches > 0 else { return }
+        progressLabel.stringValue = text
+        if let f = fraction {
+            progress.stopAnimation(nil)
+            progress.isIndeterminate = false
+            progress.minValue = 0; progress.maxValue = 1
+            progress.doubleValue = f
+        } else if !progress.isIndeterminate {
+            progress.isIndeterminate = true
+            progress.startAnimation(nil)
         }
     }
 
@@ -223,6 +223,7 @@ final class MainWindowController: NSWindowController {
         showReport(text, append: seriesHasReport)
         seriesHasReport = runningBatches > 0
         if runningBatches == 0 { setBusy(false, label: "") }
+        updateInstallButton()
         didFinishInstall()
     }
 
@@ -234,7 +235,7 @@ final class MainWindowController: NSWindowController {
         progress.isHidden = !busy; progressLabel.stringValue = label
         if busy { progress.isIndeterminate = true; progress.startAnimation(nil) } else { progress.stopAnimation(nil) }
     }
-    /// Refreshes the installed list (and, in later tasks, the catalogue marks) after a batch.
+    /// Refreshes the installed list and, through it, the catalogue's Installed marks after a batch.
     func didFinishInstall() { reloadInstalled() }
 }
 
@@ -316,6 +317,7 @@ extension MainWindowController: NSTableViewDataSource, NSTableViewDelegate {
                     self.installedTable.deselectAll(nil)
                 }
                 self.updateInstalledButtons()
+                self.catalogueTable.reloadData()   // Installed marks follow the new list
             }
         }
     }
@@ -331,9 +333,10 @@ extension MainWindowController: NSTableViewDataSource, NSTableViewDelegate {
         removeButton.isEnabled = has
     }
 
-    func numberOfRows(in tableView: NSTableView) -> Int { installed.count }
+    func numberOfRows(in tableView: NSTableView) -> Int { tableView === catalogueTable ? visible.count : installed.count }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        if tableView === catalogueTable { return catalogueCell(tableColumn, row: row) }
         guard let col = tableColumn, row < installed.count else { return nil }
         let p = installed[row]
         let text: String
@@ -356,7 +359,9 @@ extension MainWindowController: NSTableViewDataSource, NSTableViewDelegate {
         return label
     }
 
-    func tableViewSelectionDidChange(_ notification: Notification) { updateInstalledButtons() }
+    func tableViewSelectionDidChange(_ notification: Notification) {
+        if (notification.object as? NSTableView) === catalogueTable { updateDescription() } else { updateInstalledButtons() }
+    }
 
     @objc func tableDoubleClicked() {
         let r = installedTable.clickedRow
@@ -400,6 +405,201 @@ extension MainWindowController: NSTableViewDataSource, NSTableViewDelegate {
             }
             ReportLog.append(source: p.folder.path, text: "Moved to the Trash.")
             self.reloadInstalled()
+        }
+    }
+}
+
+// MARK: - Depot catalogue
+
+extension MainWindowController {
+    private static let catalogueColumns: [(id: String, title: String, width: CGFloat, right: Bool)] = [
+        ("tick", "", 28, false), ("name", "Name", 260, false), ("creator", "Creator", 140, false),
+        ("version", "Version", 70, false), ("size", "Size", 90, true), ("installed", "Installed", 70, false),
+    ]
+
+    func buildCatalogueBox() {
+        catalogueBox.title = "Mod Depot texture packages"
+        catalogueBox.titlePosition = .atTop
+        catalogueBox.translatesAutoresizingMaskIntoConstraints = false
+
+        searchField.placeholderString = "Filter by name or creator"
+        searchField.sendsSearchStringImmediately = true
+        searchField.target = self
+        searchField.action = #selector(filterChanged)
+        searchField.widthAnchor.constraint(equalToConstant: 240).isActive = true
+        refreshButton.isEnabled = false   // wired up with the index cache
+        installButton.target = self
+        installButton.action = #selector(installSelected)
+        installButton.isEnabled = false
+        statusLabel.textColor = .secondaryLabelColor
+        statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.alignment = .right
+        statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        statusLabel.setContentHuggingPriority(.init(1), for: .horizontal)
+        let top = NSStackView(views: [searchField, refreshButton, installButton, statusLabel])
+        top.orientation = .horizontal
+        top.spacing = 8
+        top.alignment = .centerY
+        top.translatesAutoresizingMaskIntoConstraints = false
+
+        for c in Self.catalogueColumns {
+            let col = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(c.id))
+            col.title = c.title
+            col.width = c.width
+            if c.id == "tick" { col.minWidth = c.width; col.maxWidth = c.width }
+            if c.right { col.headerCell.alignment = .right }
+            col.resizingMask = c.id == "name" ? [.autoresizingMask, .userResizingMask] : (c.id == "tick" ? [] : .userResizingMask)
+            catalogueTable.addTableColumn(col)
+        }
+        catalogueTable.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
+        catalogueTable.usesAlternatingRowBackgroundColors = true
+        catalogueTable.allowsMultipleSelection = false
+        catalogueTable.allowsEmptySelection = true
+        catalogueTable.dataSource = self
+        catalogueTable.delegate = self
+
+        let scroll = NSScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.borderType = .bezelBorder
+        scroll.documentView = catalogueTable
+
+        descriptionField.maximumNumberOfLines = 4
+        descriptionField.lineBreakMode = .byWordWrapping
+        descriptionField.cell?.truncatesLastVisibleLine = true
+        descriptionField.textColor = .secondaryLabelColor
+        descriptionField.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        descriptionField.translatesAutoresizingMaskIntoConstraints = false
+        descriptionField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let c = catalogueBox.contentView!
+        c.addSubview(top)
+        c.addSubview(scroll)
+        c.addSubview(descriptionField)
+        NSLayoutConstraint.activate([
+            top.topAnchor.constraint(equalTo: c.topAnchor, constant: 6),
+            top.leadingAnchor.constraint(equalTo: c.leadingAnchor, constant: 6),
+            top.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -6),
+            scroll.topAnchor.constraint(equalTo: top.bottomAnchor, constant: 8),
+            scroll.leadingAnchor.constraint(equalTo: c.leadingAnchor, constant: 6),
+            scroll.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -6),
+            scroll.heightAnchor.constraint(greaterThanOrEqualToConstant: 80),
+            descriptionField.topAnchor.constraint(equalTo: scroll.bottomAnchor, constant: 6),
+            descriptionField.leadingAnchor.constraint(equalTo: c.leadingAnchor, constant: 8),
+            descriptionField.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -8),
+            descriptionField.heightAnchor.constraint(equalToConstant: 58),   // four small lines
+            descriptionField.bottomAnchor.constraint(equalTo: c.bottomAnchor, constant: -6),
+        ])
+    }
+
+    /// For now: parse the index zip named by OTI_INDEX_ZIP, off main. The index cache replaces this hook.
+    func loadCatalogue() {
+        guard let path = ProcessInfo.processInfo.environment["OTI_INDEX_ZIP"], !path.isEmpty else {
+            statusLabel.stringValue = "The Depot catalogue arrives in a later step."
+            return
+        }
+        statusLabel.stringValue = "Reading the Depot catalogue…"
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let result = Result { try DepotIndex.parse(zipURL: URL(fileURLWithPath: path)) }
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                switch result {
+                case .success(let p):
+                    self.packages = p
+                    self.statusLabel.stringValue = "\(p.count) texture packages"
+                case .failure(let e):
+                    self.packages = []
+                    self.statusLabel.stringValue = (e as? DepotError)?.description ?? e.localizedDescription
+                }
+                self.applyFilter()
+            }
+        }
+    }
+
+    private func applyFilter() {
+        let q = searchField.stringValue.trimmingCharacters(in: .whitespaces)
+        visible = q.isEmpty ? packages : packages.filter {
+            $0.title.localizedCaseInsensitiveContains(q) || $0.creator.localizedCaseInsensitiveContains(q)
+        }
+        catalogueTable.reloadData()
+        catalogueTable.deselectAll(nil)
+        updateDescription()
+        updateInstallButton()
+    }
+
+    @objc func filterChanged() { applyFilter() }
+
+    /// Ticked rows the filter still shows: what Install Selected acts on.
+    private var tickedVisible: [DepotPackage] { visible.filter { ticked.contains($0.nid) } }
+
+    func updateInstallButton() {
+        installButton.isEnabled = !tickedVisible.isEmpty && runningBatches == 0
+    }
+
+    func updateDescription() {
+        let r = catalogueTable.selectedRow
+        descriptionField.stringValue = r >= 0 && r < visible.count ? visible[r].description : ""
+    }
+
+    /// Installed when a pack records this Depot number, or (an older install) has the sanitised title as its name.
+    func isInstalled(_ p: DepotPackage) -> Bool {
+        let name = ModInstaller.sanitise(p.title)
+        return installed.contains { $0.depotPackage == p.packageNumber || $0.name == name }
+    }
+
+    func catalogueCell(_ tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        guard let col = tableColumn, row < visible.count else { return nil }
+        let p = visible[row]
+        let key = col.identifier.rawValue
+        if key == "tick" {
+            let id = NSUserInterfaceItemIdentifier("cat.tick")
+            let b = (catalogueTable.makeView(withIdentifier: id, owner: self) as? NSButton) ?? {
+                let b = NSButton(checkboxWithTitle: "", target: self, action: #selector(toggleTick(_:)))
+                b.identifier = id
+                return b
+            }()
+            b.state = ticked.contains(p.nid) ? .on : .off
+            return b
+        }
+        let text: String
+        switch key {
+        case "name": text = p.title
+        case "creator": text = p.creator
+        case "version": text = p.version
+        case "size": text = p.fileSize > 0 ? sizeFormatter.string(fromByteCount: Int64(p.fileSize)) : ""
+        default: text = isInstalled(p) ? "✓" : ""
+        }
+        let id = NSUserInterfaceItemIdentifier("cat." + key)
+        let label = (catalogueTable.makeView(withIdentifier: id, owner: self) as? NSTextField) ?? {
+            let l = NSTextField(labelWithString: "")
+            l.identifier = id
+            l.lineBreakMode = .byTruncatingTail
+            l.alignment = key == "size" ? .right : (key == "installed" ? .center : .left)
+            return l
+        }()
+        label.stringValue = text
+        label.toolTip = key == "name" ? p.fileName : nil
+        return label
+    }
+
+    @objc func toggleTick(_ sender: NSButton) {
+        let r = catalogueTable.row(for: sender)
+        guard r >= 0, r < visible.count else { return }
+        let nid = visible[r].nid
+        if sender.state == .on { ticked.insert(nid) } else { ticked.remove(nid) }
+        updateInstallButton()
+    }
+
+    @objc func installSelected() {
+        let chosen = tickedVisible
+        guard !chosen.isEmpty else { return }
+        let nids = Set(chosen.map { $0.nid })
+        runBatch(chosen.map { .depot($0) }, label: "Installing \(chosen.count) package(s)…") { [weak self] in
+            guard let self = self else { return }
+            self.ticked.subtract(nids)
+            self.catalogueTable.reloadData()
+            self.updateInstallButton()
         }
     }
 }
