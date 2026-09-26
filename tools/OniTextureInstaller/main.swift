@@ -5,6 +5,8 @@
 //         engine file id the installer computes, for the Swift/C parity check)
 //         OniTextureInstaller --parse-index <jsoncache.zip>   (prints the Depot
 //         texture-package catalogue as TSV, Depot.swift)
+//         OniTextureInstaller --list-installed <TexturePacks>   (prints the installed
+//         packs as TSV: name, levels, bytes, source; InstalledPacks.swift)
 //   GUI:  no --install → the Oni Texture Installer window (MainWindow.swift).
 //         Drop a mod on the window, use Choose file, or Finder Open With.
 // Helper tools: bundled beside the executable, or ONIMOD_ONIPACK /
@@ -54,6 +56,10 @@ func runCLI(_ args: [String]) -> Never {
                 exit(0)
             } catch let e as DepotError { stderrLine("Oni Texture Installer: \(e.description)"); exit(3) }
             catch { stderrLine("Oni Texture Installer: \(error)"); exit(3) }
+        case "--list-installed":
+            guard i + 1 < args.count else { stderrLine("usage: OniTextureInstaller --list-installed <TexturePacks>"); exit(2) }
+            for p in InstalledPacks.scan(dir: URL(fileURLWithPath: args[i + 1])) { print(InstalledPacks.tsvLine(p)) }
+            exit(0)
         case "--help": input = nil; i = args.count
         default:
             stderrLine("unknown argument \(args[i])")
@@ -62,7 +68,7 @@ func runCLI(_ args: [String]) -> Never {
         i += 1
     }
     guard let input = input else {
-        stderrLine("usage: OniTextureInstaller --install <zip-or-folder> [--dest dir] [--gamedata dir|none] [--replace]\n       OniTextureInstaller --parse-index <jsoncache.zip>")
+        stderrLine("usage: OniTextureInstaller --install <zip-or-folder> [--dest dir] [--gamedata dir|none] [--replace]\n       OniTextureInstaller --parse-index <jsoncache.zip>\n       OniTextureInstaller --list-installed <TexturePacks>")
         exit(2)
     }
     do {
@@ -82,7 +88,7 @@ func runCLI(_ args: [String]) -> Never {
 }
 
 let argv = Array(CommandLine.arguments.dropFirst())
-if argv.contains("--install") || argv.contains("--help") || argv.contains("--file-id") || argv.contains("--parse-index") {
+if argv.contains("--install") || argv.contains("--help") || argv.contains("--file-id") || argv.contains("--parse-index") || argv.contains("--list-installed") {
     runCLI(argv)
 }
 
