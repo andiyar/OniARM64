@@ -17,6 +17,7 @@ enum InstallError: Error, CustomStringConvertible {
     case toolMissing(String)
     case packFailed(String)
     case idCollision(pack: String, level: Int)   // engine file id equal to an installed pack's
+    case idCollisionWithRetail(level: Int)       // engine file id equal to the game's own level<N>_Final.dat
 
     var description: String {
         switch self {
@@ -26,15 +27,16 @@ enum InstallError: Error, CustomStringConvertible {
         case .alreadyInstalled(let p): return "A pack with this name is already installed at \(p)."
         case .toolMissing(let t): return "The bundled helper '\(t)' is missing. Reinstall OniMod Installer."
         case .packFailed(let m): return "Packing failed: \(m)"
-        case .idCollision(let p, let l): return "Oni would confuse this mod with the installed pack '\(p)': both get the same file id for level \(l) (Oni tells packs apart by a small checksum of the name, and these two check out equal, so it would silently drop one). Rename the mod folder (or NameOfMod in Mod_Info.cfg) and try again."
+        case .idCollision(let p, let l): return "Oni would confuse this mod with the installed pack '\(p)': both get the same file id for level \(l) (Oni tells packs apart by a small checksum of the name, and these two check out equal, so it would silently drop one). Change NameOfMod in Mod_Info.cfg (or, if the mod has no Mod_Info.cfg, rename the zip or folder) and try again."
+        case .idCollisionWithRetail(let l): return "Oni would confuse this mod with its own level\(l)_Final.dat: the name's checksum is zero, the same as 'Final', so the game would drop its own level data. Change NameOfMod in Mod_Info.cfg (or, if the mod has no Mod_Info.cfg, rename the zip or folder) and try again."
         }
     }
-    /// CLI exit code. 4 = already installed (retry with --replace), 5 = engine file-id collision with an installed pack, 1 = no textures, 2 = anything else.
+    /// CLI exit code. 4 = already installed (retry with --replace), 5 = engine file-id collision (with an installed pack or the game's own level data), 1 = no textures, 2 = anything else.
     var exitCode: Int32 {
         switch self {
         case .alreadyInstalled: return 4
         case .noTextures: return 1
-        case .idCollision: return 5
+        case .idCollision, .idCollisionWithRetail: return 5
         default: return 2
         }
     }
@@ -123,7 +125,7 @@ struct ModInstaller {
         report.packName = Self.sanitise(baseName)
         let alnumCount = baseName.unicodeScalars.filter { $0.isASCII && CharacterSet.alphanumerics.contains($0) }.count
         if alnumCount > Self.maxPackNameLength {
-            report.warnings.append("name shortened to \(report.packName) so the pack's file names fit Oni's 31-character limit")
+            report.warnings.append("name shortened to \(report.packName) so the pack's file names fit Oni's \(Self.maxLeafLength)-character limit")
         }
 
         // 3. Collect TXMP*.oni by level.
@@ -213,13 +215,14 @@ struct ModInstaller {
     /// onipack suffix rules: [A-Za-z0-9]+, not "Final". The engine caps a file
     /// leaf at 31 characters (BFcMaxFileNameLength is 32 including the NUL) and
     /// the leaf is `level<N>_<name>.dat`, so with `level10_` (8) and `.dat` (4)
-    /// the name may be at most 19 (#111, #112). Longer names keep their first
+    /// the name may be at most 19 = 31 - 8 - 4 (#111, #112). Longer names keep their first
     /// 13 characters plus a 6-character base-36 FNV-1a digest of the full
     /// sanitised name: deterministic, readable, and distinct for the depot's
     /// seven `CharacterRetexture*` packs, which a plain prefix would fold into
     /// one folder and one engine id. Never change this: the leaf is what an
     /// installed pack is found by.
     static let maxPackNameLength = 19
+    static let maxLeafLength = 31          // BFcMaxFileNameLength (32) less the NUL
     static let digestLength = 6
 
     static func sanitise(_ name: String) -> String {
@@ -265,21 +268,32 @@ struct ModInstaller {
     }
 
     /// Leaves already under TexturePacks/<Pack>/level<N>_<Suffix>.dat, as
-    /// (pack, level, suffix). Leaves of 32+ characters are ignored: the engine never
-    /// registers them, so they cannot collide with anything. Prefix and extension
-    /// match case-insensitively, like the engine's scan and the macOS file system.
+    /// (pack, level, suffix). Mirrors the engine's scan: only regular files count
+    /// (its POSIX iterator takes DT_REG only); leaves longer than maxLeafLength
+    /// bytes are never registered, so they cannot collide with anything; and the
+    /// suffix runs from after `level<N>_` to the first '.', as
+    /// TMrUtility_LevelInfo_Get parses it, so `level0_AB.bar.dat` has suffix `AB`.
+    /// Prefix and extension match case-insensitively, like the engine's scan and
+    /// the macOS file system.
     func installedPackLeaves(excluding: String?) -> [(pack: String, level: Int, suffix: String)] {
         let fm = FileManager.default
         var out: [(pack: String, level: Int, suffix: String)] = []
-        guard let packs = try? fm.contentsOfDirectory(at: texturePacksDir, includingPropertiesForKeys: [.isDirectoryKey]) else { return out }
+        guard let packs = try? fm.contentsOfDirectory(at: texturePacksDir, includingPropertiesForKeys: nil) else { return out }
         for p in packs {
             let pack = p.lastPathComponent
             if pack.hasPrefix(".") || (excluding.map { pack.caseInsensitiveCompare($0) == .orderedSame } ?? false) { continue }
-            guard let files = try? fm.contentsOfDirectory(atPath: p.path) else { continue }
-            for leaf in files where leaf.lowercased().hasPrefix("level") && leaf.lowercased().hasSuffix(".dat") && leaf.count <= 31 {
-                let stem = leaf.dropFirst(5).dropLast(4)                 // "<N>_<Suffix>"
+            // the URL API will not list through a symlinked folder; the engine stat()s through it, so resolve first
+            guard let files = try? fm.contentsOfDirectory(at: p.resolvingSymlinksInPath(), includingPropertiesForKeys: [.isRegularFileKey]) else { continue }
+            for f in files {
+                guard (try? f.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true else { continue }
+                let leaf = f.lastPathComponent
+                // the engine measures the leaf with strlen, so the cap is in UTF-8 bytes
+                guard leaf.lowercased().hasPrefix("level"), leaf.lowercased().hasSuffix(".dat"),
+                      leaf.utf8.count <= Self.maxLeafLength else { continue }
+                let stem = leaf.dropFirst(5)                             // "<N>_<Suffix>[.x].dat"
                 guard let us = stem.firstIndex(of: "_"), let level = Int(stem[..<us]) else { continue }
-                let suffix = String(stem[stem.index(after: us)...])
+                let rest = stem[stem.index(after: us)...]
+                let suffix = String(rest[..<(rest.firstIndex(of: ".") ?? rest.endIndex)])
                 if !suffix.isEmpty { out.append((pack, level, suffix)) }
             }
         }
@@ -287,9 +301,11 @@ struct ModInstaller {
     }
 
     /// Refuse a pack whose engine file id equals an installed pack's for any
-    /// level it carries: the engine keeps whichever readdir yields first and
-    /// drops the other silently (BFW_TM_Game.c overlay scan, "file index
-    /// already registered"). `excluding` is the pack being replaced.
+    /// level it carries: the engine registers pack folders in strcmp order
+    /// (ONi_TexturePacks.c sorts them before registration), so the folder that
+    /// sorts first wins and the other is dropped silently (BFW_TM_Game.c overlay
+    /// scan, "file index already registered"); readdir order only matters
+    /// between leaves inside one folder. `excluding` is the pack being replaced.
     func checkFileIDCollisions(levels: [Int], packName: String, excluding: String?) throws {
         let installed = installedPackLeaves(excluding: excluding)
         for level in levels.sorted() {
@@ -297,7 +313,7 @@ struct ModInstaller {
             if (mine >> 1) & 0xFFFFFF == 0 {
                 // hash 0 is what "Final" hashes to: this name would take the game's
                 // own level<N>_Final.dat index and the scan would drop the retail file.
-                throw InstallError.idCollision(pack: "the game's own level\(level)_Final.dat", level: level)
+                throw InstallError.idCollisionWithRetail(level: level)
             }
             if let other = installed.first(where: { $0.level == level && Self.fileID(level: level, suffix: $0.suffix) == mine }) {
                 throw InstallError.idCollision(pack: other.pack, level: level)

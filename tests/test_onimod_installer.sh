@@ -91,7 +91,7 @@ printf 'NameOfMod -> BetterWarehouseTrainingRooms12\n' > "$E/Mod_Info.cfg"    # 
 cp "$W/TXMPcliA.oni" "$E/oni/common/level0_Final/"; cp "$W/TXMPcliB.oni" "$E/oni/common/level10_Final/"
 "$INST" --install "$E" --dest "$DEST" --gamedata none > "$W/out8" 2>&1; rc=$?
 PACK8=$(ls "$DEST" | grep '^BetterWarehou' | head -1)
-check '[ $rc -eq 0 ] && [ "${#PACK8}" -eq 19 ]' "30-char name shortened to a 19-char pack name (rc=$rc, got '$PACK8')"
+check '[ $rc -eq 0 ] && [ "$PACK8" = "BetterWarehouwf6c4j" ]' "30-char name shortened to the pinned 19-char pack name BetterWarehouwf6c4j (rc=$rc, got '$PACK8')"
 LONGLEAF=0; for f in "$DEST/$PACK8"/level*; do b=$(basename "$f"); [ "${#b}" -le 31 ] || LONGLEAF=1; done
 check '[ "$LONGLEAF" = 0 ] && [ -f "$DEST/$PACK8/level10_$PACK8.dat" ]' "every leaf <= 31 chars, level10_ included"
 check 'grep -qi "shortened" "$W/out8"' "report says the name was shortened"
@@ -114,10 +114,12 @@ check '[ $rc1 -eq 0 ] && [ $rc2 -eq 0 ] && [ -f "$DEST/CharacterRetee5cm8v/level
 for n in AB CA; do mkdir -p "$W/$n/oni/level0_Final"; cp "$W/TXMPcliA.oni" "$W/$n/oni/level0_Final/"; done
 "$INST" --install "$W/AB" --dest "$DEST" --gamedata none >/dev/null 2>&1; rc1=$?
 "$INST" --install "$W/CA" --dest "$DEST" --gamedata none > "$W/out10" 2>&1; rc2=$?
-check '[ $rc1 -eq 0 ] && [ $rc2 -eq 5 ] && grep -q "AB" "$W/out10"' "id collision refused with exit 5 naming the installed pack (rc=$rc1/$rc2): $(cat "$W/out10")"
+check '[ $rc1 -eq 0 ] && [ $rc2 -eq 5 ] && grep -q "pack '\''AB'\''" "$W/out10"' "id collision refused with exit 5 naming the installed pack (rc=$rc1/$rc2): $(cat "$W/out10")"
 check '[ ! -d "$DEST/CA" ]' "nothing written on collision"
 "$INST" --install "$W/AB" --dest "$DEST" --gamedata none --replace >/dev/null 2>&1; rc=$?
 check '[ $rc -eq 0 ]' "--replace does not collide with the pack it replaces (rc=$rc)"
+"$INST" --install "$W/CA" --dest "$DEST" --gamedata none --replace >/dev/null 2>&1; rc=$?
+check '[ $rc -eq 5 ] && [ ! -d "$DEST/CA" ]' "--replace still refuses a collision with a different installed pack (rc=$rc)"
 mkdir -p "$W/0H/oni/level0_Final"; cp "$W/TXMPcliA.oni" "$W/0H/oni/level0_Final/"
 "$INST" --install "$W/0H" --dest "$DEST" --gamedata none > "$W/out10b" 2>&1; rc=$?
 check '[ $rc -eq 5 ] && grep -q "level0_Final" "$W/out10b"' "a name hashing to 0 ('0H': -16*1 + 8*2), the retail Final id, is refused with exit 5 (rc=$rc)"
@@ -138,5 +140,23 @@ for lv in 0 10; do for s in HD1 CharacterRetextureP Pt4Synd1 CharacterRetee5cm8v
     a=$("$INST" --file-id $lv $s); b=$("$W/fid" $lv $s); [ "$a" = "$b" ] || PARITY="$PARITY $lv/$s:$a!=$b"
 done; done
 check '[ -z "$PARITY" ] && [ "$("$INST" --file-id 0 HD1)" = "0x01ffffc7" ]' "Swift file id == C opk_file_id for letters, digits, Final, level 10 (mismatches:$PARITY)"
+
+# 12. the installed-pack scan matches the engine's (#111, #112): only regular
+#     files count (the engine's iterator takes DT_REG only), and the suffix
+#     runs to the first '.', so level0_AF.bar.dat carries id "AF". Pairs:
+#     A*1+D*2 == E*1+B*2 == 9, A*1+F*2 == I*1+B*2 == 13, both at level 0.
+mkdir -p "$DEST/Decoy12a/level0_AD.dat" "$DEST/Decoy12b"
+: > "$DEST/Decoy12b/level0_AF.bar.dat"
+for n in EB IB; do mkdir -p "$W/$n/oni/level0_Final"; cp "$W/TXMPcliA.oni" "$W/$n/oni/level0_Final/"; done
+"$INST" --install "$W/EB" --dest "$DEST" --gamedata none > "$W/out12a" 2>&1; rc=$?
+check '[ $rc -eq 0 ]' "a directory named level0_AD.dat is not an installed leaf (rc=$rc): $(cat "$W/out12a")"
+"$INST" --install "$W/IB" --dest "$DEST" --gamedata none > "$W/out12b" 2>&1; rc=$?
+check '[ $rc -eq 5 ] && [ ! -d "$DEST/IB" ]' "dotted leaf level0_AF.bar.dat parsed as suffix AF, collision refused (rc=$rc)"
+# a symlinked pack folder is followed (the engine stats through the link):
+# A*1+H*2 == C*1+G*2 == 17 at level 0.
+mkdir -p "$W/linked12"; : > "$W/linked12/level0_AH.dat"; ln -s "$W/linked12" "$DEST/Decoy12c"
+mkdir -p "$W/CG/oni/level0_Final"; cp "$W/TXMPcliA.oni" "$W/CG/oni/level0_Final/"
+"$INST" --install "$W/CG" --dest "$DEST" --gamedata none > "$W/out12c" 2>&1; rc=$?
+check '[ $rc -eq 5 ] && grep -q "Decoy12c" "$W/out12c"' "leaf inside a symlinked pack folder is scanned, collision refused naming Decoy12c (rc=$rc)"
 
 echo "$PASS passed, $FAIL failed"; rm -rf "$W"; exit $((FAIL>0))
