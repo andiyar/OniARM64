@@ -10,7 +10,12 @@ GitHub release notes and gets stamped with the version + date.
 
 ## Unreleased (since 1.3.0r5, 2026-07-17)
 
-- The "Metal renderer" checkbox in Options now sits inside the third box under Invert Mouse, styled like the other checkboxes with a one-line label, instead of straddling the panel borders (#89).
+- Choosing the renderer is now part of the Options screen properly. The Sound box is
+  titled "Sound and Renderer" and holds two checkboxes, OpenGL and Metal; the one
+  marked "(active)" is what you are running now. Pick the other and a Cancel /
+  Relaunch dialog appears; Relaunch saves the choice and restarts Oni for you
+  (holding Option at launch still works too). The restart dialog's "take affect"
+  typo is fixed while we were there (#89).
 - Only a real Escape key press (or whatever you bound to escape) can raise the in-game menu now. A stale Escape in the polled keyboard state is ignored and, with `ONI_INPUT_TRACE=1`, logged with its scancode. This is hardening, not a fix for a seen bug; the stuck-strafe report on #78 is a separate, still-open question.
 - Fixed a memory leak on level load: every death reload, save-point load and level change used to keep about 15 to 26 MB of the previous level in memory for good. Long sessions with many reloads should stay flat now (#30).
 - New app icon for macOS 26: the Oni "O" is now a proper layered glass icon, so it follows your system icon style (default, dark, clear, tinted) instead of sitting on the white placeholder tile. On older toolchains the build falls back to a refreshed static icon with a dark background.
