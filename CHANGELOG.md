@@ -16,6 +16,13 @@ GitHub release notes and gets stamped with the version + date.
 - New app icon for macOS 26: the Oni "O" is now a proper layered glass icon, so it follows your system icon style (default, dark, clear, tinted) instead of sitting on the white placeholder tile. On older toolchains the build falls back to a refreshed static icon with a dark background.
 
 ### Mods
+- New **OniMod Installer** app in the DMG. Drop a texture mod downloaded from
+  the Oni Mod Depot (the zip, or its unzipped folder) onto it and it builds the
+  pack and installs it into `TexturePacks/` for you. No Terminal needed. It
+  keeps only texture files (models, levels and scripts aren't loadable by this
+  port), screens out replacements that would wash out shiny surfaces (faces,
+  hair, glass) when your game data is installed, and offers to replace a pack
+  you've already installed (#20).
 - Reinstalling a mod that an earlier OniMod Installer put under a long (20 to 32
   character) folder name now migrates it: the installer spots the old folder,
   asks to replace, and removes it once the new short-named pack is in place,
@@ -46,14 +53,6 @@ GitHub release notes and gets stamped with the version + date.
   before (their file names were too long), so after a reinstall through the
   fixed installer you will see them applied for the first time.
 
-- New **OniMod Installer** app in the DMG. Drop a texture mod downloaded from
-  the Oni Mod Depot (the zip, or its unzipped folder) onto it and it builds the
-  pack and installs it into `TexturePacks/` for you. No Terminal needed. It
-  keeps only texture files (models, levels and scripts aren't loadable by this
-  port), screens out replacements that would wash out shiny surfaces (faces,
-  hair, glass) when your game data is installed, and offers to replace a pack
-  you've already installed (#20).
-
 ### Mod safety
 - Running out of engine object or physics slots no longer crashes the game.
   Mass-kill scripts and big `obj_create` ranges could exhaust the fixed pools
@@ -63,9 +62,9 @@ GitHub release notes and gets stamped with the version + date.
 - Hardened the script interpreter and pause screen against out-of-spec
   community content: scripts nested deeper than the engine's limits, functions
   with too many parameters, and data sets with extra help pages or no diary
-  pages no longer corrupt memory or crash — they now degrade gracefully with a
+  pages no longer corrupt memory or crash. They now degrade gracefully with a
   log warning (#85, #86). Stock game data was never affected.
-- Fixed a crash in the error path for missing furniture geometry — the log
+- Fixed a crash in the error path for missing furniture geometry: the log
   message itself would crash instead of reporting the problem (#95). The same
   fault existed in the "filename too long" report, reachable with long
   HD-pack filenames (#99).

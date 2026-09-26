@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-09-26 — Session 79: Session 6 of the tester wave (v1.3.0 pre-cut sweep; Task 4.1 deferred)
+
+- **docs: v1.3.0 pre-cut sweep** (docs-only): CHANGELOG `## Unreleased` re-read for player wording (two em-dashes removed, the OniMod Installer bullet moved to the head of the Mods section) and the README status paragraph lost a stray "(or either?)" editorial. Task 4.1 (#49 snap-and-carry) deferred again: no `[tick]` trace posted. #78, #89, #16 and #113 wait on the maintainer's verdicts; no fix task ran. Version not stamped (the maintainer cuts per docs/RELEASING.md).
+
 ### 2026-09-26 — Session 78: Session 5 of the tester wave (#78 Escape hardening, #89 Options toggle)
 
 - **fix(ui): Options renderer toggle moved under Invert Mouse with a one-line label** (3e05aa3 + seat fix, addresses #89): the runtime-created checkbox was placed by a fixed offset under the gamma slider, which on the maintainer's 2560x1440 screenshot put it in the gap between the Graphics and Sound boxes with its label wrapped across the border art. It now anchors to the Invert Mouse checkbox (fallback: gamma slider), copies that checkbox's style word via `WMrWindow_GetStyle` and its font, takes the anchor's width and height, sits half a row below at the same left edge, clamps to the dialog rect (floored at the anchor row after review), and is titled "Metal renderer" (the restart dialog already says the rest). Diagnostics name the anchor and log the placed rect. Sweep levels 0 and 1, gl and metal: 0 regressions, 0 aborts; the on-screen result is the maintainer's screenshot gate.
