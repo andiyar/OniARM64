@@ -192,10 +192,10 @@ struct ModInstaller {
         if let gd = gameDataDir {
             switch buildAlphaGuardIndex(gameData: gd, into: work) {
             case .success(let tsv): guardArgs = ["--alpha-guard", tsv.path]; report.alphaGuard = "on (retail formats indexed)"
-            case .failure(let why): report.alphaGuard = "off — \(why.message)"
+            case .failure(let why): report.alphaGuard = "off: \(why.message)"
             }
         } else {
-            report.alphaGuard = "off — game data folder not found, so alpha-less replacements of shiny retail textures can't be screened (#63)"
+            report.alphaGuard = "off: game data folder not found, so alpha-less replacements of shiny retail textures can't be screened (#63)"
         }
 
         // 6. Stage + pack each level into a temp pack folder.
@@ -436,14 +436,14 @@ struct ModInstaller {
     /// the same name: the union of the mod's and retail's tile names (#113). A
     /// mod TXMB with no retail twin, a same-grid one, or no retail data at all
     /// skips nothing. Retail: level*_Final.dat, first hit per name wins.
-    /// Also returns a one-line state for the report ("on ..." or "off — why").
+    /// Also returns a one-line state for the report ("on ..." or "off: why").
     func screenTilesToSkip(tree: URL) -> (skip: Set<String>, state: String) {
         let fm = FileManager.default
         guard let gd = gameDataDir else {
-            return ([], "off — game data folder not found, so screen mods with a different grid (#113) can't be detected")
+            return ([], "off: game data folder not found, so screen mods with a different grid (#113) can't be detected")
         }
         guard fm.isExecutableFile(atPath: indexTool.path) else {
-            return ([], "off — the bundled helper 'txmp-format-index' is missing, so screen mods with a different grid (#113) can't be detected")
+            return ([], "off: the bundled helper 'txmp-format-index' is missing, so screen mods with a different grid (#113) can't be detected")
         }
         let dats = ((try? fm.contentsOfDirectory(at: gd, includingPropertiesForKeys: nil)) ?? [])
             .filter { $0.lastPathComponent.hasPrefix("level") && $0.lastPathComponent.hasSuffix("_Final.dat") }
@@ -451,7 +451,7 @@ struct ModInstaller {
         var retail: [String: ScreenGrid] = [:]
         for r in screenGrids(dats) where retail[r.name] == nil { retail[r.name] = r.grid }
         guard !retail.isEmpty else {
-            return ([], "off — no screens found in the game data folder, so screen mods with a different grid (#113) can't be detected")
+            return ([], "off: no screens found in the game data folder, so screen mods with a different grid (#113) can't be detected")
         }
         var modFiles: [URL] = []
         if let e = fm.enumerator(at: tree, includingPropertiesForKeys: [.isRegularFileKey]) {
