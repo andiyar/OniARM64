@@ -33,6 +33,8 @@ final class MainWindowController: NSWindowController {
     // Main-thread only. Batches can overlap (a second drop while one runs); the bar stays up
     // until the last finishes, and later reports in the series append rather than replace.
     private var runningBatches = 0
+    /// True while any batch is still running (the app delegate guards Quit on it).
+    var isBusy: Bool { runningBatches > 0 }
     private var seriesHasReport = false
     // Installed-packs list (main-thread only).
     let installedTable = NSTableView()
@@ -233,6 +235,8 @@ final class MainWindowController: NSWindowController {
         if runningBatches == 0 { setBusy(false, label: "") }
         updateInstallButton()
         didFinishInstall()
+        // The window was closed mid-batch: the app stayed up for the run, so quit now it is done.
+        if runningBatches == 0 && !(window?.isVisible ?? false) { NSApp.terminate(nil) }
     }
 
     func showReport(_ text: String, append: Bool = false) {
@@ -353,7 +357,7 @@ extension MainWindowController: NSTableViewDataSource, NSTableViewDelegate {
         case "name": text = p.name
         case "levels": text = "\(p.levels)"
         case "size": text = sizeFormatter.string(fromByteCount: Int64(p.bytes))
-        default: text = p.sourceText
+        default: text = p.sourceText.hasPrefix("file:") ? String(p.sourceText.dropFirst(5)) : p.sourceText
         }
         let id = NSUserInterfaceItemIdentifier("cell." + col.identifier.rawValue)
         let label = (tableView.makeView(withIdentifier: id, owner: self) as? NSTextField) ?? {
@@ -606,7 +610,7 @@ extension MainWindowController {
     /// Installed when a pack records this Depot number, or (an older install) has the sanitised title as its name.
     func isInstalled(_ p: DepotPackage) -> Bool {
         let name = ModInstaller.sanitise(p.title)
-        return installed.contains { $0.depotPackage == p.packageNumber || $0.name == name }
+        return installed.contains { (p.packageNumber > 0 && $0.depotPackage == p.packageNumber) || $0.name == name }
     }
 
     func catalogueCell(_ tableColumn: NSTableColumn?, row: Int) -> NSView? {

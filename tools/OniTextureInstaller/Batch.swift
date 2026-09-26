@@ -58,7 +58,7 @@ struct BatchRunner {
                 do { inst.replace = false; report = try inst.install(input) }
                 catch InstallError.alreadyInstalled(let path) {
                     guard askReplace(path) else {
-                        sections.append("\(item.displayName): skipped, already installed at \(path).")
+                        sections.append("\(item.displayName): skipped, already installed at \(path) (use Replace to re-pack it).")
                         log(item.sourceLabel, "Skipped: already installed at \(path) (use Replace, or --replace on the command line, to re-pack it).")
                         skipped += 1; continue
                     }
@@ -73,6 +73,7 @@ struct BatchRunner {
                 log(item.sourceLabel, "Nothing installed: \(msg)")
             }
         }
+        if items.count > 1 { log("batch of \(items.count)", "\(installed) installed, \(skipped) skipped, \(failed) failed.") }
         var text = sections.joined(separator: "\n\n") + "\n\n\(installed) installed, \(skipped) skipped, \(failed) failed."
         if installed == 1 { text += "\nThe pack loads next time Oni starts." }
         else if installed > 1 { text += "\nThe packs load next time Oni starts." }
