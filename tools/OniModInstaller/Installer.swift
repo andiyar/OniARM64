@@ -13,7 +13,7 @@ enum InstallError: Error, CustomStringConvertible {
     case notFound(String)
     case unzipFailed(String)
     case noTextures
-    case onlyScreenTiles(count: Int, chrome: Int)  // every TXMP was a tile of a re-laid-out screen, or its menu chrome (#113); count includes chrome
+    case onlyScreenTiles(tiles: Int, chrome: Int)  // every TXMP was a tile of a re-laid-out screen, or its menu chrome (#113)
     case alreadyInstalled(String)     // pack folder path
     case toolMissing(String)
     case packFailed(String)
@@ -25,7 +25,7 @@ enum InstallError: Error, CustomStringConvertible {
         case .notFound(let p): return "Can't find \(p)."
         case .unzipFailed(let m): return "Couldn't unpack the zip: \(m)"
         case .noTextures: return "No texture files (TXMP*.oni) found in this mod. OniMod Installer only handles texture mods; character models, levels and scripts can't be installed."
-        case .onlyScreenTiles(let n, let c): return "This mod only re-lays-out screens (\(n - c) tiles of screens with a different grid from the game's" + (c > 0 ? ", plus \(c) menu chrome textures" : "") + "). Screen mods aren't supported yet, see https://github.com/andiyar/OniARM64/issues/121"
+        case .onlyScreenTiles(let n, let c): return "This mod only re-lays-out screens (\(n) tiles of screens with a different grid from the game's" + (c > 0 ? ", plus \(c) menu chrome texture\(c == 1 ? "" : "s")" : "") + "). Screen mods aren't supported yet, see https://github.com/andiyar/OniARM64/issues/121"
         case .alreadyInstalled(let p): return "A pack with this name is already installed at \(p)."
         case .toolMissing(let t): return "The bundled helper '\(t)' is missing. Reinstall OniMod Installer."
         case .packFailed(let m): return "Packing failed: \(m)"
@@ -57,7 +57,7 @@ struct InstallReport {
 
     var text: String {
         var s = "Installed \"\(modName)\" as \(packName)\n"
-        for l in levels.sorted(by: { $0.level < $1.level }) where l.textures > 0 || l.skipped > 0 {   // screen-skip-only levels have no pack
+        for l in levels.sorted(by: { $0.level < $1.level }) where l.textures > 0 || l.skipped > 0 {   // skip-only levels (screen tiles / chrome) have no pack
             s += "  level \(l.level): \(l.textures) textures packed"
             if l.skipped > 0 { s += ", \(l.skipped) skipped" }
             s += "\n"
@@ -197,7 +197,7 @@ struct ModInstaller {
             }
         }
         let chromeTotal = chromeSkipped.values.reduce(0, +)
-        guard !byLevel.isEmpty else { throw InstallError.onlyScreenTiles(count: screenTotal + chromeTotal, chrome: chromeTotal) }
+        guard !byLevel.isEmpty else { throw InstallError.onlyScreenTiles(tiles: screenTotal, chrome: chromeTotal) }
         // 4b. Engine file-id collision with an installed pack (#111, #112).
         try checkFileIDCollisions(levels: Array(byLevel.keys), packName: report.packName,
                                   excluding: replace ? [report.packName, legacy] : [])
