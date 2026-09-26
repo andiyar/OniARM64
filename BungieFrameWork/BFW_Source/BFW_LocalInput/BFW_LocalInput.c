@@ -1245,13 +1245,14 @@ void
 LIrUpdate(
 	void)
 {
+	// read the input data
+	// #49: pump first so the action below sees this frame's keys, mouse delta and wheel (SDL state only refreshes on the pump); it used to lag one frame.
+	LIrPlatform_Update(LIgMode_Internal);
+
 #if UUmPlatform == UUmPlatform_Mac
 	// this is used instead of the interrupt proc mechanism, which does not work on Mac.
 	mac_get_input_in_game();
 #endif
-
-	// read the input data
-	LIrPlatform_Update(LIgMode_Internal);
 }
 
 // ----------------------------------------------------------------------
