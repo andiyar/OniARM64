@@ -12,7 +12,7 @@ static UUtBool LIgPad_Disabled = UUcFalse;
 static UUtBool LIgPad_HasRumble = UUcFalse;
 static unsigned int LIgPad_StickBits = 0;     // left-stick hysteresis state
 static int LIgPad_PrevR3 = 0;                 // R3 edge detect
-static LItPadDashState LIgPad_Dash = { 0 };   // dash-gap state
+static LItPadDashState LIgPad_Dash = { 0 };   // dash sequence state
 
 // tunables — maintainer checkpoint adjusts these (#73)
 #define LIcPadTriggerThreshold   8000     // of 32767, digitalize ZL/ZR
@@ -21,15 +21,14 @@ static LItPadDashState LIgPad_Dash = { 0 };   // dash-gap state
 #define LIcPadAimDeadFrac        0.15f
 #define LIcPadAimScale           8.0f     // mouse-equivalent units per poll (frame) at full deflection
 #define LIcGamepadDashPhaseMs    40       // min wall time per dash phase (OFF1, ON1, OFF2), and at
-                                          // least one poll each; ~120 ms total, well under the
+                                          // least one poll each; ~120 ms full (~40 ms short), under the
                                           // engine's 15-tick (~250 ms) sprint double-tap window
 
 static void LIiPad_ResetStickState(void)
 {
 	LIgPad_StickBits = 0;
 	LIgPad_PrevR3 = 0;
-	LIgPad_Dash.phase = 0;
-	LIgPad_Dash.phase_start_ms = 0;
+	memset(&LIgPad_Dash, 0, sizeof(LIgPad_Dash));
 }
 
 static void LIiPad_Open(int inDeviceIndex)

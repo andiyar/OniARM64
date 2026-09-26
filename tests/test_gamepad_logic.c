@@ -44,44 +44,92 @@ static void test_aim(void) {
 }
 
 static void test_dash_poll(void) {
-    // Two-tap sequence (#73): OFF1, ON1, OFF2, then normal. Each phase lasts
-    // at least one poll AND phase_ms of wall time. Return != 0 = withhold Up.
+    // Full sequence (R3 well after Up came on): OFF1, ON1, OFF2, then normal.
+    // Each phase lasts at least one poll AND phase_ms. Return != 0 = withhold Up.
     { LItPadDashState s = {0};
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 0, 20) == 0, "held Up, no press: emit");
-      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 0, 20) != 0, "R3 at t=0: OFF1");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 10, 20) != 0, "t=10: still OFF1 (time)");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 25, 20) == 0, "t=25: ON1");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 30, 20) == 0, "t=30: still ON1");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 50, 20) != 0, "t=50: OFF2");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 60, 20) != 0, "t=60: still OFF2");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 75, 20) == 0, "t=75: normal (second press)");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 200, 20) == 0, "t=200: stays normal"); }
-    // one poll minimum: a poll whose time already elapsed still sees the phase once
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 0, 40) == 0, "Up on at t=0: emit");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 900, 40) == 0, "held Up, no press: emit");
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 1000, 40) != 0, "R3 at 1000: OFF1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1010, 40) != 0, "1010: still OFF1 (time)");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1045, 40) == 0, "1045: ON1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1050, 40) == 0, "1050: still ON1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1090, 40) != 0, "1090: OFF2");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1100, 40) != 0, "1100: still OFF2");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1135, 40) == 0, "1135: normal (second press)");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1300, 40) == 0, "1300: stays normal"); }
+    // one poll minimum: a poll whose time already elapsed still sees each phase
     { LItPadDashState s = {0};
-      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 0, 20) != 0, "OFF1 entered");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 100, 20) == 0, "late poll: ON1 entered");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 200, 20) != 0, "late poll: OFF2 entered, not skipped");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 300, 20) == 0, "late poll: normal"); }
+      LIrPadLogic_DashPoll(&s, 0, 1, 0, 40);
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 1000, 40) != 0, "late: OFF1 entered");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1100, 40) == 0, "late: ON1 entered");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1200, 40) != 0, "late: OFF2 entered, not skipped");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1300, 40) == 0, "late: normal"); }
     // press with Up not held does nothing
     { LItPadDashState s = {0};
-      CHECK(LIrPadLogic_DashPoll(&s, 1, 0, 0, 20) == 0, "no Up: no-op");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 5, 20) == 0, "no Up: nothing armed"); }
-    // Up release at t=25 aborts; re-hold emits immediately
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 0, 1000, 40) == 0, "no Up: no-op");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1005, 40) == 0, "no Up: nothing armed"); }
+    // Up release mid-sequence aborts; re-hold emits immediately
     { LItPadDashState s = {0};
-      LIrPadLogic_DashPoll(&s, 1, 1, 0, 20);
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 0, 25, 20) == 0, "release aborts");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 30, 20) == 0, "re-hold: no stuck suppression");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 60, 20) == 0, "re-hold: still normal"); }
+      LIrPadLogic_DashPoll(&s, 0, 1, 0, 40);
+      LIrPadLogic_DashPoll(&s, 1, 1, 1000, 40);
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 0, 1045, 40) == 0, "release aborts");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1050, 40) == 0, "re-hold: no stuck suppression");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1100, 40) == 0, "re-hold: still normal"); }
     // second R3 during the sequence is ignored
     { LItPadDashState s = {0};
-      LIrPadLogic_DashPoll(&s, 1, 1, 0, 20);
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 25, 20) == 0, "re-press case: ON1");
-      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 30, 20) == 0, "R3 at t=30 ignored: still ON1");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 50, 20) != 0, "re-press case: OFF2 on schedule");
-      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 75, 20) == 0, "re-press case: normal on schedule"); }
+      LIrPadLogic_DashPoll(&s, 0, 1, 0, 40);
+      LIrPadLogic_DashPoll(&s, 1, 1, 1000, 40);
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1045, 40) == 0, "re-press case: ON1");
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 1050, 40) == 0, "R3 again ignored: still ON1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1090, 40) != 0, "re-press case: OFF2 on schedule");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 1135, 40) == 0, "re-press case: normal on schedule"); }
     // phase_ms 0 disables synthesis
     { LItPadDashState s = {0};
-      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 0, 0) == 0, "phase 0: no-op"); }
+      LIrPadLogic_DashPoll(&s, 0, 1, 0, 0);
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 1000, 0) == 0, "phase 0: no-op"); }
+    // Short path: R3 inside the engine sprint window after the real push. The
+    // push was the first tap, so one release + the hold is the second tap.
+    { LItPadDashState s = {0};
+      LIrPadLogic_DashPoll(&s, 0, 1, 0, 40);                 // Up on at t=0
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 100, 40) != 0, "short: R3 at 100 OFF");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 120, 40) != 0, "short: 120 still OFF");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 140, 40) == 0, "short: 140 normal");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 180, 40) == 0, "short: no OFF2");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 190, 40) == 0, "short: stays normal");
+      // engine is now sprinting; a later R3 must play the full sequence even
+      // though the real push is still inside the window
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 200, 40) != 0, "after short: OFF1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 240, 40) == 0, "after short: ON1 (full path)");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 280, 40) != 0, "after short: OFF2 (full path)");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 320, 40) == 0, "after short: normal"); }
+    // R3 at t=300 after Up on at t=0: outside the window, full path
+    { LItPadDashState s = {0};
+      LIrPadLogic_DashPoll(&s, 0, 1, 0, 40);
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 300, 40) != 0, "t300: OFF1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 345, 40) == 0, "t300: ON1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 390, 40) != 0, "t300: OFF2");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 435, 40) == 0, "t300: normal"); }
+    // R3 on the same poll Up comes on counts as inside the window
+    { LItPadDashState s = {0};
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, 500, 40) != 0, "same poll: OFF");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 545, 40) == 0, "same poll: normal");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, 590, 40) == 0, "same poll: no OFF2"); }
+    // wrap-around: now_ms crosses zero (SDL_GetTicks 32-bit wrap)
+    { const unsigned int W = 0xFFFFFFF0u;
+      LItPadDashState s = {0};
+      LIrPadLogic_DashPoll(&s, 0, 1, W, 40);                  // Up on just before wrap
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, W + 100u, 40) != 0, "wrap short: OFF");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, W + 120u, 40) != 0, "wrap short: still OFF");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, W + 145u, 40) == 0, "wrap short: normal");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, W + 190u, 40) == 0, "wrap short: no OFF2"); }
+    { const unsigned int W = 0xFFFFFFF0u;
+      LItPadDashState s = {0};
+      LIrPadLogic_DashPoll(&s, 0, 1, W - 300u, 40);           // Up on 300 ms before
+      CHECK(LIrPadLogic_DashPoll(&s, 1, 1, W, 40) != 0, "wrap full: OFF1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, W + 10u, 40) != 0, "wrap full: OFF1 across zero");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, W + 45u, 40) == 0, "wrap full: ON1");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, W + 90u, 40) != 0, "wrap full: OFF2");
+      CHECK(LIrPadLogic_DashPoll(&s, 0, 1, W + 135u, 40) == 0, "wrap full: normal"); }
 }
 
 int main(void) {

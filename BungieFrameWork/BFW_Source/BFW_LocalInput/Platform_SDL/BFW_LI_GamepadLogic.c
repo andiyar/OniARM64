@@ -37,17 +37,31 @@ float LIrPadLogic_AimDelta(int axis, int other, float dead_frac, float scale)
 int LIrPadLogic_DashPoll(LItPadDashState *s, int dash_went_down,
 	int up_held, unsigned int now_ms, unsigned int phase_ms)
 {
-	// phase: 0 idle, 1 OFF1, 2 ON1, 3 OFF2. A phase is entered on some poll
-	// and can only advance on a later poll, so each lasts at least one poll.
-	if (!up_held) { s->phase = 0; return 0; }
+	// A phase is entered on some poll and can only advance on a later poll,
+	// so each lasts at least one poll.
+	if (!up_held) { s->phase = 0; s->up_prev = 0; return 0; }
+	if (!s->up_prev) {
+		s->up_prev = 1;
+		s->up_on_ms = now_ms;           // the real push is a tap
+		s->up_on_valid = 1;
+	}
 	if (s->phase == 0) {
 		if (!dash_went_down || phase_ms == 0) { return 0; }
 		s->phase = 1;
 		s->phase_start_ms = now_ms;
+		// the re-press lands >= phase_ms from now: short path only if that
+		// is still inside the window after the real push
+		s->short_path = s->up_on_valid && phase_ms < LIcGamepadSprintWindowMs &&
+			(now_ms - s->up_on_ms) < LIcGamepadSprintWindowMs - phase_ms;
 		return 1;
 	}
 	if (now_ms - s->phase_start_ms >= phase_ms) {   // unsigned: wrap-safe
-		s->phase = (s->phase == 3) ? 0 : s->phase + 1;
+		if (s->phase == 3 || (s->phase == 1 && s->short_path)) {
+			s->phase = 0;
+			s->up_on_valid = 0;         // engine now sprinting; the push no longer counts
+		} else {
+			s->phase++;
+		}
 		s->phase_start_ms = now_ms;
 	}
 	return (s->phase == 1 || s->phase == 3);
