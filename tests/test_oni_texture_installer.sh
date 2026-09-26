@@ -312,4 +312,14 @@ check '"$INST" --list-installed "$D20" | grep -q "^TestModA	2	[0-9]*	Depot 70000
 HOME="$H20" "$INST" --install "$W/empty-mod" "$W/empty-mod" --dest "$D20" --gamedata none >/dev/null 2>&1; rc=$?
 check '[ $rc -eq 1 ]' "all-failed batch exits with the first failure code (rc=$rc)"
 
+# 21. index cache: a cached zip is parsed and dated; an empty cache reports none
+C21="$W/cache21"; mkdir -p "$C21"; cp tests/fixtures/depot/jsoncache.zip "$C21/jsoncache.zip"; echo "2026-09-26T00:00:00Z" > "$C21/index-date.txt"
+check '[ "$("$INST" --cache-info "$C21")" = "2026-09-26T00:00:00Z	36" ]' "cached index reports its date and package count"
+check '[ "$("$INST" --cache-info "$W/nocache")" = "none" ]' "no cache reports none"
+# polish: creator trimmed, JSON shape error wrapped
+check '! grep -q " 	\|	 \| $" "$W/out18"' "no creator or field with leading/trailing space in the parsed rows"
+mkdir -p "$W/badjson"; (cd "$W/badjson" && printf '{}' > vocabulary.json && printf '[]' > terms.json && printf '[]' > nodes.json && printf '[]' > files.json && ditto -c -k . "$W/badjson.zip")
+"$INST" --parse-index "$W/badjson.zip" >/dev/null 2>"$W/err21"; rc=$?
+check '[ $rc -eq 3 ] && grep -q "not the JSON shape" "$W/err21"' "a JSON file of the wrong shape reports the shape error, not a raw Cocoa error (rc=$rc): $(cat "$W/err21")"
+
 echo "$PASS passed, $FAIL failed"; rm -rf "$W"; exit $((FAIL>0))

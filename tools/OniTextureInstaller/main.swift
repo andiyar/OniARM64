@@ -8,6 +8,8 @@
 //         texture-package catalogue as TSV, Depot.swift)
 //         OniTextureInstaller --list-installed <TexturePacks>   (prints the installed
 //         packs as TSV: name, levels, bytes, source; InstalledPacks.swift)
+//         OniTextureInstaller --cache-info <cache dir>   (prints the cached Depot
+//         index as "date\tpackage count", or "none"; DepotCache.swift)
 //   GUI:  no --install → the Oni Texture Installer window (MainWindow.swift).
 //         Drop a mod on the window, use Choose file, or Finder Open With.
 // Helper tools: bundled beside the executable, or ONIMOD_ONIPACK /
@@ -67,6 +69,11 @@ func runCLI(_ args: [String]) -> Never {
             guard i + 1 < args.count else { stderrLine("usage: OniTextureInstaller --list-installed <TexturePacks>"); exit(2) }
             for p in InstalledPacks.scan(dir: URL(fileURLWithPath: args[i + 1])) { print(InstalledPacks.tsvLine(p)) }
             exit(0)
+        case "--cache-info":
+            guard i + 1 < args.count else { stderrLine("usage: OniTextureInstaller --cache-info <cache dir>"); exit(2) }
+            let c = DepotCache(dir: URL(fileURLWithPath: args[i + 1]))
+            if let r = c.load() { print("\(r.date)\t\(r.packages.count)") } else { print("none") }
+            exit(0)
         case "--help": inputs = []; i = args.count
         default:
             stderrLine("unknown argument \(args[i])")
@@ -75,7 +82,7 @@ func runCLI(_ args: [String]) -> Never {
         i += 1
     }
     guard let first = inputs.first else {
-        stderrLine("usage: OniTextureInstaller --install <zip-or-folder>... [--dest dir] [--gamedata dir|none] [--replace] [--source-depot N]\n       OniTextureInstaller --parse-index <jsoncache.zip>\n       OniTextureInstaller --list-installed <TexturePacks>\nexit: 0 installed (at least one), 1 no textures, 2 other failure, 4 already installed (use --replace),\n      5 file-id collision, 6 download failed")
+        stderrLine("usage: OniTextureInstaller --install <zip-or-folder>... [--dest dir] [--gamedata dir|none] [--replace] [--source-depot N]\n       OniTextureInstaller --parse-index <jsoncache.zip>\n       OniTextureInstaller --list-installed <TexturePacks>\n       OniTextureInstaller --cache-info <cache dir>\nexit: 0 installed (at least one), 1 no textures, 2 other failure, 4 already installed (use --replace),\n      5 file-id collision, 6 download failed")
         exit(2)
     }
     let base = inst
@@ -91,7 +98,7 @@ func runCLI(_ args: [String]) -> Never {
 }
 
 let argv = Array(CommandLine.arguments.dropFirst())
-if argv.contains("--install") || argv.contains("--help") || argv.contains("--file-id") || argv.contains("--parse-index") || argv.contains("--list-installed") {
+if argv.contains("--install") || argv.contains("--help") || argv.contains("--file-id") || argv.contains("--parse-index") || argv.contains("--list-installed") || argv.contains("--cache-info") {
     runCLI(argv)
 }
 
