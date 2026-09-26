@@ -155,6 +155,15 @@ struct ModInstaller {
         // 4. Destination check (before doing any expensive work).
         let finalDir = texturePacksDir.appendingPathComponent(report.packName)
         if fm.fileExists(atPath: finalDir.path) && !replace { throw InstallError.alreadyInstalled(finalDir.path) }
+        // A pack installed before the 19-character cap (#111, #112) sits under its
+        // plain long name; find it so a reinstall migrates it instead of leaving
+        // a dead folder the engine rejects as too long (#120).
+        let legacy = Self.legacyName(baseName)
+        let legacyDir = texturePacksDir.appendingPathComponent(legacy)
+        var legacyIsDir: ObjCBool = false
+        let hasLegacy = legacy.caseInsensitiveCompare(report.packName) != .orderedSame
+            && fm.fileExists(atPath: legacyDir.path, isDirectory: &legacyIsDir) && legacyIsDir.boolValue
+        if hasLegacy && !replace { throw InstallError.alreadyInstalled(legacyDir.path) }
 
         // 4a. HD Screens tiles (#113): a mod TXMB whose grid differs from retail
         // would have its tiles drawn into the retail layout (we never pack TXMB,
@@ -176,7 +185,7 @@ struct ModInstaller {
         guard !byLevel.isEmpty else { throw InstallError.onlyScreenTiles(count: screenSkipped.values.reduce(0, +)) }
         // 4b. Engine file-id collision with an installed pack (#111, #112).
         try checkFileIDCollisions(levels: Array(byLevel.keys), packName: report.packName,
-                                  excluding: replace ? report.packName : nil)
+                                  excluding: replace ? [report.packName, legacy] : [])
 
         // 5. Alpha guard index from retail data (#63). Optional: warn and go on.
         var guardArgs: [String] = []
@@ -218,6 +227,10 @@ struct ModInstaller {
         if fm.fileExists(atPath: finalDir.path) { try fm.removeItem(at: finalDir) }
         try fm.moveItem(at: stagedPack, to: finalDir)
         report.packFolder = finalDir.path
+        if hasLegacy {
+            try fm.removeItem(at: legacyDir)
+            report.warnings.append("removed old pack folder \(legacy) (installed by an earlier OniMod Installer under its long name)")
+        }
 
         let lower = baseName.lowercased()
         if lower.contains("sky") || lower.contains("skies") {
@@ -254,14 +267,29 @@ struct ModInstaller {
     static let digestLength = 6
 
     static func sanitise(_ name: String) -> String {
+        var out = filteredName(name)
+        if out.count > maxPackNameLength {
+            out = String(out.prefix(maxPackNameLength - digestLength)) + shortDigest(out)
+        }
+        return out
+    }
+
+    /// The pack name an OniMod Installer from before the cap (#111, #112) gave
+    /// this mod: same filter, capped at 32 characters with a plain prefix. Only
+    /// used to find and migrate such a folder on reinstall (#120).
+    static let legacyMaxPackNameLength = 32
+    static func legacyName(_ name: String) -> String {
+        String(filteredName(name).prefix(legacyMaxPackNameLength))
+    }
+
+    /// Shared filter: ASCII alphanumerics only, empty becomes "Mod", and
+    /// "Final" (the retail suffix) becomes "FinalMod".
+    private static func filteredName(_ name: String) -> String {
         var out = String(name.unicodeScalars
             .filter { $0.isASCII && CharacterSet.alphanumerics.contains($0) }
             .map { Character($0) })
         if out.isEmpty { out = "Mod" }
         if out.lowercased() == "final" { out += "Mod" }
-        if out.count > maxPackNameLength {
-            out = String(out.prefix(maxPackNameLength - digestLength)) + shortDigest(out)
-        }
         return out
     }
 
@@ -303,13 +331,13 @@ struct ModInstaller {
     /// TMrUtility_LevelInfo_Get parses it, so `level0_AB.bar.dat` has suffix `AB`.
     /// Prefix and extension match case-insensitively, like the engine's scan and
     /// the macOS file system.
-    func installedPackLeaves(excluding: String?) -> [(pack: String, level: Int, suffix: String)] {
+    func installedPackLeaves(excluding: [String]) -> [(pack: String, level: Int, suffix: String)] {
         let fm = FileManager.default
         var out: [(pack: String, level: Int, suffix: String)] = []
         guard let packs = try? fm.contentsOfDirectory(at: texturePacksDir, includingPropertiesForKeys: nil) else { return out }
         for p in packs {
             let pack = p.lastPathComponent
-            if pack.hasPrefix(".") || (excluding.map { pack.caseInsensitiveCompare($0) == .orderedSame } ?? false) { continue }
+            if pack.hasPrefix(".") || excluding.contains(where: { pack.caseInsensitiveCompare($0) == .orderedSame }) { continue }
             // the URL API will not list through a symlinked folder; the engine stat()s through it, so resolve first
             guard let files = try? fm.contentsOfDirectory(at: p.resolvingSymlinksInPath(), includingPropertiesForKeys: [.isRegularFileKey]) else { continue }
             for f in files {
@@ -333,8 +361,8 @@ struct ModInstaller {
     /// (ONi_TexturePacks.c sorts them before registration), so the folder that
     /// sorts first wins and the other is dropped silently (BFW_TM_Game.c overlay
     /// scan, "file index already registered"); readdir order only matters
-    /// between leaves inside one folder. `excluding` is the pack being replaced.
-    func checkFileIDCollisions(levels: [Int], packName: String, excluding: String?) throws {
+    /// between leaves inside one folder. `excluding` are the pack folders being replaced.
+    func checkFileIDCollisions(levels: [Int], packName: String, excluding: [String]) throws {
         let installed = installedPackLeaves(excluding: excluding)
         for level in levels.sorted() {
             let mine = Self.fileID(level: level, suffix: packName)

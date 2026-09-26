@@ -201,4 +201,24 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12; do cp "$W/scr/TXMPscreenB$i.oni" "$O/oni/le
 "$INST" --install "$O" --dest "$DEST" --gamedata "$W/gd13" > "$W/out15" 2>&1; rc=$?
 check '[ $rc -eq 1 ] && grep -q "only re-lays-out screens" "$W/out15" && grep -q "(12 tiles" "$W/out15"' "screens-only mod refused as a screen mod (rc=$rc): $(cat "$W/out15")"
 
+# 16. legacy long-named pack (#120): before the 19-char cap a 30-char name
+#     was installed under its plain 32-char-capped name. A reinstall must find
+#     that folder: refused as already installed without --replace (nothing
+#     new written), and with --replace the old folder is removed and noted.
+DEST16="$W/dest16"; L="$W/legacy16"
+mkdir -p "$L/oni/common/level0_Final" "$DEST16/BetterWarehouseTrainingRooms12"
+printf 'NameOfMod -> BetterWarehouseTrainingRooms12\n' > "$L/Mod_Info.cfg"
+cp "$W/TXMPcliA.oni" "$L/oni/common/level0_Final/"
+touch "$DEST16/BetterWarehouseTrainingRooms12/level0_BetterWarehouseTrainingRooms12.dat"
+"$INST" --install "$L" --dest "$DEST16" --gamedata none > "$W/out16a" 2>&1; rc=$?
+check '[ $rc -eq 4 ] && [ ! -d "$DEST16/BetterWarehouwf6c4j" ]' "legacy long-named folder counts as already installed, nothing new written (rc=$rc): $(cat "$W/out16a")"
+"$INST" --install "$L" --dest "$DEST16" --gamedata none --replace > "$W/out16b" 2>&1; rc=$?
+check '[ $rc -eq 0 ] && [ ! -d "$DEST16/BetterWarehouseTrainingRooms12" ] && [ -f "$DEST16/BetterWarehouwf6c4j/level0_BetterWarehouwf6c4j.dat" ]' "--replace migrates the legacy folder to the shortened pack (rc=$rc): $(ls "$DEST16" | tr '\n' ' ')"
+check 'grep -q "removed old pack folder BetterWarehouseTrainingRooms12" "$W/out16b"' "report notes the removed legacy folder: $(cat "$W/out16b")"
+# a short name (legacy form == new form) installs with no migration note
+mkdir -p "$W/TestModA16/oni/level0_Final"; cp "$W/TXMPcliA.oni" "$W/TestModA16/oni/level0_Final/"
+"$INST" --install "$W/TestModA16" --dest "$DEST16" --gamedata none > "$W/out16c" 2>&1; rc=$?
+check '[ $rc -eq 0 ] && [ -d "$DEST16/TestModA16" ] && ! grep -q "old pack folder" "$W/out16c"' "short name installs with no migration note (rc=$rc)"
+
+
 echo "$PASS passed, $FAIL failed"; rm -rf "$W"; exit $((FAIL>0))
