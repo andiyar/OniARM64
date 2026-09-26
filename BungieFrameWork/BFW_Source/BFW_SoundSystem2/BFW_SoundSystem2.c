@@ -3282,6 +3282,26 @@ SSrGroup_Permutation_New(
 }
 
 // ----------------------------------------------------------------------
+/* Issue #115 — index of the permutation the most recent SSrGroup_Play chose,
+   read by the ambient group re-pick trace in SSiPAUpdate_BodyPlaying. */
+static UUtUns32					SSgLastPermutationIndex = 0;
+
+/* Issue #115 — ONI_SOUND_TRACE gate for core-side sound traces (mirrors the
+   oniSoundTraceEnabled gate in Platform_OpenAL/BFW_SS2_Platform_OpenAL.c). */
+static UUtBool
+SSiSoundTraceEnabled(
+	void)
+{
+	static int initialized = 0;
+	static UUtBool enabled = UUcFalse;
+	if (!initialized) {
+		enabled = (getenv("ONI_SOUND_TRACE") != NULL);
+		initialized = 1;
+	}
+	return enabled;
+}
+
+// ----------------------------------------------------------------------
 void
 SSrGroup_Play(
 	SStGroup					*inGroup,
@@ -3304,6 +3324,10 @@ SSrGroup_Play(
 
 	// pick the permutation to play
 	permutation = SSiGroup_SelectPermutation(inGroup);
+	if (permutation != NULL) {
+		SSgLastPermutationIndex = (UUtUns32)(permutation -
+			(SStPermutation*)UUrMemory_Array_GetMemory(inGroup->permutations));
+	}
 	if (permutation == NULL) {
 		// an error has occurred finding the permutation
 		return;
@@ -4253,6 +4277,39 @@ SSiPAUpdate_BodyStart(
 }
 
 // ----------------------------------------------------------------------
+// Issue #115 — on OpenAL a looping channel whose group has more than one
+// permutation is not hardware-looped (see SSiChannel_WantsHardwareLoop in the
+// OpenAL platform), so when the current part finishes the source stops. Pick
+// the next permutation here, before BodyPlaying samples the playing state, the
+// way Bungie's Mac/Win32 platforms re-picked on buffer completion.
+static void
+SSiPAUpdate_RepickGroup(
+	SStPlayingAmbient			*inPlayingAmbient,
+	SStSoundChannel				*inChannel)
+{
+	UUtUns32					num_permutations;
+
+	if (inChannel == NULL) { return; }
+	if (SSiSoundChannel_IsLooping(inChannel) == UUcFalse) { return; }
+	if (SSiSoundChannel_IsPlaying(inChannel) == UUcTrue) { return; }
+	if (inChannel->group == NULL) { return; }
+	if ((inPlayingAmbient->ambient->flags & SScAmbientFlag_PlayOnce) != 0) { return; }
+
+	num_permutations = SSrGroup_GetNumPermutations(inChannel->group);
+	if (num_permutations <= 1) { return; }
+
+	SSrGroup_Play(inChannel->group, inChannel, "ambient re-pick",
+					inPlayingAmbient->ambient->ambient_name);
+
+	if (SSiSoundTraceEnabled() && (SSiSoundChannel_IsPlaying(inChannel) == UUcTrue))
+	{
+		UUrStartupMessage("[SS2] group re-pick %s perm %u/%u",
+			inPlayingAmbient->ambient->ambient_name,
+			(unsigned)(SSgLastPermutationIndex + 1), (unsigned)num_permutations);
+	}
+}
+
+// ----------------------------------------------------------------------
 static UUtBool
 SSiPAUpdate_BodyPlaying(
 	SStPlayingAmbient			*inPlayingAmbient)
@@ -4261,6 +4318,11 @@ SSiPAUpdate_BodyPlaying(
 	UUtBool						channel2_playing;
 	UUtUns32					num_channels;
 	UUtBool						can_pan;
+
+	// Issue #115 — re-pick the next part of a looping multi-part group first,
+	// so the captures below see the channel as playing again
+	SSiPAUpdate_RepickGroup(inPlayingAmbient, inPlayingAmbient->channel1);
+	SSiPAUpdate_RepickGroup(inPlayingAmbient, inPlayingAmbient->channel2);
 
 	// determine if the sound channels are playing
 	channel1_playing = SSiSoundChannel_IsPlaying(inPlayingAmbient->channel1);

@@ -284,11 +284,28 @@ SS2rPlatform_SoundChannel_Pause(
 }
 
 // ----------------------------------------------------------------------
+// Issue #115 — only hand looping to OpenAL (AL_LOOPING) when the channel plays
+// a single-clip group. A multi-part group (e.g. music with several
+// permutations) must stop at the end of each part so the core can re-pick the
+// next one (SSiPAUpdate_RepickGroup), as Bungie's Mac/Win32 platforms did on
+// buffer completion. Single-clip ambients stay gapless hardware loops.
+static UUtBool
+SSiChannel_WantsHardwareLoop(
+	const SStSoundChannel		*inSoundChannel,
+	UUtBool						inLooping)
+{
+	return inLooping &&
+		!((inSoundChannel->group != NULL) &&
+		  (SSrGroup_GetNumPermutations(inSoundChannel->group) > 1));
+}
+
+// ----------------------------------------------------------------------
 void
 SS2rPlatform_SoundChannel_Play(
 	SStSoundChannel				*inSoundChannel)
 {
-	alSourcei(inSoundChannel->pd.source, AL_LOOPING, SSiSoundChannel_IsLooping(inSoundChannel) == UUcTrue ? AL_TRUE : AL_FALSE);
+	alSourcei(inSoundChannel->pd.source, AL_LOOPING,
+		SSiChannel_WantsHardwareLoop(inSoundChannel, SSiSoundChannel_IsLooping(inSoundChannel)) ? AL_TRUE : AL_FALSE);
 	alSourcePlay(inSoundChannel->pd.source);
 	CHECK_AL_ERROR();
 	SSiSoundChannel_SetPlaying(inSoundChannel, UUcTrue);
@@ -304,7 +321,8 @@ SS2rPlatform_SoundChannel_SetLooping(
 	SStSoundChannel				*inSoundChannel,
 	UUtBool						inLooping)
 {
-	alSourcei(inSoundChannel->pd.source, AL_LOOPING, (inLooping == UUcTrue) ? AL_TRUE : AL_FALSE);
+	alSourcei(inSoundChannel->pd.source, AL_LOOPING,
+		SSiChannel_WantsHardwareLoop(inSoundChannel, inLooping) ? AL_TRUE : AL_FALSE);
 	CHECK_AL_ERROR();
 }
 
@@ -615,6 +633,9 @@ SS2rPlatform_SoundChannel_Stop(
 	alSourceStop(inSoundChannel->pd.source);
 	CHECK_AL_ERROR();
 	SSiSoundChannel_SetPlaying(inSoundChannel, UUcFalse);
+	// Issue #115 — a stopped source is no longer paused; a stale Paused bit
+	// would let SSrPlayingChannels_Resume restart it once.
+	SSiSoundChannel_SetPaused(inSoundChannel, UUcFalse);
 }
 
 // ----------------------------------------------------------------------
