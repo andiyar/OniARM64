@@ -26,6 +26,10 @@ final class MainWindowController: NSWindowController {
     let installedBox = NSBox()
     let reportBox = NSBox()
     private let queue = DispatchQueue(label: "installer.work")
+    // Main-thread only. Batches can overlap (a second drop while one runs); the bar stays up
+    // until the last finishes, and later reports in the series append rather than replace.
+    private var runningBatches = 0
+    private var seriesHasReport = false
 
     init() {
         let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
@@ -105,8 +109,6 @@ final class MainWindowController: NSWindowController {
         spacer.setContentHuggingPriority(.init(1), for: .horizontal)
         let showLogButton = NSButton(title: "Show log", target: self, action: #selector(showLog))
         let chooseButton = NSButton(title: "Choose file…", target: self, action: #selector(chooseFile))
-        chooseButton.keyEquivalent = "o"
-        chooseButton.keyEquivalentModifierMask = [.command]
 
         let row = NSStackView(views: [progress, progressLabel, spacer, showLogButton, chooseButton])
         row.orientation = .horizontal
@@ -165,6 +167,7 @@ final class MainWindowController: NSWindowController {
 
     /// Runs the pipeline for dropped or chosen files, one after another, and shows one combined report.
     func install(files: [URL]) {
+        runningBatches += 1
         setBusy(true, label: "Installing \(files.count) item(s)…")
         queue.async { [self] in
             var sections: [String] = []
@@ -182,12 +185,13 @@ final class MainWindowController: NSWindowController {
                     ReportLog.append(source: url.path, text: report.text)
                 } catch {
                     let msg = (error as? InstallError)?.description ?? "\(error)"
-                    sections.append("\(url.lastPathComponent): \(msg)"); failed += 1
+                    sections.append("\(url.lastPathComponent): Nothing installed: \(msg)"); failed += 1
                     ReportLog.append(source: url.path, text: "Nothing installed: \(msg)")
                 }
             }
-            let text = sections.joined(separator: "\n\n") + "\n\n\(installed) installed, \(skipped) skipped, \(failed) failed."
-            DispatchQueue.main.async { self.showReport(text); self.setBusy(false, label: ""); self.didFinishInstall() }
+            var text = sections.joined(separator: "\n\n") + "\n\n\(installed) installed, \(skipped) skipped, \(failed) failed."
+            if installed > 0 { text += "\nThe pack loads next time Oni starts." }
+            DispatchQueue.main.async { self.finishBatch(text) }
         }
     }
 
@@ -204,7 +208,18 @@ final class MainWindowController: NSWindowController {
         return answer
     }
 
-    func showReport(_ text: String) { reportView.string = text; reportView.scrollToEndOfDocument(nil) }
+    private func finishBatch(_ text: String) {
+        runningBatches -= 1
+        showReport(text, append: seriesHasReport)
+        seriesHasReport = runningBatches > 0
+        if runningBatches == 0 { setBusy(false, label: "") }
+        didFinishInstall()
+    }
+
+    func showReport(_ text: String, append: Bool = false) {
+        reportView.string = append ? reportView.string + "\n\n----\n\n" + text : text
+        reportView.scrollToEndOfDocument(nil)
+    }
     func setBusy(_ busy: Bool, label: String) {
         progress.isHidden = !busy; progressLabel.stringValue = label
         if busy { progress.isIndeterminate = true; progress.startAnimation(nil) } else { progress.stopAnimation(nil) }
