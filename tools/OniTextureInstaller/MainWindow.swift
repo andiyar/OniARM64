@@ -1,0 +1,214 @@
+// MainWindow.swift — the Oni Texture Installer window (#124).
+// Layout (top to bottom): catalogue box (later tasks fill it), installed-packs box
+// (later task), report box. Dropping a zip or folder anywhere on the window installs it.
+import AppKit
+import UniformTypeIdentifiers
+
+final class DropView: NSView {
+    var onDrop: (([URL]) -> Void)?
+    override init(frame: NSRect) { super.init(frame: frame); registerForDraggedTypes([.fileURL]) }
+    required init?(coder: NSCoder) { fatalError() }
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { urls(sender).isEmpty ? [] : .copy }
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let u = urls(sender); guard !u.isEmpty else { return false }; onDrop?(u); return true
+    }
+    private func urls(_ s: NSDraggingInfo) -> [URL] {
+        let items = s.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+        return items.filter { $0.pathExtension.lowercased() == "zip" || (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+    }
+}
+
+final class MainWindowController: NSWindowController {
+    let reportView = NSTextView()
+    let progress = NSProgressIndicator()
+    let progressLabel = NSTextField(labelWithString: "")
+    let catalogueBox = NSBox()
+    let installedBox = NSBox()
+    let reportBox = NSBox()
+    private let queue = DispatchQueue(label: "installer.work")
+
+    init() {
+        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
+                         styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        w.title = "Oni Texture Installer"
+        w.minSize = NSSize(width: 820, height: 600)
+        super.init(window: w)
+        let root = DropView(frame: w.contentView!.bounds)
+        root.autoresizingMask = [.width, .height]
+        root.onDrop = { [weak self] urls in self?.install(files: urls) }
+        w.contentView = root
+        buildLayout(in: root)
+        w.center()
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    /// Puts a single centred, wrapping grey label inside a box (placeholder until a later task fills it).
+    private func fill(_ box: NSBox, title: String, note: String) {
+        box.title = title
+        box.titlePosition = .atTop
+        box.translatesAutoresizingMaskIntoConstraints = false
+        let label = NSTextField(wrappingLabelWithString: note)
+        label.alignment = .center
+        label.textColor = .secondaryLabelColor
+        label.translatesAutoresizingMaskIntoConstraints = false
+        let content = box.contentView!
+        content.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: content.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: content.centerYAnchor),
+            label.leadingAnchor.constraint(greaterThanOrEqualTo: content.leadingAnchor, constant: 12),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: content.trailingAnchor, constant: -12),
+        ])
+    }
+
+    private func buildLayout(in root: NSView) {
+        fill(catalogueBox, title: "Mod Depot texture packages", note: "The Depot catalogue arrives in a later step.")
+        fill(installedBox, title: "Installed packs", note: "The installed-packs list arrives in a later step.")
+        catalogueBox.setContentHuggingPriority(.defaultLow, for: .vertical)
+        catalogueBox.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+
+        // Report box: scrolling read-only text over a row of progress + buttons.
+        reportBox.title = "Report"
+        reportBox.titlePosition = .atTop
+        reportBox.translatesAutoresizingMaskIntoConstraints = false
+
+        let scroll = NSScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .bezelBorder
+        scroll.autohidesScrollers = true
+        reportView.isEditable = false
+        reportView.isSelectable = true
+        reportView.drawsBackground = true
+        reportView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        reportView.textContainerInset = NSSize(width: 4, height: 4)
+        reportView.isVerticallyResizable = true
+        reportView.isHorizontallyResizable = false
+        reportView.autoresizingMask = [.width]
+        reportView.minSize = NSSize(width: 0, height: 0)
+        reportView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        reportView.textContainer?.widthTracksTextView = true
+        reportView.string = "Drop a texture mod (.zip or its folder) here, or choose one."
+        scroll.documentView = reportView
+
+        progress.style = .bar
+        progress.isIndeterminate = true
+        progress.isHidden = true
+        progress.controlSize = .small
+        progress.translatesAutoresizingMaskIntoConstraints = false
+        progress.widthAnchor.constraint(equalToConstant: 140).isActive = true
+        progressLabel.textColor = .secondaryLabelColor
+        progressLabel.lineBreakMode = .byTruncatingTail
+        progressLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.init(1), for: .horizontal)
+        let showLogButton = NSButton(title: "Show log", target: self, action: #selector(showLog))
+        let chooseButton = NSButton(title: "Choose file…", target: self, action: #selector(chooseFile))
+        chooseButton.keyEquivalent = "o"
+        chooseButton.keyEquivalentModifierMask = [.command]
+
+        let row = NSStackView(views: [progress, progressLabel, spacer, showLogButton, chooseButton])
+        row.orientation = .horizontal
+        row.spacing = 8
+        row.alignment = .centerY
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let rc = reportBox.contentView!
+        rc.addSubview(scroll)
+        rc.addSubview(row)
+        NSLayoutConstraint.activate([
+            scroll.topAnchor.constraint(equalTo: rc.topAnchor, constant: 6),
+            scroll.leadingAnchor.constraint(equalTo: rc.leadingAnchor, constant: 6),
+            scroll.trailingAnchor.constraint(equalTo: rc.trailingAnchor, constant: -6),
+            row.topAnchor.constraint(equalTo: scroll.bottomAnchor, constant: 8),
+            row.leadingAnchor.constraint(equalTo: rc.leadingAnchor, constant: 6),
+            row.trailingAnchor.constraint(equalTo: rc.trailingAnchor, constant: -6),
+            row.bottomAnchor.constraint(equalTo: rc.bottomAnchor, constant: -6),
+        ])
+
+        let stack = NSStackView(views: [catalogueBox, installedBox, reportBox])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.distribution = .fill
+        stack.spacing = 10
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        root.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: root.topAnchor, constant: 12),
+            stack.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -12),
+            stack.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -12),
+            catalogueBox.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            installedBox.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            reportBox.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            installedBox.heightAnchor.constraint(equalToConstant: 180),
+            reportBox.heightAnchor.constraint(equalToConstant: 170),
+            catalogueBox.heightAnchor.constraint(greaterThanOrEqualToConstant: 120),
+        ])
+    }
+
+    @objc func showLog() {
+        let url = ReportLog.logURL()
+        if !FileManager.default.fileExists(atPath: url.path) { ReportLog.append(source: "(none)", text: "Log created.") }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
+    @objc func chooseFile() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose a mod to install"
+        panel.message = "Pick a texture mod downloaded from the Oni Mod Depot (a .zip, or its unzipped folder)."
+        panel.canChooseFiles = true; panel.canChooseDirectories = true; panel.allowsMultipleSelection = true
+        panel.allowedContentTypes = [.zip, .folder]; panel.prompt = "Install"
+        panel.beginSheetModal(for: window!) { [weak self] r in if r == .OK { self?.install(files: panel.urls) } }
+    }
+
+    /// Runs the pipeline for dropped or chosen files, one after another, and shows one combined report.
+    func install(files: [URL]) {
+        setBusy(true, label: "Installing \(files.count) item(s)…")
+        queue.async { [self] in
+            var sections: [String] = []
+            var installed = 0, skipped = 0, failed = 0
+            for url in files {
+                var inst = makeInstaller()
+                do {
+                    var report: InstallReport
+                    do { inst.replace = false; report = try inst.install(url) }
+                    catch InstallError.alreadyInstalled(let path) {
+                        guard askReplace(path) else { sections.append("\(url.lastPathComponent): skipped (already installed)."); skipped += 1; continue }
+                        inst.replace = true; report = try inst.install(url)
+                    }
+                    sections.append(report.text); installed += 1
+                    ReportLog.append(source: url.path, text: report.text)
+                } catch {
+                    let msg = (error as? InstallError)?.description ?? "\(error)"
+                    sections.append("\(url.lastPathComponent): \(msg)"); failed += 1
+                    ReportLog.append(source: url.path, text: "Nothing installed: \(msg)")
+                }
+            }
+            let text = sections.joined(separator: "\n\n") + "\n\n\(installed) installed, \(skipped) skipped, \(failed) failed."
+            DispatchQueue.main.async { self.showReport(text); self.setBusy(false, label: ""); self.didFinishInstall() }
+        }
+    }
+
+    /// Replace/Skip prompt, run on main and waited for from the work queue.
+    private func askReplace(_ path: String) -> Bool {
+        var answer = false
+        DispatchQueue.main.sync {
+            let a = NSAlert()
+            a.messageText = "Replace the installed pack?"
+            a.informativeText = "A pack with this name is already at:\n\(path)\n\nReplacing it re-packs from the new file."
+            a.addButton(withTitle: "Replace"); a.addButton(withTitle: "Skip")
+            answer = a.runModal() == .alertFirstButtonReturn
+        }
+        return answer
+    }
+
+    func showReport(_ text: String) { reportView.string = text; reportView.scrollToEndOfDocument(nil) }
+    func setBusy(_ busy: Bool, label: String) {
+        progress.isHidden = !busy; progressLabel.stringValue = label
+        if busy { progress.isIndeterminate = true; progress.startAnimation(nil) } else { progress.stopAnimation(nil) }
+    }
+    /// Later tasks override: refresh the installed list and catalogue marks.
+    func didFinishInstall() {}
+}

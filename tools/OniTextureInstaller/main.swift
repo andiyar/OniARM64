@@ -1,0 +1,111 @@
+// main.swift — Oni Texture Installer entry (#20).
+//   CLI:  OniTextureInstaller --install <zip-or-folder> [--dest <TexturePacks>]
+//                         [--gamedata <GameDataFolder>|none] [--replace]
+//         OniTextureInstaller --file-id <level> <suffix>   (test hook: prints the
+//         engine file id the installer computes, for the Swift/C parity check)
+//   GUI:  no --install → the Oni Texture Installer window (MainWindow.swift).
+//         Drop a mod on the window, use Choose file, or Finder Open With.
+// Helper tools: bundled beside the executable, or ONIMOD_ONIPACK /
+// ONIMOD_INDEX env overrides (used by tests/test_oni_texture_installer.sh).
+import AppKit
+import Foundation
+import UniformTypeIdentifiers
+
+func helperURL(_ name: String, env: String) -> URL {
+    if let p = ProcessInfo.processInfo.environment[env], !p.isEmpty { return URL(fileURLWithPath: p) }
+    return Bundle.main.executableURL!.deletingLastPathComponent().appendingPathComponent(name)
+}
+
+func makeInstaller() -> ModInstaller {
+    ModInstaller(onipack: helperURL("onipack", env: "ONIMOD_ONIPACK"),
+                 indexTool: helperURL("txmp-format-index", env: "ONIMOD_INDEX"),
+                 texturePacksDir: ModInstaller.defaultTexturePacksDir(),
+                 gameDataDir: ModInstaller.defaultGameDataDir())
+}
+
+func stderrLine(_ s: String) {
+    FileHandle.standardError.write((s + "\n").data(using: .utf8)!)
+}
+
+func runCLI(_ args: [String]) -> Never {
+    var inst = makeInstaller()
+    var input: URL?
+    var i = 0
+    while i < args.count {
+        switch args[i] {
+        case "--install": i += 1; if i < args.count { input = URL(fileURLWithPath: args[i]) }
+        case "--dest":    i += 1; if i < args.count { inst.texturePacksDir = URL(fileURLWithPath: args[i]) }
+        case "--gamedata": i += 1; if i < args.count { inst.gameDataDir = args[i] == "none" ? nil : URL(fileURLWithPath: args[i]) }
+        case "--replace": inst.replace = true
+        case "--file-id":
+            // Debug/test hook: print the engine file id the installer computes
+            // for <level> <suffix>, so tests can compare it with onipack's C.
+            guard i + 2 < args.count, let level = Int(args[i + 1]), (0..<128).contains(level) else {
+                stderrLine("usage: OniTextureInstaller --file-id <level> <suffix>"); exit(2)
+            }
+            print(String(format: "0x%08x", ModInstaller.fileID(level: level, suffix: args[i + 2])))
+            exit(0)
+        case "--help": input = nil; i = args.count
+        default:
+            stderrLine("unknown argument \(args[i])")
+            exit(2)
+        }
+        i += 1
+    }
+    guard let input = input else {
+        stderrLine("usage: OniTextureInstaller --install <zip-or-folder> [--dest dir] [--gamedata dir|none] [--replace]")
+        exit(2)
+    }
+    do {
+        let r = try inst.install(input)
+        ReportLog.append(source: input.path, text: r.text)
+        print(r.text)
+        exit(0)
+    } catch let e as InstallError {
+        ReportLog.append(source: input.path, text: "Nothing installed: \(e.description)")
+        stderrLine("Oni Texture Installer: \(e.description)")
+        exit(e.exitCode)
+    } catch {
+        ReportLog.append(source: input.path, text: "Nothing installed: \(error)")
+        stderrLine("Oni Texture Installer: \(error)")
+        exit(2)
+    }
+}
+
+let argv = Array(CommandLine.arguments.dropFirst())
+if argv.contains("--install") || argv.contains("--help") || argv.contains("--file-id") {
+    runCLI(argv)
+}
+
+// MARK: - window app
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var controller: MainWindowController?
+
+    private func ensureController() -> MainWindowController {
+        if let c = controller { return c }
+        let c = MainWindowController()
+        controller = c
+        return c
+    }
+
+    func applicationDidFinishLaunching(_ note: Notification) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        ensureController().showWindow(nil)
+    }
+
+    // Finder can deliver files before didFinishLaunching, so make the window on demand.
+    func application(_ app: NSApplication, open urls: [URL]) {
+        let c = ensureController()
+        c.showWindow(nil)
+        c.install(files: urls)
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+}
+
+let app = NSApplication.shared
+let delegate = AppDelegate()
+app.delegate = delegate
+app.run()

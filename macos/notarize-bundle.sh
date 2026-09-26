@@ -8,7 +8,7 @@
 #   KEYCHAIN_PROFILE  - keychain entry from `xcrun notarytool store-credentials`
 #                       (default: oniarm64-notarize)
 #   APP_PATH          - .app to notarize (default: bin/OniARM64.app; the
-#                       release target also passes "OniMod Installer.app", #20)
+#                       release target also passes "Oni Texture Installer.app", #20)
 #
 # One-time setup (NOT done by this script):
 #   xcrun notarytool store-credentials oniarm64-notarize \
