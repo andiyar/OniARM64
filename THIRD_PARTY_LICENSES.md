@@ -10,9 +10,9 @@ For convenience, this file is also copied into the redistributed bundle at `Cont
 
 ---
 
-## SDL2
+## SDL2 (sdl2-compat) and SDL3
 
-- **Version bundled:** 2.32.10 (from Homebrew's `sdl2` formula)
+- **Version bundled:** sdl2-compat 2.32.72 as `libSDL2-2.0.0.dylib` (Homebrew's `sdl2` formula has been sdl2-compat since 2025) plus SDL3 3.4.16 as `libSDL3.dylib`, which sdl2-compat loads at runtime (#118). Both are Zlib-licensed under the notice below; sdl2-compat source: https://github.com/libsdl-org/sdl2-compat
 - **Homepage:** https://www.libsdl.org/
 - **Source:** https://github.com/libsdl-org/SDL
 - **SPDX identifier:** Zlib

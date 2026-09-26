@@ -152,7 +152,13 @@ if [ -f "$FRAMEWORKS/libSDL2-2.0.0.dylib" ] && [ ! -f "$FRAMEWORKS/libSDL3.dylib
         install_name_tool -id "@executable_path/../Frameworks/libSDL3.dylib" "$FRAMEWORKS/libSDL3.dylib"
         echo "build-bundle.sh: bundled libSDL3.dylib for sdl2-compat (#118)"
     else
-        echo "build-bundle.sh: WARNING: $SDL3_SRC not found; not bundling SDL3 (#118). Fine for a real SDL2 build; an sdl2-compat build will fail at SDL init without Homebrew." >&2
+        # The bundled libSDL2 IS sdl2-compat (the grep above), so without SDL3
+        # the .app cannot start on a Mac without Homebrew. Never ship that.
+        if [ "$SIGN_IDENTITY" != "-" ]; then
+            echo "build-bundle.sh: ERROR: $SDL3_SRC not found but the bundled libSDL2 is sdl2-compat; a release .app without libSDL3.dylib fails at SDL init on any Mac without Homebrew (#118). Install sdl3 (brew install sdl3) and rebuild." >&2
+            exit 1
+        fi
+        echo "build-bundle.sh: WARNING: $SDL3_SRC not found; this dev .app will only run where Homebrew sdl3 is installed (#118)." >&2
     fi
 fi
 

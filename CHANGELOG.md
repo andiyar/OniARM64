@@ -177,6 +177,9 @@ GitHub release notes and gets stamped with the version + date.
   limits (#42).
 
 ### Housekeeping
+- The .app now carries SDL3 next to SDL2. Builds since September use the
+  sdl2-compat layer, which needs SDL3 at runtime; without it bundled, a Mac
+  with no Homebrew could not start the game (#118).
 - Deployment target pinned to macOS 15; app category set; version + build
   stamped into the session log banner; release process written down (#72).
 - Developer access can be enabled at launch via `ONI_DEV_ACCESS=1` (#47).
