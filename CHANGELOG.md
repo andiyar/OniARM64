@@ -21,7 +21,7 @@ GitHub release notes and gets stamped with the version + date.
 - New app icon for macOS 26: the Oni "O" is now a proper layered glass icon, so it follows your system icon style (default, dark, clear, tinted) instead of sitting on the white placeholder tile. On older toolchains the build falls back to a refreshed static icon with a dark background.
 
 ### Mods
-- The mod installer is now **Oni Texture Installer**, a window rather than a droplet. Drop a Depot zip on it (or use File > Choose file) and the report stays on screen; every run is also written to `~/Library/Logs/OniARM64/installer.txt` so you can see what it did afterwards (#123, #124). A catalogue of the Depot's texture packs is on its way.
+- The mod installer is now **Oni Texture Installer**, a window rather than a droplet. It lists the Mod Depot's texture packs: tick the ones you want and press Install Selected, and it downloads, packs and puts them in your TexturePacks folder. An Installed packs list shows what you have, with Reveal in Finder and Remove (to the Trash). Dropping a Depot zip on the window still works. The report stays on screen and every run is also written to `~/Library/Logs/OniARM64/installer.txt` so you can see what it did afterwards (#123, #124).
 - Installing an HD Screens mod no longer leaves the Load Game, main menu and
   Options dialogs with red frames, highlights and button plates. When the
   installer skips a mod's re-laid-out screens it now also skips that mod's
