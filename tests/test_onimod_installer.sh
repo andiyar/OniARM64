@@ -1,3 +1,4 @@
+n=7
 #!/usr/bin/env bash
 # test_onimod_installer.sh — end-to-end test of the OniMod Installer CLI
 # mode against generated fixtures laid out like real depot downloads.
@@ -17,7 +18,7 @@ export ONIMOD_ONIPACK="$ONIPACK" ONIMOD_INDEX="$INDEX"
 
 # Fixture textures.
 cc -Wall -DGEN_MAIN tests/test_onipack_roundtrip.c tools/onipack/onipack_oni.c \
-   tools/onipack/onipack_writer.c -o "$W/gen" && "$W/gen" "$W"
+   tools/onipack/onipack_writer.c -o "$W/gen" && mkdir -p "$W/scr" && "$W/gen" "$W" "$W/scr"
 
 # Mod A: depot shape — wrapper dir, Mod_Info.cfg, lowercase level dir,
 # textures nested one deeper, a non-TXMP file that must be ignored, and a
@@ -158,5 +159,29 @@ mkdir -p "$W/linked12"; : > "$W/linked12/level0_AH.dat"; ln -s "$W/linked12" "$D
 mkdir -p "$W/CG/oni/level0_Final"; cp "$W/TXMPcliA.oni" "$W/CG/oni/level0_Final/"
 "$INST" --install "$W/CG" --dest "$DEST" --gamedata none > "$W/out12c" 2>&1; rc=$?
 check '[ $rc -eq 5 ] && grep -q "Decoy12c" "$W/out12c"' "leaf inside a symlinked pack folder is scanned, collision refused naming Decoy12c (rc=$rc)"
+
+# 13. HD Screens re-lay-out (#113): a mod TXMB whose grid differs from the
+#     retail TXMB of the same name gets its tiles skipped (union of mod and
+#     retail tile names); a same-grid screen keeps its tiles. The fake retail
+#     folder holds one TXMB .oni per level file, which the index tool reads.
+mkdir -p "$W/gd13"
+cp "$W/scr/retailTXMBscreenB.oni" "$W/gd13/level0_Final.dat"
+cp "$W/scr/TXMBscreenA.oni" "$W/gd13/level1_Final.dat"
+cp "$W/scr/TXMBscreenC.oni" "$W/gd13/level2_Final.dat"
+S="$W/screens-mod"; mkdir -p "$S/oni/common/level0_Final"
+cp "$W/scr/TXMBscreenB.oni" "$W/scr/TXMBscreenC.oni" "$S/oni/common/level0_Final/"
+for i in 1 2 3 4 5 6 7 8 9 10 11 12; do cp "$W/scr/TXMPscreenB$i.oni" "$S/oni/common/level0_Final/"; done
+for i in 1 2 3 4 5 6; do cp "$W/scr/TXMPscreenC$i.oni" "$S/oni/common/level0_Final/"; done
+"$INST" --install "$S" --dest "$DEST" --gamedata "$W/gd13" > "$W/out13" 2>&1; rc=$?
+check '[ $rc -eq 0 ]' "re-laid-out screen mod installs (rc=$rc): $(cat "$W/out13")"
+check 'grep -qx "  screen tiles skipped: 12 (this mod re-lays-out the screen; not supported yet, see #121)" "$W/out13"' "report says 12 screen tiles skipped: $(cat "$W/out13")"
+N=$("$INDEX" "$DEST/screensmod/level0_screensmod.dat" 2>/dev/null | wc -l | tr -d ' ')
+check '[ "$N" = "6" ]' "level0 pack holds only the 6 same-grid tiles (got $N)"
+
+# 14. same mod, no retail data: nothing is skipped, all 18 tiles packed.
+"$INST" --install "$S" --dest "$DEST" --gamedata none --replace > "$W/out14" 2>&1; rc=$?
+N=$("$INDEX" "$DEST/screensmod/level0_screensmod.dat" 2>/dev/null | wc -l | tr -d ' ')
+check '[ $rc -eq 0 ] && [ "$N" = "18" ]' "no retail data: all 18 tiles packed (rc=$rc, got $N)"
+check '! grep -q "screen tiles skipped" "$W/out14"' "no retail data: no screen-skip line"
 
 echo "$PASS passed, $FAIL failed"; rm -rf "$W"; exit $((FAIL>0))

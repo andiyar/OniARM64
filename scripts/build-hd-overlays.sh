@@ -286,6 +286,47 @@ sort -t "$(printf '\t')" -k5,5 -k1,1 -k6,6 "$MANIFEST" | awk -F '\t' '
 #  longer emitted.)
 
 # ----------------------------------------------------------------------
+# 2c. Re-laid-out screens (issue #113). A TXMB (splash/menu screen) is a
+#     grid of TXMP tiles. HD Screens-style mods ship a bigger grid with
+#     their own TXMB, but we never pack TXMB (#62), so the engine keeps the
+#     retail layout and draws the mod's tiles into it (four corners
+#     crowded into the middle). Same rule as the installer: when a mod
+#     TXMB's width, height or tile count differs from the retail TXMB of
+#     the same name (case-insensitive), skip the union of both tile lists.
+#     No retail twin, same grid, or no retail data: keep. Full support is
+#     #121. Writes $SCREEN_TILES as <tile-lowercase>\t<screen> lines.
+# ----------------------------------------------------------------------
+SCREEN_TILES="$WORK_DIR/screen-tiles.tsv"
+SCREEN_SKIPPED="$WORK_DIR/screen-skipped.txt"
+: > "$SCREEN_TILES"; : > "$SCREEN_SKIPPED"
+if [ -d "$RETAIL_DATA_DIR" ]; then
+    "$TXMP_TOOL" --txmb "$RETAIL_DATA_DIR"/level*_Final.dat > "$WORK_DIR/retail-txmb.tsv" 2>/dev/null || true
+    : > "$WORK_DIR/mod-txmb.tsv"
+    for mod in "${MODS[@]}"; do
+        find "$HD_MODS_ROOT/$mod" -type f -name 'TXMB*.oni' -exec "$TXMP_TOOL" --txmb {} + \
+            >> "$WORK_DIR/mod-txmb.tsv" 2>/dev/null || true
+    done
+    awk -F '\t' '
+        FILENAME == ARGV[1] {               # retail: first hit per name wins
+            k = tolower($1)
+            if ($1 != "-" && NF >= 6 && !(k in rw)) { rw[k] = $2; rh[k] = $3; rn[k] = $4; rt[k] = $5 }
+            next
+        }
+        $1 == "-" || NF < 6 { next }
+        {
+            k = tolower($1)
+            if (!(k in rw) || ($2 == rw[k] && $3 == rh[k] && $4 == rn[k])) next
+            list = tolower($5) "," tolower(rt[k])
+            m = split(list, t, ",")
+            for (i = 1; i <= m; i++)
+                if (t[i] != "" && t[i] != "-" && !(t[i] in seen)) { seen[t[i]] = 1; print t[i] "\t" $1 }
+        }
+    ' "$WORK_DIR/retail-txmb.tsv" "$WORK_DIR/mod-txmb.tsv" > "$SCREEN_TILES"
+else
+    echo "-- re-laid-out screens: retail data dir not found, nothing skipped (#113) --"
+fi
+
+# ----------------------------------------------------------------------
 # 3. Stage winners into flat per-level buckets (filenames kept intact —
 #    the basename IS the instance name, %2F encoding and all).
 # ----------------------------------------------------------------------
@@ -308,10 +349,18 @@ while IFS="$(printf '\t')" read -r kind lvl path; do
         excluded_total=$((excluded_total + 1))
         continue
     fi
+    inst_lc="$(printf '%s' "$inst" | tr '[:upper:]' '[:lower:]')"
+    if [ -s "$SCREEN_TILES" ] && awk -F '\t' -v t="$inst_lc" '$1 == t { f = 1; exit } END { exit !f }' "$SCREEN_TILES"; then
+        printf '%s\n' "$inst_lc" >> "$SCREEN_SKIPPED"   # #113: tile of a re-laid-out screen
+        continue
+    fi
     mkdir -p "$STAGE_ROOT/level$lvl"
     cp "$path" "$STAGE_ROOT/level$lvl/"
     staged_total=$((staged_total + 1))
 done < "$DECISIONS"
+# #113: one SCREEN-SKIP<TAB><screen><TAB><n> decision per re-laid-out screen
+awk -F '\t' 'FILENAME == ARGV[1] { scr[$1] = $2; next } ($1 in scr) { n[scr[$1]]++ }
+    END { for (s in n) print "SCREEN-SKIP\t" s "\t" n[s] }' "$SCREEN_TILES" "$SCREEN_SKIPPED" | sort >> "$DECISIONS"
 
 # ----------------------------------------------------------------------
 # 3b. Pack corrections (issue #63): our own channel-corrected TXMPs copied
@@ -356,6 +405,7 @@ if grep -q '^SKIP' "$DECISIONS"; then
 else
     echo "  none"
 fi
+awk -F '\t' '$1 == "SCREEN-SKIP" { print "  screen " $2 ": " $3 " tiles skipped (re-lays-out the screen, see #121)" }' "$DECISIONS"
 grep '^WARN' "$DECISIONS" | sed 's/^WARN\t/  WARNING: /' || true
 echo
 

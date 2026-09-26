@@ -915,7 +915,12 @@ DCrDraw_TextureRef(
 
 					// get a pointer to the texture to be drawn
 					index = x + (y * texture_big->num_x);
+					/* #28: a TXMB whose tile array is shorter than num_x * num_y, or has a
+					 * missing tile, must not be read past its end or drawn through NULL
+					 * (same guard as M3rDraw_BigBitmap in Motoko_Utility.c). */
+					if (index >= texture_big->num_textures) continue;
 					texture = texture_big->textures[index];
+					if (texture == NULL) continue;
 
 					x_times_maxwidth = x * M3cTextureMap_MaxWidth;
 					y_times_maxheight = y * M3cTextureMap_MaxHeight;

@@ -653,6 +653,70 @@ int main(void) {
 
 #else /* GEN_MAIN: fixture generator for the CLI test (later task) */
 
+/* V32 .oni whose instance 0 is a named TXMB (TXMB<name>) laid out per OUP
+ * structdefs/TXMB.txt: width, height, tile count, then one TXMP link per
+ * tile pointing at placeholder descriptors 1..n named TXMP<tile> (#113). */
+static void write_fixture_txmb(const char *path, const char *name,
+                               uint16_t width, uint16_t height,
+                               const char *tilePrefix, int nTiles) {
+    uint32_t nInst   = 1u + (uint32_t)nTiles;
+    uint32_t tables  = 64u + nInst * 20u + nInst * 8u;
+    uint32_t dataOff = opk_align32(tables);
+    uint32_t bodyLen = 0x18u + (uint32_t)nTiles * 4u;
+    uint32_t dataLen = opk_align32(8u + bodyLen);
+    char names[4096]; uint32_t nameLen = 0, tileNameOff[64];
+    nameLen += (uint32_t)snprintf(names, sizeof names, "TXMB%s", name) + 1u;
+    for (int t = 0; t < nTiles && t < 64; t++) {
+        tileNameOff[t] = nameLen;
+        nameLen += (uint32_t)snprintf(names + nameLen, sizeof names - nameLen,
+                                      "TXMP%s%d", tilePrefix, t + 1) + 1u;
+    }
+    uint32_t nameOff = dataOff + dataLen;
+
+    uint8_t hdr[64] = {0};
+    opk_wr64(hdr + 0x00, OPK_CHECKSUM_MAC);
+    opk_wr32(hdr + 0x08, OPK_VERSION_32);
+    opk_wr16(hdr + 0x0C, 64); opk_wr16(hdr + 0x0E, 20);
+    opk_wr16(hdr + 0x10, 16); opk_wr16(hdr + 0x12, 8);
+    opk_wr32(hdr + 0x14, nInst);
+    opk_wr32(hdr + 0x18, nInst);
+    opk_wr32(hdr + 0x1C, 0);
+    opk_wr32(hdr + 0x20, dataOff); opk_wr32(hdr + 0x24, dataLen);
+    opk_wr32(hdr + 0x28, nameOff); opk_wr32(hdr + 0x2C, nameLen);
+
+    FILE *f = fopen(path, "wb");
+    fwrite(hdr, 1, 64, f);
+    uint8_t d[20] = {0};                        /* desc 0: the TXMB, named */
+    opk_wr32(d, 0x54584d42u); opk_wr32(d + 4, 8);
+    opk_wr32(d + 8, 0); opk_wr32(d + 12, dataLen - 8);
+    fwrite(d, 1, 20, f);
+    for (int t = 0; t < nTiles; t++) {          /* descs 1..n: tile placeholders */
+        memset(d, 0, sizeof d);
+        opk_wr32(d, OPK_TAG_TXMP);
+        opk_wr32(d + 8, tileNameOff[t]);
+        opk_wr32(d + 16, OPK_FLAG_PLACEHOLDER);
+        fwrite(d, 1, 20, f);
+    }
+    for (uint32_t i = 0; i < nInst; i++) {      /* name descs, one per instance */
+        uint8_t nd[8] = {0};
+        opk_wr32(nd, i);
+        fwrite(nd, 1, 8, f);
+    }
+    uint8_t pad[64] = {0};
+    fwrite(pad, 1, dataOff - tables, f);
+
+    uint8_t rec[512] = {0};                     /* preamble + TXMB body */
+    opk_wr32(rec, (0u << 8) | 1u);
+    uint8_t *body = rec + 8;
+    opk_wr16(body + 0x08, width); opk_wr16(body + 0x0A, height);
+    opk_wr32(body + 0x14, (uint32_t)nTiles);
+    for (int t = 0; t < nTiles; t++)
+        opk_wr32(body + 0x18 + t * 4, ((uint32_t)(t + 1) << 8) | 1u);
+    fwrite(rec, 1, dataLen, f);
+    fwrite(names, 1, nameLen, f);
+    fclose(f);
+}
+
 int main(int argc, char **argv) {
     char p[1024];
     if (argc < 2) return 2;
@@ -664,6 +728,26 @@ int main(int argc, char **argv) {
     write_fixture_oni(p, OPK_VERSION_32, 0x4F4E4343u, 1);
     snprintf(p, sizeof p, "%s/TXMPanim.oni", argv[1]);
     write_fixture_oni_anim(p);
+    /* #113 screen fixtures, only when a second directory is given (kept out
+     * of argv[1] so the CLI tests that pack that whole folder are unchanged):
+     * A and C keep the retail 640x480 grid, B is an HD re-lay-out (1024x768,
+     * 12 tiles) whose retail twin is retailTXMBscreenB. */
+    if (argc < 3) return 0;
+    snprintf(p, sizeof p, "%s/TXMBscreenA.oni", argv[2]);
+    write_fixture_txmb(p, "screenA", 640, 480, "screenA", 6);
+    snprintf(p, sizeof p, "%s/TXMBscreenB.oni", argv[2]);
+    write_fixture_txmb(p, "screenB", 1024, 768, "screenB", 12);
+    snprintf(p, sizeof p, "%s/TXMBscreenC.oni", argv[2]);
+    write_fixture_txmb(p, "screenC", 640, 480, "screenC", 6);
+    snprintf(p, sizeof p, "%s/retailTXMBscreenB.oni", argv[2]);
+    write_fixture_txmb(p, "screenB", 640, 480, "screenB", 6);
+    static const struct { const char *s; int n; } tiles[] = {
+        { "screenA", 6 }, { "screenB", 12 }, { "screenC", 6 } };
+    for (int s = 0; s < 3; s++)
+        for (int t = 1; t <= tiles[s].n; t++) {
+            snprintf(p, sizeof p, "%s/TXMP%s%d.oni", argv[2], tiles[s].s, t);
+            write_fixture_oni(p, OPK_VERSION_32, OPK_TAG_TXMP, 1);
+        }
     return 0;
 }
 

@@ -32,7 +32,8 @@
  * the caller derives the name from the file name; we print '-'.
  *
  * Build: cc -O2 -o txmp-format-index txmp-format-index.c
- * Usage: txmp-format-index <file.dat|file.oni> [...]
+ * Usage: txmp-format-index [--txmb] <file.dat|file.oni> [...]
+ *   --txmb prints TXMB grid records instead (see process_txmb, #113).
  * ==================================================================== */
 
 #include <stdio.h>
@@ -63,7 +64,106 @@ static const char *format_name(uint32_t f) {
     }
 }
 
-static int process(const char *path) {
+/* ---- --txmb mode (#113) ------------------------------------------------
+ * One line per TXMB (texture map big: a splash/menu screen built from a
+ * grid of TXMP tiles):
+ *   <name>\t<width>\t<height>\t<ntiles>\t<tile1,tile2,...>\t<filePath>
+ * name has 'TXMB' stripped (falls back to the file name when the instance
+ * is unnamed), tiles have 'TXMP' stripped, a zero or unresolvable link
+ * prints '-'. TXMB instance data (OUP structdefs/TXMB.txt, offsets relative
+ * to the 8-byte-preamble-skipping dataOffset like the TXMP path above):
+ *   +0x08 u16 width  +0x0A u16 height  +0x14 u32 tile count
+ *   +0x18 tile count x u32 TXMP links, (descriptorIndex << 8) | 1. */
+static uint16_t rd16(const unsigned char *p) {
+    return (uint16_t)(p[0] | (p[1] << 8));
+}
+
+/* Name of descriptor idx with its 4CC tag stripped, or NULL. */
+static const char *desc_name(const unsigned char *buf, long fsize,
+                             uint32_t instanceCount, uint32_t nameTableOffset,
+                             uint32_t nameTableSize, uint32_t idx,
+                             const char *tag) {
+    if (idx >= instanceCount) return NULL;
+    long doff = 0x40 + (long)idx * 20;
+    if (doff + 20 > fsize) return NULL;
+    const unsigned char *d = buf + doff;
+    uint32_t nameOffset = rd32(d + 8);
+    if ((rd32(d + 16) & 0x01) || nameOffset >= nameTableSize) return NULL;
+    long at = (long)nameTableOffset + nameOffset;
+    long end = (long)nameTableOffset + nameTableSize;
+    if (end > fsize) end = fsize;
+    if (at >= end) return NULL;
+    const char *name = (const char *)buf + at;
+    if (!memchr(name, '\0', (size_t)(end - at))) return NULL;
+    if (strncmp(name, tag, 4) == 0) name += 4;
+    return *name ? name : NULL;
+}
+
+static void process_txmb(const char *path, const unsigned char *buf, long fsize) {
+    uint32_t instanceCount   = rd32(buf + 0x14);
+    uint32_t dataTableOffset = rd32(buf + 0x20);
+    uint32_t nameTableOffset = rd32(buf + 0x28);
+    uint32_t nameTableSize   = rd32(buf + 0x2C);
+
+    for (uint32_t i = 0; i < instanceCount; i++) {
+        long doff = 0x40 + (long)i * 20;
+        if (doff + 20 > fsize) break;
+        const unsigned char *d = buf + doff;
+        if (rd32(d) != 0x54584d42u)   /* TemplateTag.TXMB */
+            continue;
+        uint32_t dataOffset = rd32(d + 4);
+        uint32_t flags      = rd32(d + 16) & 0xff;
+        if ((flags & 0x02) || dataOffset == 0)
+            continue;   /* placeholder: no local data */
+
+        long base = (long)dataTableOffset + (long)dataOffset;
+        if (base + 0x18 > fsize) {
+            fprintf(stderr, "%s: TXMB #%u data out of range\n", path, i);
+            continue;
+        }
+        uint32_t width  = rd16(buf + base + 0x08);
+        uint32_t height = rd16(buf + base + 0x0A);
+        uint32_t ntiles = rd32(buf + base + 0x14);
+        if (ntiles > 4096 || base + 0x18 + (long)ntiles * 4 > fsize) {
+            fprintf(stderr, "%s: TXMB #%u tile array out of range\n", path, i);
+            continue;
+        }
+
+        char fallback[256];
+        const char *name = desc_name(buf, fsize, instanceCount, nameTableOffset,
+                                     nameTableSize, i, "TXMB");
+        if (!name) {    /* unnamed: derive from TXMB<name>.oni */
+            const char *leaf = strrchr(path, '/');
+            leaf = leaf ? leaf + 1 : path;
+            size_t n = strlen(leaf);
+            if (n > 8 && strncmp(leaf, "TXMB", 4) == 0 &&
+                strcmp(leaf + n - 4, ".oni") == 0 && n - 8 < sizeof fallback) {
+                memcpy(fallback, leaf + 4, n - 8);
+                fallback[n - 8] = '\0';
+                name = fallback;
+            } else {
+                name = "-";
+            }
+        }
+
+        printf("%s\t%u\t%u\t%u\t", name, width, height, ntiles);
+        for (uint32_t t = 0; t < ntiles; t++) {
+            uint32_t id = rd32(buf + base + 0x18 + (long)t * 4);
+            const char *tile = NULL;
+            if (id != 0 && (id & 1u)) {
+                uint32_t idx = id >> 8;
+                if (idx < instanceCount && 0x40 + (long)idx * 20 + 20 <= fsize &&
+                    rd32(buf + 0x40 + (long)idx * 20) == 0x54584d50u)
+                    tile = desc_name(buf, fsize, instanceCount, nameTableOffset,
+                                     nameTableSize, idx, "TXMP");
+            }
+            printf("%s%s", t ? "," : "", tile ? tile : "-");
+        }
+        printf("\t%s\n", path);
+    }
+}
+
+static int process(const char *path, int txmb) {
     FILE *fp = fopen(path, "rb");
     if (!fp) { fprintf(stderr, "%s: cannot open\n", path); return 1; }
 
@@ -87,6 +187,8 @@ static int process(const char *path) {
         fprintf(stderr, "%s: unknown instance-file version 0x%08x\n", path, version);
         free(buf); return 1;
     }
+
+    if (txmb) { process_txmb(path, buf, fsize); free(buf); return 0; }
 
     uint32_t instanceCount   = rd32(buf + 0x14);
     uint32_t dataTableOffset = rd32(buf + 0x20);
@@ -140,12 +242,13 @@ static int process(const char *path) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "usage: %s <file.dat|file.oni> [...]\n", argv[0]);
+    int txmb = argc > 1 && strcmp(argv[1], "--txmb") == 0;
+    if (argc < 2 + txmb) {
+        fprintf(stderr, "usage: %s [--txmb] <file.dat|file.oni> [...]\n", argv[0]);
         return 2;
     }
     int rc = 0;
-    for (int i = 1; i < argc; i++)
-        rc |= process(argv[i]);
+    for (int i = 1 + txmb; i < argc; i++)
+        rc |= process(argv[i], txmb);
     return rc;
 }

@@ -46,7 +46,7 @@ struct InstallReport {
     var modName = ""                       // display name (from Mod_Info or folder)
     var packName = ""                      // sanitised suffix + folder name
     var packFolder = ""                    // final on-disk path
-    var levels: [(level: Int, textures: Int, skipped: Int)] = []
+    var levels: [(level: Int, textures: Int, skipped: Int, screenSkipped: Int)] = []
     var ignoredNonTexture = 0
     var duplicateNames = 0
     var alphaGuard = ""                    // one line: what happened
@@ -54,11 +54,13 @@ struct InstallReport {
 
     var text: String {
         var s = "Installed \"\(modName)\" as \(packName)\n"
-        for l in levels.sorted(by: { $0.level < $1.level }) {
+        for l in levels.sorted(by: { $0.level < $1.level }) where l.textures > 0 || l.skipped > 0 {   // screen-skip-only levels have no pack
             s += "  level \(l.level): \(l.textures) textures packed"
             if l.skipped > 0 { s += ", \(l.skipped) skipped" }
             s += "\n"
         }
+        let screenSkipped = levels.reduce(0) { $0 + $1.screenSkipped }
+        if screenSkipped > 0 { s += "  screen tiles skipped: \(screenSkipped) (this mod re-lays-out the screen; not supported yet, see #121)\n" }
         if ignoredNonTexture > 0 { s += "  \(ignoredNonTexture) non-texture file(s) ignored\n" }
         if duplicateNames > 0 { s += "  \(duplicateNames) duplicate texture name(s) dropped (first copy kept)\n" }
         if !alphaGuard.isEmpty { s += "  alpha guard: \(alphaGuard)\n" }
@@ -128,6 +130,12 @@ struct ModInstaller {
             report.warnings.append("name shortened to \(report.packName) so the pack's file names fit Oni's \(Self.maxLeafLength)-character limit")
         }
 
+        // 2b. HD Screens tiles (#113): a mod TXMB whose grid differs from retail
+        // would have its tiles drawn into the retail layout (we never pack TXMB,
+        // #62), so those tiles are left out. Full support is #121.
+        let screenSkip = screenTilesToSkip(tree: tree)
+        var screenSkipped: [Int: Int] = [:]
+
         // 3. Collect TXMP*.oni by level.
         var byLevel: [Int: [URL]] = [:]
         var seen: Set<String> = []          // "level/basename"
@@ -141,6 +149,9 @@ struct ModInstaller {
                 let key = "\(level)/\(name)"
                 if seen.contains(key) { report.duplicateNames += 1; continue }
                 seen.insert(key)
+                if screenSkip.contains(String(name.dropFirst(4).dropLast(4)).lowercased()) {
+                    screenSkipped[level, default: 0] += 1; continue
+                }
                 byLevel[level, default: []].append(f)
             }
         }
@@ -178,7 +189,10 @@ struct ModInstaller {
                 throw InstallError.packFailed(r.stderr.split(separator: "\n").last.map(String.init) ?? "exit \(r.status)")
             }
             let (packed, skipped) = Self.parseOnipackSummary(r.stderr)
-            report.levels.append((level, packed, skipped))
+            report.levels.append((level, packed, skipped, screenSkipped[level] ?? 0))
+        }
+        for (level, n) in screenSkipped where byLevel[level] == nil {
+            report.levels.append((level, 0, 0, n))   // every TXMP of this level was a skipped tile
         }
 
         // 7. Credits / provenance file, then move into place.
@@ -356,6 +370,56 @@ struct ModInstaller {
             queue = next; depth += 1
         }
         return nil
+    }
+
+    /// One TXMB grid as `txmp-format-index --txmb` prints it.
+    struct ScreenGrid { var width: Int; var height: Int; var count: Int; var tiles: [String] }
+
+    /// Runs the index tool in --txmb mode; returns (lowercased name, grid) per record in output order.
+    func screenGrids(_ files: [URL]) -> [(name: String, grid: ScreenGrid)] {
+        guard !files.isEmpty, FileManager.default.isExecutableFile(atPath: indexTool.path) else { return [] }
+        let r = run(indexTool.path, ["--txmb"] + files.map(\.path))
+        var out: [(name: String, grid: ScreenGrid)] = []
+        for line in r.stdout.split(whereSeparator: \.isNewline) {
+            let f = line.split(separator: "\t", omittingEmptySubsequences: false)
+            guard f.count >= 6, f[0] != "-", let w = Int(f[1]), let h = Int(f[2]), let n = Int(f[3]) else { continue }
+            let tiles = f[4].split(separator: ",").map { $0.lowercased() }.filter { $0 != "-" }
+            out.append((f[0].lowercased(), ScreenGrid(width: w, height: h, count: n, tiles: tiles)))
+        }
+        return out
+    }
+
+    /// Lowercased tile names (TXMP prefix stripped) of every mod screen whose
+    /// TXMB grid (width, height or tile count) differs from the retail TXMB of
+    /// the same name: the union of the mod's and retail's tile names (#113). A
+    /// mod TXMB with no retail twin, a same-grid one, or no retail data at all
+    /// skips nothing. Retail: level*_Final.dat, first hit per name wins.
+    func screenTilesToSkip(tree: URL) -> Set<String> {
+        let fm = FileManager.default
+        guard let gd = gameDataDir else { return [] }
+        let dats = ((try? fm.contentsOfDirectory(at: gd, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.lastPathComponent.hasPrefix("level") && $0.lastPathComponent.hasSuffix("_Final.dat") }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        var retail: [String: ScreenGrid] = [:]
+        for r in screenGrids(dats) where retail[r.name] == nil { retail[r.name] = r.grid }
+        guard !retail.isEmpty else { return [] }
+        var modFiles: [URL] = []
+        if let e = fm.enumerator(at: tree, includingPropertiesForKeys: [.isRegularFileKey]) {
+            for case let f as URL in e {
+                let n = f.lastPathComponent
+                guard n.hasPrefix("TXMB"), n.lowercased().hasSuffix(".oni"),
+                      (try? f.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
+                modFiles.append(f)
+            }
+        }
+        var skip: Set<String> = []
+        for m in screenGrids(modFiles) {
+            guard let r = retail[m.name] else { continue }
+            if m.grid.width != r.width || m.grid.height != r.height || m.grid.count != r.count {
+                skip.formUnion(m.grid.tiles); skip.formUnion(r.tiles)
+            }
+        }
+        return skip
     }
 
     struct GuardFailure: Error { var message: String }
