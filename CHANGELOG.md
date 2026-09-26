@@ -8,35 +8,40 @@ are written for players; the per-commit developer detail lives in
 land. At each release cut, the Unreleased section becomes the body of the
 GitHub release notes and gets stamped with the version + date.
 
-## Unreleased (since 1.3.0r5, 2026-07-17)
+## 1.3.0 — 2026-09-27
 
-- Choosing the renderer is now part of the Options screen properly. The Sound box is
-  titled "Sound and Renderer" and holds two checkboxes, OpenGL and Metal; the one
-  marked "(active)" is what you are running now. Pick the other and a Cancel /
-  Relaunch dialog appears; Relaunch saves the choice and restarts Oni for you
-  (holding Option at launch still works too). The restart dialog's "take affect"
-  typo is fixed while we were there (#89).
+- You can now pick the renderer in Options, and Oni remembers your choice. The
+  Sound box is titled "Sound and Renderer" and holds two checkboxes, OpenGL and
+  Metal; the one marked "(active)" is what you are running now. Pick the other
+  and a Cancel / Relaunch dialog appears; Relaunch saves the choice and restarts
+  Oni for you. Holding Option at launch still works as a one-off override, and
+  OpenGL stays the default until you choose otherwise. The restart dialog's
+  "take affect" typo is fixed while we were there (#89).
 - Only a real Escape key press (or whatever you bound to escape) can raise the in-game menu now. A stale Escape in the polled keyboard state is ignored and, with `ONI_INPUT_TRACE=1`, logged with its scancode. This is hardening, not a fix for a seen bug; the stuck-strafe report on #78 is a separate, still-open question.
 - Fixed a memory leak on level load: every death reload, save-point load and level change used to keep about 15 to 26 MB of the previous level in memory for good. Long sessions with many reloads should stay flat now (#30).
 - New app icon for macOS 26: the Oni "O" is now a proper layered glass icon, so it follows your system icon style (default, dark, clear, tinted) instead of sitting on the white placeholder tile. On older toolchains the build falls back to a refreshed static icon with a dark background.
 
 ### Mods
-- The mod installer is now **Oni Texture Installer**, a window rather than a droplet. It lists the Mod Depot's texture packs: tick the ones you want and press Install Selected, and it downloads, packs and puts them in your TexturePacks folder. An Installed packs list shows what you have, with Reveal in Finder and Remove (to the Trash). Dropping a Depot zip on the window still works. The report stays on screen and every run is also written to `~/Library/Logs/OniARM64/installer.txt` so you can see what it did afterwards (#123, #124).
+- New **Oni Texture Installer** app in the DMG. It lists the Oni Mod Depot's
+  texture packs: tick the ones you want and press Install Selected, and it
+  downloads them, builds the packs and puts them in your TexturePacks folder.
+  No Terminal needed. You can also drop a Depot zip (or its unzipped folder) on
+  the window. It keeps only texture files (models, levels and scripts aren't
+  loadable by this port), screens out replacements that would wash out shiny
+  surfaces (faces, hair, glass) when your game data is installed, and offers to
+  replace a pack you already have. An Installed packs list shows what you have,
+  with Reveal in Finder and Remove (to the Trash). The report stays on screen
+  and every run is also written to `~/Library/Logs/OniARM64/installer.txt` so
+  you can see what it did afterwards (#20, #123, #124).
 - Installing an HD Screens mod no longer leaves the Load Game, main menu and
   Options dialogs with red frames, highlights and button plates. When the
   installer skips a mod's re-laid-out screens it now also skips that mod's
   restyled menu chrome (`buttons` and `navi`) and says so in its report, so the
   vanilla blue dialogs stay blue. Same-grid retextures keep their chrome (#113,
   reported by simX).
-- New **OniMod Installer** app in the DMG. Drop a texture mod downloaded from
-  the Oni Mod Depot (the zip, or its unzipped folder) onto it and it builds the
-  pack and installs it into `TexturePacks/` for you. No Terminal needed. It
-  keeps only texture files (models, levels and scripts aren't loadable by this
-  port), screens out replacements that would wash out shiny surfaces (faces,
-  hair, glass) when your game data is installed, and offers to replace a pack
-  you've already installed (#20).
-- Reinstalling a mod that an earlier OniMod Installer put under a long (20 to 32
-  character) folder name now migrates it: the installer spots the old folder,
+- If a test build of the installer (then called OniMod Installer) put a mod
+  under a long (20 to 32 character) folder name, reinstalling it now migrates
+  it: the installer spots the old folder,
   asks to replace, and removes it once the new short-named pack is in place,
   so the engine stops logging "file name too long" every launch and the old
   copy no longer takes a pack slot (#120).
@@ -56,7 +61,7 @@ GitHub release notes and gets stamped with the version + date.
   r5); it is now skipped, with a line in `startup.txt` that says what to do. A
   pack that can't be opened for another reason (a missing `.raw`, say) is
   skipped the same way instead of taking the level down with it (#111, #112).
-- OniMod Installer keeps pack names short enough for the engine: a name longer
+- The installer keeps pack names short enough for the engine: a name longer
   than 19 characters becomes its first 13 characters plus a short code. It also
   refuses a mod whose name would make Oni confuse it with a pack you already
   have, and tells you which one (#111, #112).
@@ -142,10 +147,8 @@ GitHub release notes and gets stamped with the version + date.
   render but await a full playthrough.
 
 ### Metal renderer
-- The game now remembers which renderer you picked. There's a new "Metal
-  renderer" toggle on the Options screen; switching takes effect next launch.
-  Holding Option at launch still works as a one-off try-it override, and
-  OpenGL stays the default until you choose otherwise (#89).
+- Erratum, 2026-09-27: a line here said r5 remembers your renderer and has an
+  Options toggle for it. That work landed after r5 and ships in 1.3.0 (#89).
 - The Metal renderer is now feature-complete with OpenGL and carried the
   entire chapter 1–9 march. (Hold Option at launch to select it; OpenGL
   remains the default while it soaks.)

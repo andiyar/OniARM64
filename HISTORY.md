@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-09-27 — Session 82: v1.3.0 release cut
+
+- **release: v1.3.0 cut from `release/1.3.0`** (docs-only on the branch): the branch is the reviewed candidate `6385db7` plus the 17 Oni Texture Installer commits cherry-picked with `-x` from main (`4cda746`..`8e13c80`); the #73 controller commits that landed on main in between stay out and ship in 1.3.1 after the pad checkpoints (maintainer's call). CHANGELOG `## Unreleased` stamped `## 1.3.0 — 2026-09-27` and re-read for readers coming from r5: the droplet and rename bullets merged into one "New Oni Texture Installer app in the DMG" line, the two leftover OniMod Installer names reworded, the renderer bullet written as new, and the r5 section's renderer-toggle line replaced by an erratum (`Oni_RendererPref.c` is not in the `v1.3.0r5` tree; it landed in Session 71). Pre-cut review of `v1.3.0r5..6385db7` (three Opus readers: game source, framework, packaging and installer): no blockers. Open at the cut: the bundled sdl2-compat and SDL3 from this machine's Homebrew carry `minos 26.0` against `LSMinimumSystemVersion 15.0` (r5's SDL2 was `minos 15.0`), untested on a Homebrew-free macOS 15 Mac (#118).
+
 ### 2026-09-26 — Session 80: Oni Texture Installer (#124)
 
 - **fix(installer): final review round** (0c7bf32, addresses #124): a whole-feature review (MERGEABLE, nothing critical) led to: a batch summary entry in `installer.txt` after a multi-item run; the same "skipped, already installed at … (use Replace to re-pack it)" hint in the pane and the log; the installed table's Source column shows the plain file name; a Depot package with no package number (0) never marks others installed; and a quit guard while a batch runs ("An install is still running", Wait / Quit Anyway), with a closed window keeping the batch alive until its report is written. Accepted as-is: UTC log timestamps, non-atomic cache replace, corrupt cache reads as none, `--source-depot` stamping every input of a batch with the first title.
