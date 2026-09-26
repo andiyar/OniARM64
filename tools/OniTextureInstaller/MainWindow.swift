@@ -1,6 +1,6 @@
 // MainWindow.swift — the Oni Texture Installer window (#124).
-// Layout (top to bottom): catalogue box (later tasks fill it), installed-packs box
-// (later task), report box. Dropping a zip or folder anywhere on the window installs it.
+// Layout (top to bottom): catalogue box (later tasks fill it), installed-packs table
+// (InstalledPacks.swift scan, Reveal / Remove to the Trash), report box. Dropping a zip or folder anywhere on the window installs it.
 import AppKit
 import UniformTypeIdentifiers
 
@@ -30,6 +30,12 @@ final class MainWindowController: NSWindowController {
     // until the last finishes, and later reports in the series append rather than replace.
     private var runningBatches = 0
     private var seriesHasReport = false
+    // Installed-packs list (main-thread only).
+    let installedTable = NSTableView()
+    var installed: [InstalledPack] = []
+    private let revealButton = NSButton(title: "Reveal in Finder", target: nil, action: nil)
+    private let removeButton = NSButton(title: "Remove…", target: nil, action: nil)
+    private let sizeFormatter: ByteCountFormatter = { let f = ByteCountFormatter(); f.countStyle = .file; return f }()
 
     init() {
         let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
@@ -43,6 +49,7 @@ final class MainWindowController: NSWindowController {
         w.contentView = root
         buildLayout(in: root)
         w.center()
+        reloadInstalled()
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -67,7 +74,7 @@ final class MainWindowController: NSWindowController {
 
     private func buildLayout(in root: NSView) {
         fill(catalogueBox, title: "Mod Depot texture packages", note: "The Depot catalogue arrives in a later step.")
-        fill(installedBox, title: "Installed packs", note: "The installed-packs list arrives in a later step.")
+        buildInstalledBox()
         catalogueBox.setContentHuggingPriority(.defaultLow, for: .vertical)
         catalogueBox.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
 
@@ -144,7 +151,7 @@ final class MainWindowController: NSWindowController {
             catalogueBox.widthAnchor.constraint(equalTo: stack.widthAnchor),
             installedBox.widthAnchor.constraint(equalTo: stack.widthAnchor),
             reportBox.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            installedBox.heightAnchor.constraint(equalToConstant: 180),
+            installedBox.heightAnchor.constraint(equalToConstant: 200),
             reportBox.heightAnchor.constraint(equalToConstant: 170),
             catalogueBox.heightAnchor.constraint(greaterThanOrEqualToConstant: 120),
         ])
@@ -224,6 +231,166 @@ final class MainWindowController: NSWindowController {
         progress.isHidden = !busy; progressLabel.stringValue = label
         if busy { progress.isIndeterminate = true; progress.startAnimation(nil) } else { progress.stopAnimation(nil) }
     }
-    /// Later tasks override: refresh the installed list and catalogue marks.
-    func didFinishInstall() {}
+    /// Refreshes the installed list (and, in later tasks, the catalogue marks) after a batch.
+    func didFinishInstall() { reloadInstalled() }
+}
+
+// MARK: - installed packs
+
+extension MainWindowController: NSTableViewDataSource, NSTableViewDelegate {
+    private static let columns: [(id: String, title: String, width: CGFloat, right: Bool)] = [
+        ("name", "Name", 240, false), ("levels", "Levels", 60, true), ("size", "Size", 90, true), ("source", "Source", 300, false),
+    ]
+
+    func buildInstalledBox() {
+        installedBox.title = "Installed packs"
+        installedBox.titlePosition = .atTop
+        installedBox.translatesAutoresizingMaskIntoConstraints = false
+
+        for c in Self.columns {
+            let col = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(c.id))
+            col.title = c.title
+            col.width = c.width
+            if c.right { col.headerCell.alignment = .right }
+            col.resizingMask = c.id == "source" ? .autoresizingMask : .userResizingMask
+            installedTable.addTableColumn(col)
+        }
+        installedTable.columnAutoresizingStyle = .lastColumnOnlyAutoresizingStyle
+        installedTable.usesAlternatingRowBackgroundColors = true
+        installedTable.allowsMultipleSelection = false
+        installedTable.allowsEmptySelection = true
+        installedTable.dataSource = self
+        installedTable.delegate = self
+        installedTable.target = self
+        installedTable.doubleAction = #selector(tableDoubleClicked)
+
+        let scroll = NSScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.borderType = .bezelBorder
+        scroll.documentView = installedTable
+
+        revealButton.target = self; revealButton.action = #selector(revealSelected)
+        removeButton.target = self; removeButton.action = #selector(removeSelected)
+        revealButton.isEnabled = false; removeButton.isEnabled = false
+        let refreshButton = NSButton(title: "Refresh", target: self, action: #selector(refreshInstalled))
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.init(1), for: .horizontal)
+        let row = NSStackView(views: [revealButton, removeButton, spacer, refreshButton])
+        row.orientation = .horizontal
+        row.spacing = 8
+        row.alignment = .centerY
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let c = installedBox.contentView!
+        c.addSubview(scroll)
+        c.addSubview(row)
+        NSLayoutConstraint.activate([
+            scroll.topAnchor.constraint(equalTo: c.topAnchor, constant: 6),
+            scroll.leadingAnchor.constraint(equalTo: c.leadingAnchor, constant: 6),
+            scroll.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -6),
+            row.topAnchor.constraint(equalTo: scroll.bottomAnchor, constant: 8),
+            row.leadingAnchor.constraint(equalTo: c.leadingAnchor, constant: 6),
+            row.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -6),
+            row.bottomAnchor.constraint(equalTo: c.bottomAnchor, constant: -6),
+        ])
+    }
+
+    /// Scans TexturePacks on the work queue, then updates the table on main, keeping the selection by name.
+    func reloadInstalled() {
+        let dir = ModInstaller.defaultTexturePacksDir()
+        queue.async { [weak self] in
+            let packs = InstalledPacks.scan(dir: dir)
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                let keep = self.selectedPack?.name
+                self.installed = packs
+                self.installedTable.reloadData()
+                if let keep = keep, let i = packs.firstIndex(where: { $0.name == keep }) {
+                    self.installedTable.selectRowIndexes(IndexSet(integer: i), byExtendingSelection: false)
+                } else {
+                    self.installedTable.deselectAll(nil)
+                }
+                self.updateInstalledButtons()
+            }
+        }
+    }
+
+    private var selectedPack: InstalledPack? {
+        let r = installedTable.selectedRow
+        return r >= 0 && r < installed.count ? installed[r] : nil
+    }
+
+    private func updateInstalledButtons() {
+        let has = selectedPack != nil
+        revealButton.isEnabled = has
+        removeButton.isEnabled = has
+    }
+
+    func numberOfRows(in tableView: NSTableView) -> Int { installed.count }
+
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        guard let col = tableColumn, row < installed.count else { return nil }
+        let p = installed[row]
+        let text: String
+        switch col.identifier.rawValue {
+        case "name": text = p.name
+        case "levels": text = "\(p.levels)"
+        case "size": text = sizeFormatter.string(fromByteCount: Int64(p.bytes))
+        default: text = p.sourceText
+        }
+        let id = NSUserInterfaceItemIdentifier("cell." + col.identifier.rawValue)
+        let label = (tableView.makeView(withIdentifier: id, owner: self) as? NSTextField) ?? {
+            let l = NSTextField(labelWithString: "")
+            l.identifier = id
+            l.lineBreakMode = .byTruncatingTail
+            l.alignment = (col.identifier.rawValue == "levels" || col.identifier.rawValue == "size") ? .right : .left
+            return l
+        }()
+        label.stringValue = text
+        label.toolTip = col.identifier.rawValue == "name" ? p.folder.path : nil
+        return label
+    }
+
+    func tableViewSelectionDidChange(_ notification: Notification) { updateInstalledButtons() }
+
+    @objc func tableDoubleClicked() {
+        let r = installedTable.clickedRow
+        guard r >= 0, r < installed.count else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([installed[r].folder])
+    }
+
+    @objc func revealSelected() {
+        guard let p = selectedPack else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([p.folder])
+    }
+
+    @objc func refreshInstalled() { reloadInstalled() }
+
+    @objc func removeSelected() {
+        guard let p = selectedPack, let window = window else { return }
+        let a = NSAlert()
+        a.messageText = "Move \(p.name) to the Trash?"
+        a.informativeText = "The pack stops loading next time Oni starts. You can put it back from the Trash."
+        a.addButton(withTitle: "Move to Trash")
+        a.addButton(withTitle: "Cancel")
+        a.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn, let self = self else { return }
+            do {
+                try InstalledPacks.trash(p)
+            } catch {
+                let e = NSAlert()
+                e.messageText = "Could not move \(p.name) to the Trash."
+                e.informativeText = error.localizedDescription
+                e.addButton(withTitle: "OK")
+                // the confirm sheet has closed by now; show the error as a sheet too
+                DispatchQueue.main.async { e.beginSheetModal(for: window, completionHandler: nil) }
+                return
+            }
+            self.showReport("Moved \(p.name) to the Trash.")
+            ReportLog.append(source: p.folder.path, text: "Moved to the Trash.")
+            self.reloadInstalled()
+        }
+    }
 }

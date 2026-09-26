@@ -286,4 +286,17 @@ mkdir -p "$W/badidx"; (cd "$W/badidx" && printf '[]' > vocabulary.json && ditto 
 "$INST" --parse-index "$W/bad.zip" >/dev/null 2>"$W/err18b"; rc=$?
 check '[ $rc -eq 3 ] && grep -qi "nodes.json\|vocabulary\|term" "$W/err18b"' "a zip without the index files exits 3 with a message naming what is missing (rc=$rc)"
 
+# 19. installed-pack scan: one installed pack, one hand-made folder (no Mod_Info.txt), one empty folder
+D19="$W/dest19"; mkdir -p "$D19"
+"$INST" --install "$W/23999-Test-Mod-A.zip" --dest "$D19" --gamedata none >/dev/null 2>&1
+mkdir -p "$D19/ByHand" && cp "$D19/TestModA/level0_TestModA.dat" "$D19/ByHand/level0_ByHand.dat" && cp "$D19/TestModA/level3_TestModA.dat" "$D19/ByHand/level3_ByHand.dat"
+mkdir -p "$D19/Empty" "$D19/.hidden"
+"$INST" --list-installed "$D19" > "$W/out19" 2>&1; rc=$?
+check '[ $rc -eq 0 ] && [ "$(wc -l < "$W/out19" | tr -d " ")" = "3" ]' "three packs listed, hidden folder skipped (rc=$rc): $(cat "$W/out19")"
+check 'grep -q "^TestModA	2	[1-9][0-9]*	file:23999-Test-Mod-A.zip" "$W/out19"' "installed pack: name, 2 levels, size, source from Mod_Info.txt"
+check 'grep -q "^ByHand	2	[1-9][0-9]*	by hand$" "$W/out19"' "hand-made pack shows with 'by hand'"
+check 'grep -q "^Empty	0	0	by hand$" "$W/out19"' "empty folder shows with 0 levels"
+"$INST" --list-installed "$W/does-not-exist" > "$W/out19b" 2>&1; rc=$?
+check '[ $rc -eq 0 ] && [ ! -s "$W/out19b" ]' "missing TexturePacks dir lists nothing, exit 0 (rc=$rc)"
+
 echo "$PASS passed, $FAIL failed"; rm -rf "$W"; exit $((FAIL>0))
