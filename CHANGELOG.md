@@ -13,6 +13,11 @@ GitHub release notes and gets stamped with the version + date.
 - New app icon for macOS 26: the Oni "O" is now a proper layered glass icon, so it follows your system icon style (default, dark, clear, tinted) instead of sitting on the white placeholder tile. On older toolchains the build falls back to a refreshed static icon with a dark background.
 
 ### Mods
+- Reinstalling a mod that an earlier OniMod Installer put under a long (20 to 32
+  character) folder name now migrates it: the installer spots the old folder,
+  asks to replace, and removes it once the new short-named pack is in place,
+  so the engine stops logging "file name too long" every launch and the old
+  copy no longer takes a pack slot (#120).
 - HD Screens packs no longer break the Load Game and Options screens. Those
   mods re-lay-out the menu backgrounds on a bigger grid than the game draws,
   which is why the picture came out as four corners in the middle. The
