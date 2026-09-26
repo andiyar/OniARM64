@@ -140,6 +140,22 @@ printf '%s\n' "$seen" | while IFS= read -r src_lib; do
     install_name_tool -id "@executable_path/../Frameworks/$lib_basename" "$dst_lib"
 done
 
+# 4b'. SDL3 for sdl2-compat (#118). Homebrew's sdl2 is now sdl2-compat, which
+#      dlopens libSDL3.dylib by name at runtime, so the otool walk never sees it.
+SDL3_SRC="/opt/homebrew/opt/sdl3/lib/libSDL3.dylib"
+if [ -f "$FRAMEWORKS/libSDL2-2.0.0.dylib" ] && [ ! -f "$FRAMEWORKS/libSDL3.dylib" ] \
+        && grep -aq "libSDL3.dylib" "$FRAMEWORKS/libSDL2-2.0.0.dylib"; then
+    if [ -e "$SDL3_SRC" ]; then
+        # cp follows the symlink; bundle under the exact name sdl2-compat looks up.
+        cp -L "$SDL3_SRC" "$FRAMEWORKS/libSDL3.dylib"
+        chmod u+w "$FRAMEWORKS/libSDL3.dylib"
+        install_name_tool -id "@executable_path/../Frameworks/libSDL3.dylib" "$FRAMEWORKS/libSDL3.dylib"
+        echo "build-bundle.sh: bundled libSDL3.dylib for sdl2-compat (#118)"
+    else
+        echo "build-bundle.sh: WARNING: $SDL3_SRC not found; not bundling SDL3 (#118). Fine for a real SDL2 build; an sdl2-compat build will fail at SDL init without Homebrew." >&2
+    fi
+fi
+
 # 4c. Rewrite phase: walk binary + every bundled dylib, rewrite every
 #     /opt/homebrew/ LC_LOAD_DYLIB entry whose basename has a bundled copy.
 rewrite_refs() {
