@@ -12,6 +12,7 @@ final class Downloader: NSObject, URLSessionDownloadDelegate {
     private var result: Result<URL, Error>?
     private let done = DispatchSemaphore(value: 0)
     private var destination: URL!
+    private var lastReported = -1.0   // touched only on the session's serial delegate queue
 
     static func download(_ url: URL, to dest: URL, progress: @escaping (Double) -> Void) throws -> URL {
         precondition(!Thread.isMainThread, "Downloader.download blocks; call it from a work queue")
@@ -23,7 +24,10 @@ final class Downloader: NSObject, URLSessionDownloadDelegate {
         return try d.result!.get()
     }
     func urlSession(_ s: URLSession, downloadTask t: URLSessionDownloadTask, didWriteData b: Int64, totalBytesWritten w: Int64, totalBytesExpectedToWrite e: Int64) {
-        if e > 0 { onProgress(Double(w) / Double(e)) }
+        // fires per chunk; only pass on 1% steps (and the final chunk) so the main queue is not flooded
+        guard e > 0 else { return }
+        let f = Double(w) / Double(e)
+        if f - lastReported >= 0.01 || w >= e { lastReported = f; onProgress(f) }
     }
     func urlSession(_ s: URLSession, downloadTask t: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         // the temp file is deleted when this returns, so move it now

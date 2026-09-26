@@ -174,7 +174,7 @@ final class MainWindowController: NSWindowController {
 
     /// One path for dropped files and ticked Depot packages: BatchRunner on the work queue,
     /// Replace prompts and progress bridged to main. `then` runs on main after the report shows.
-    func runBatch(_ items: [BatchItem], label: String, then: (() -> Void)? = nil) {
+    func runBatch(_ items: [BatchItem], label: String, then: ((BatchOutcome) -> Void)? = nil) {
         runningBatches += 1
         updateInstallButton()
         setBusy(true, label: label)
@@ -186,7 +186,7 @@ final class MainWindowController: NSWindowController {
             })
         queue.async { [self] in
             let outcome = runner.run(items)
-            DispatchQueue.main.async { self.finishBatch(outcome.text); then?() }
+            DispatchQueue.main.async { self.finishBatch(outcome.text); then?(outcome) }
         }
     }
 
@@ -595,9 +595,10 @@ extension MainWindowController {
         let chosen = tickedVisible
         guard !chosen.isEmpty else { return }
         let nids = Set(chosen.map { $0.nid })
-        runBatch(chosen.map { .depot($0) }, label: "Installing \(chosen.count) package(s)…") { [weak self] in
+        runBatch(chosen.map { .depot($0) }, label: "Installing \(chosen.count) package(s)…") { [weak self] outcome in
             guard let self = self else { return }
-            self.ticked.subtract(nids)
+            // installed and skipped rows lose their tick; failed ones keep it so a retry is one click
+            self.ticked.subtract(nids.subtracting(outcome.failedNids))
             self.catalogueTable.reloadData()
             self.updateInstallButton()
         }
