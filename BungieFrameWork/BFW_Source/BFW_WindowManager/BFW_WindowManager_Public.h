@@ -475,6 +475,14 @@ WMrWindow_GetOwner(
 	WMtWindow				*inWindow);
 
 WMtWindow*
+WMrWindow_GetFirstChild(
+	WMtWindow				*inWindow);
+
+WMtWindow*
+WMrWindow_GetNextSibling(
+	WMtWindow				*inWindow);
+
+WMtWindow*
 WMrWindow_GetParent(
 	WMtWindow				*inWindow);
 

@@ -12,6 +12,10 @@
 #include "Motoko_Manager.h"
 
 #include "WM_CheckBox.h"
+#include "WM_Text.h"
+#include "WM_PartSpecification.h"
+#include "BFW_TextSystem.h"
+#include <string.h>
 #include "WM_PopupMenu.h"
 
 #include "Oni_GameState.h"
@@ -63,7 +67,8 @@ enum
 	ONcOptions_PM_Difficulty		= 108,
 	ONcOptions_CB_InvertMouseOn		= 109,
 	ONcOptions_Sldr_Gamma			= 110,
-	ONcOptions_CB_MetalRenderer		= 111		/* #89: created at runtime, not in the shipping template */
+	ONcOptions_CB_MetalRenderer		= 111,		/* #89: created at runtime, not in the shipping template */
+	ONcOptions_CB_OpenGLRenderer	= 112		/* #89: created at runtime, not in the shipping template */
 };
 
 enum
@@ -476,6 +481,389 @@ ONiOBU_Options_SetControls(
 	WMrPopupMenu_SetSelection(popup, (UUtInt16)ONrPersist_GetDifficulty());
 }
 
+#ifdef __APPLE__
+// ----------------------------------------------------------------------
+/* #89: the Options template's text labels ("Sound", "Overall Volume:",
+ * "Invert Mouse:") carry no usable item ID, so they are found by walking the
+ * dialog's children and matching the title. inPrefix matches the start of the
+ * title; inExact requires the whole title to match. Only text items count. */
+static WMtWindow*
+ONiOGU_Options_FindTextByTitle(
+	WMtDialog				*inDialog,
+	const char				*inTitle,
+	UUtBool					inExact)
+{
+	WMtWindow				*child;
+	size_t					length;
+
+	length = strlen(inTitle);
+	for (child = WMrWindow_GetFirstChild(inDialog); child != NULL; child = WMrWindow_GetNextSibling(child))
+	{
+		WMtWindowClass		*window_class;
+		const char			*title;
+
+		window_class = WMrWindow_GetClass(child);
+		if ((window_class == NULL) || (window_class->type != WMcWindowType_Text)) { continue; }
+
+		title = WMrWindow_GetTitlePtr(child);
+		if (title == NULL) { continue; }
+
+		if (inExact ? (strcmp(title, inTitle) == 0) : (strncmp(title, inTitle, length) == 0))
+		{
+			return child;
+		}
+	}
+
+	return NULL;
+}
+
+// ----------------------------------------------------------------------
+/* #89: width of inString in the given font, measured with a private text
+ * context so the draw context's shared font state is left alone. Returns -1
+ * if the font can't be measured. */
+static UUtInt16
+ONiOGU_Options_MeasureTitle(
+	const TStFontInfo		*inFontInfo,
+	const char				*inString)
+{
+	TStTextContext			*text_context;
+	UUtRect					rect;
+	char					buffer[WMcMaxTitleLength + 1];
+	UUtError				error;
+
+	if ((inFontInfo == NULL) || (inFontInfo->font_family == NULL)) { return -1; }
+
+	error =
+		TSrContext_New(
+			inFontInfo->font_family,
+			inFontInfo->font_size,
+			inFontInfo->font_style,
+			TSc_HLeft | TSc_VCenter,
+			UUcFalse,
+			&text_context);
+	if ((error != UUcError_None) || (text_context == NULL)) { return -1; }
+
+	UUrString_Copy(buffer, inString, WMcMaxTitleLength);
+	rect.left = rect.top = rect.right = rect.bottom = 0;
+	error = TSrContext_GetStringRect(text_context, buffer, &rect);
+	TSrContext_Delete(text_context);
+	if (error != UUcError_None) { return -1; }
+
+	return (UUtInt16)(rect.right - rect.left);
+}
+
+// ----------------------------------------------------------------------
+/* Z-order (#89 root cause): WMrWindow_New appends the new child at the END of
+ * the dialog's child list, and WMiWindow_Draw paints that list from last to
+ * first. The Options template's last item is pict_options_background, so an
+ * appended control is painted before the background art and ends up
+ * underneath it. Moving it to the head of the list puts it on top, like every
+ * template control. */
+static void
+ONiOGU_Options_BringToFront(
+	WMtWindow				*inWindow)
+{
+	WMrWindow_SetPosition(
+		inWindow,
+		NULL,
+		0, 0, 0, 0,
+		WMcPosChangeFlag_NoMove | WMcPosChangeFlag_NoSize);
+}
+
+// ----------------------------------------------------------------------
+/* #89: retitle the Sound box heading to "Sound and Renderer", widening the
+ * text item if the longer title would not fit. inOriginX/Y is the dialog's
+ * client origin in screen coordinates (WMrWindow_SetLocation is
+ * parent-relative). */
+static void
+ONiOGU_Options_RetitleSoundBox(
+	WMtDialog				*inDialog,
+	UUtInt16				inOriginX,
+	UUtInt16				inOriginY)
+{
+	static const char		new_title[] = "Sound and Renderer";
+	WMtWindow				*heading;
+	UUtRect					rect;
+	UUtInt16				width;
+	UUtInt16				height;
+	UUtInt16				needed;
+	UUtInt16				new_width;
+	UUtInt16				shift;
+	TStFontInfo				font_info;
+	UUtUns32				style;
+
+	heading = ONiOGU_Options_FindTextByTitle(inDialog, "Sound", UUcTrue);
+	if (heading == NULL)
+	{
+		UUrStartupMessage("options renderer toggle: heading MISSING - no \"Sound\" text item, title unchanged");
+		return;
+	}
+
+	WMrWindow_GetRect(heading, &rect);
+	WMrWindow_GetSize(heading, &width, &height);
+	WMrWindow_GetFontInfo(heading, &font_info);
+	WMrWindow_SetTitle(heading, new_title, WMcMaxTitleLength);
+
+	needed = ONiOGU_Options_MeasureTitle(&font_info, new_title);
+	new_width = width;
+	shift = 0;
+	if (needed < 0)
+	{
+		/* can't measure: scale the old width by the title length ratio */
+		needed = (UUtInt16)((width * (UUtInt16)(sizeof(new_title) - 1)) / 5);
+	}
+	needed = (UUtInt16)(needed + 4);	/* a little slack against glyph overhang */
+	if (needed > width)
+	{
+		new_width = needed;
+		style = WMrWindow_GetStyle(heading);
+		if (style & WMcTextStyle_HCenter)
+		{
+			shift = (UUtInt16)((new_width - width) / 2);
+		}
+		else if (style & WMcTextStyle_HRight)
+		{
+			shift = (UUtInt16)(new_width - width);
+		}
+		WMrWindow_SetSize(heading, new_width, height);
+		if (shift != 0)
+		{
+			WMrWindow_SetLocation(
+				heading,
+				(UUtInt16)(rect.left - shift - inOriginX),
+				(UUtInt16)(rect.top - inOriginY));
+		}
+	}
+
+	{
+		UUtRect			final_rect;
+
+		WMrWindow_GetRect(heading, &final_rect);
+		UUrStartupMessage(
+			"options renderer toggle: heading \"Sound\" -> \"%s\" (text item retitled; width %d -> %d, shift %d; rect %d,%d-%d,%d)",
+			new_title,
+			(int)width, (int)new_width, (int)shift,
+			(int)final_rect.left, (int)final_rect.top, (int)final_rect.right, (int)final_rect.bottom);
+	}
+}
+
+// ----------------------------------------------------------------------
+/* #89: the renderer row. Two mutually exclusive checkboxes, OpenGL and Metal,
+ * on the row under Overall Volume inside the Sound box, starting at the label
+ * column and sized to their titles. inAnchor is the Invert Mouse checkbox (or
+ * the gamma slider fallback): its height, style word and font are copied so
+ * the new row draws like the template's own checkboxes. */
+static void
+ONiOGU_Options_AddRendererRow(
+	WMtDialog				*inDialog,
+	WMtWindow				*inAnchor,
+	UUtBool					inAnchorIsCheckbox)
+{
+	extern UUtBool			metal_is_available(void);
+
+	WMtWindow				*slider;
+	WMtWindow				*label;
+	WMtWindow				*font_donor;
+	WMtWindow				*gl_box;
+	WMtWindow				*metal_box;
+	UUtRect					slider_rect;
+	UUtRect					label_rect;
+	UUtRect					created_rect;
+	UUtInt16				anchor_width;
+	UUtInt16				height;
+	UUtInt16				glyph_width;
+	UUtInt16				glyph_height;
+	UUtInt16				gl_text;
+	UUtInt16				metal_text;
+	UUtInt16				gl_width;
+	UUtInt16				metal_width;
+	UUtInt16				gap;
+	UUtInt16				left;
+	UUtInt16				top;
+	UUtInt16				origin_x;
+	UUtInt16				origin_y;
+	UUtUns32				style;
+	TStFontInfo				font_info;
+	PStPartSpecUI			*partspec_ui;
+	ONtRendererPref			pref;
+	UUtBool					metal_available;
+	UUtBool					want_metal;
+	const char				*label_source;
+
+	WMrWindow_GetSize(inAnchor, &anchor_width, &height);
+	UUrStartupMessage("options renderer toggle: anchor size %dx%d", (int)anchor_width, (int)height);
+
+	slider = WMrDialog_GetItemByID(inDialog, ONcOptions_Sldr_OverallVol);
+	if (slider == NULL)
+	{
+		UUrStartupMessage("options renderer toggle: MISSING - no Overall Volume slider, no renderer row");
+		return;
+	}
+	WMrWindow_GetRect(slider, &slider_rect);
+
+	/* the label column: the left edge of "Overall Volume:" */
+	label = ONiOGU_Options_FindTextByTitle(inDialog, "Overall Volume", UUcFalse);
+	label_source = "overall-volume label";
+	if (label == NULL)
+	{
+		label = ONiOGU_Options_FindTextByTitle(inDialog, "Invert Mouse", UUcFalse);
+		label_source = "invert-mouse label (fallback)";
+	}
+	if (label != NULL)
+	{
+		WMrWindow_GetRect(label, &label_rect);
+		left = label_rect.left;
+	}
+	else
+	{
+		left = (UUtInt16)(slider_rect.left - 100);
+		label_source = "slider left - 100 (fallback)";
+	}
+
+	/* copy the Invert Mouse checkbox's style word so the new row draws like
+	 * the template's; a slider's style means nothing to a checkbox */
+	style = inAnchorIsCheckbox ? WMrWindow_GetStyle(inAnchor) : WMcCheckBoxStyle_TextCheckBox;
+
+	// borrow the font from a checkbox that already draws a title:
+	// the anchor itself when it is Invert Mouse, else Subtitles
+	font_donor = inAnchorIsCheckbox ? inAnchor : WMrDialog_GetItemByID(inDialog, ONcOptions_CB_SubtitlesOn);
+	if (font_donor == NULL) { font_donor = inAnchor; }
+	WMrWindow_GetFontInfo(font_donor, &font_info);
+
+	gl_box =
+		WMrWindow_New(
+			WMcWindowType_CheckBox,
+			"OpenGL",
+			WMcWindowFlag_Visible | WMcWindowFlag_Child,
+			style,
+			ONcOptions_CB_OpenGLRenderer,
+			0, 0,
+			height, height,
+			inDialog,
+			0);
+	metal_box =
+		WMrWindow_New(
+			WMcWindowType_CheckBox,
+			"Metal",
+			WMcWindowFlag_Visible | WMcWindowFlag_Child,
+			style,
+			ONcOptions_CB_MetalRenderer,
+			0, 0,
+			height, height,
+			inDialog,
+			0);
+	if ((gl_box == NULL) || (metal_box == NULL))
+	{
+		UUrStartupMessage("options renderer toggle: WMrWindow_New returned NULL - no checkbox (opengl=%p metal=%p)",
+			(void *)gl_box, (void *)metal_box);
+		if (gl_box != NULL) { WMrWindow_Delete(gl_box); }
+		if (metal_box != NULL) { WMrWindow_Delete(metal_box); }
+		return;
+	}
+	WMrWindow_SetFontInfo(gl_box, &font_info);
+	WMrWindow_SetFontInfo(metal_box, &font_info);
+
+	/* WMrWindow_New takes parent-relative coordinates and the WM has no getter
+	 * for them; both boxes were created at the parent origin, so the screen
+	 * rect of a fresh one gives the origin to subtract. */
+	WMrWindow_GetRect(gl_box, &created_rect);
+	origin_x = created_rect.left;
+	origin_y = created_rect.top;
+
+	/* the checkbox glyph, drawn at the left of the control, then a 2 pixel
+	 * buffer (WMcCheckBox_Buffer) before the title */
+	glyph_width = 0;
+	glyph_height = 0;
+	partspec_ui = PSrPartSpecUI_GetActive();
+	if ((partspec_ui != NULL) && (partspec_ui->checkbox_on != NULL))
+	{
+		PSrPartSpec_GetSize(partspec_ui->checkbox_on, PScPart_LeftTop, &glyph_width, &glyph_height);
+	}
+	gl_text = ONiOGU_Options_MeasureTitle(&font_info, "OpenGL");
+	metal_text = ONiOGU_Options_MeasureTitle(&font_info, "Metal");
+	if ((glyph_width > 0) && (gl_text > 0) && (metal_text > 0))
+	{
+		gl_width = (UUtInt16)(glyph_width + 2 + gl_text + 4);
+		metal_width = (UUtInt16)(glyph_width + 2 + metal_text + 4);
+		gap = glyph_width;
+	}
+	else
+	{
+		gl_width = (UUtInt16)(height * 6);
+		metal_width = (UUtInt16)(height * 5);
+		gap = height;
+		UUrStartupMessage("options renderer toggle: measure fallback (glyph %d, text %d/%d) - using height*6 / height*5",
+			(int)glyph_width, (int)gl_text, (int)metal_text);
+	}
+	UUrStartupMessage("options renderer toggle: measured glyph %dx%d, text OpenGL=%d Metal=%d -> widths %d/%d gap %d; label column %d from %s",
+		(int)glyph_width, (int)glyph_height, (int)gl_text, (int)metal_text,
+		(int)gl_width, (int)metal_width, (int)gap, (int)left, label_source);
+
+	/* keep the row inside the Sound box: its right edge must not pass the
+	 * Overall Volume slider's right edge. Shrink the gap first. */
+	if (left + gl_width + gap + metal_width > slider_rect.right)
+	{
+		UUtInt16		over;
+
+		over = (UUtInt16)(left + gl_width + gap + metal_width - slider_rect.right);
+		gap = (over >= gap) ? 0 : (UUtInt16)(gap - over);
+		UUrStartupMessage("options renderer toggle: row clamped (over by %d, gap now %d, row right %d vs slider right %d)",
+			(int)over, (int)gap, (int)(left + gl_width + gap + metal_width), (int)slider_rect.right);
+	}
+
+	/* one row below the slider with a half-row gap, as the old single toggle
+	 * sat under Invert Mouse */
+	top = (UUtInt16)(slider_rect.bottom + height / 2);
+
+	WMrWindow_SetSize(gl_box, gl_width, height);
+	WMrWindow_SetSize(metal_box, metal_width, height);
+	WMrWindow_SetLocation(gl_box, (UUtInt16)(left - origin_x), (UUtInt16)(top - origin_y));
+	WMrWindow_SetLocation(metal_box, (UUtInt16)(left + gl_width + gap - origin_x), (UUtInt16)(top - origin_y));
+
+	ONiOGU_Options_BringToFront(gl_box);
+	ONiOGU_Options_BringToFront(metal_box);
+	UUrStartupMessage("options renderer toggle: moved to front of z-order (above pict_options_background)");
+
+	{
+		UUtRect			gl_rect;
+		UUtRect			metal_rect;
+		UUtRect			anchor_rect;
+
+		WMrWindow_GetRect(gl_box, &gl_rect);
+		WMrWindow_GetRect(metal_box, &metal_rect);
+		WMrWindow_GetRect(inAnchor, &anchor_rect);
+		UUrStartupMessage(
+			"options renderer toggle: anchor rect %d,%d-%d,%d; slider rect %d,%d-%d,%d; created at %d,%d-%d,%d; placed OpenGL at %d,%d-%d,%d visible=%d; Metal at %d,%d-%d,%d visible=%d",
+			(int)anchor_rect.left, (int)anchor_rect.top, (int)anchor_rect.right, (int)anchor_rect.bottom,
+			(int)slider_rect.left, (int)slider_rect.top, (int)slider_rect.right, (int)slider_rect.bottom,
+			(int)created_rect.left, (int)created_rect.top, (int)created_rect.right, (int)created_rect.bottom,
+			(int)gl_rect.left, (int)gl_rect.top, (int)gl_rect.right, (int)gl_rect.bottom,
+			(int)WMrWindow_GetVisible(gl_box),
+			(int)metal_rect.left, (int)metal_rect.top, (int)metal_rect.right, (int)metal_rect.bottom,
+			(int)WMrWindow_GetVisible(metal_box));
+	}
+
+	ONiOGU_Options_RetitleSoundBox(inDialog, origin_x, origin_y);
+
+	// initial state: exactly one checked
+	pref = ONrRendererPref_Read();
+	want_metal =
+		(pref != ONcRendererPref_None) ?
+			(UUtBool)(pref == ONcRendererPref_Metal) :
+			ONgCommandLine.useMetal;
+	metal_available = metal_is_available();
+	if (!metal_available)
+	{
+		want_metal = UUcFalse;
+		WMrWindow_SetEnabled(metal_box, UUcFalse);
+	}
+	WMrCheckBox_SetCheck(gl_box, (UUtBool)!want_metal);
+	WMrCheckBox_SetCheck(metal_box, want_metal);
+	UUrStartupMessage("options renderer toggle: initial state pref=%d -> %s checked; metal available=%d",
+		(int)pref, want_metal ? "Metal" : "OpenGL", (int)metal_available);
+}
+#endif
+
 // ----------------------------------------------------------------------
 static void
 ONiOGU_Options_InitDialog(
@@ -514,138 +902,30 @@ ONiOGU_Options_InitDialog(
 
 #ifdef __APPLE__
 	/* #89: the shipping Options template can't gain controls by editing game
-	 * data, so the renderer toggle is created here. It is positioned by
-	 * measuring the Invert Mouse checkbox (gamma slider as a fallback) rather
-	 * than by absolute coordinates, so it lands one row under Invert Mouse in
-	 * the third box on whichever Options layout is on screen. */
+	 * data, so the renderer choice is created here: the Sound box becomes
+	 * "Sound and Renderer" and gains an OpenGL / Metal checkbox row under
+	 * Overall Volume. See ONiOGU_Options_AddRendererRow. */
 	{
-		extern UUtBool			metal_is_available(void);
-
 		WMtWindow				*anchor;
 		UUtBool					anchor_is_checkbox;
 
-		// the template's own checkbox row; the gamma slider is the fallback
+		// the template's own checkbox; the gamma slider is the fallback
 		anchor = WMrDialog_GetItemByID(inDialog, ONcOptions_CB_InvertMouseOn);
 		anchor_is_checkbox = (UUtBool)(anchor != NULL);
 		if (anchor == NULL)
 		{
 			anchor = WMrDialog_GetItemByID(inDialog, ONcOptions_Sldr_Gamma);
 		}
-		// #89 diagnostics: the checkbox never rendered on the maintainer's
-		// machine with no visible failure — every step reports until the
-		// on-screen result is confirmed.
+		// #89 diagnostics: every step reports until the on-screen result is
+		// confirmed.
 		UUrStartupMessage("options renderer toggle: %s",
 			anchor_is_checkbox ? "anchor invert-mouse" :
 			(anchor != NULL) ? "anchor gamma (fallback)" : "MISSING - no checkbox");
 		if ((anchor != NULL) &&
-			(WMrDialog_GetItemByID(inDialog, ONcOptions_CB_MetalRenderer) == NULL))
+			(WMrDialog_GetItemByID(inDialog, ONcOptions_CB_MetalRenderer) == NULL) &&
+			(WMrDialog_GetItemByID(inDialog, ONcOptions_CB_OpenGLRenderer) == NULL))
 		{
-			WMtWindow			*checkbox;
-			UUtInt16			width;
-			UUtInt16			height;
-			UUtUns32			style;
-
-			WMrWindow_GetSize(anchor, &width, &height);
-			UUrStartupMessage("options renderer toggle: anchor size %dx%d", (int)width, (int)height);
-
-			/* copy the Invert Mouse checkbox's style word so the new row draws
-			 * like the template's; a slider's style means nothing to a checkbox */
-			style = anchor_is_checkbox ? WMrWindow_GetStyle(anchor) : WMcCheckBoxStyle_TextCheckBox;
-
-			checkbox =
-				WMrWindow_New(
-					WMcWindowType_CheckBox,
-					"Metal renderer",
-					WMcWindowFlag_Visible | WMcWindowFlag_Child,
-					style,
-					ONcOptions_CB_MetalRenderer,
-					0,
-					0,
-					width,
-					height,
-					inDialog,
-					0);
-			if (checkbox == NULL)
-			{
-				UUrStartupMessage("options renderer toggle: WMrWindow_New returned NULL - no checkbox");
-			}
-			else
-			{
-				WMtWindow		*font_donor;
-				UUtRect			anchor_rect;
-				UUtRect			checkbox_rect;
-				UUtRect			dialog_rect;
-				UUtInt16		gap;
-				UUtInt16		top;
-				TStFontInfo		font_info;
-				ONtRendererPref	pref;
-				UUtBool			checked;
-
-				/* WMrWindow_New takes parent-relative coordinates and the WM has
-				 * no getter for them, so place the control by the difference of
-				 * two screen rects — it was created at the parent origin. */
-				WMrWindow_GetRect(anchor, &anchor_rect);
-				WMrWindow_GetRect(checkbox, &checkbox_rect);
-				WMrWindow_GetRect(inDialog, &dialog_rect);
-
-				/* One row below the anchor with a half-row gap. Subtitles and Invert
-				 * Mouse are not known to share a box, so their spacing is not used as
-				 * the row pitch; half a row matches the template to the eye. Clamp inside the dialog if that would run off its end. */
-				gap = (UUtInt16)((anchor_rect.bottom - anchor_rect.top) / 2);
-				top = (UUtInt16)(anchor_rect.bottom + gap);
-				if (top + height > dialog_rect.bottom)
-				{
-					top = (UUtInt16)(dialog_rect.bottom - height - gap);
-					if (top < anchor_rect.bottom) { top = anchor_rect.bottom; }	/* review: never overlap the anchor row */
-					UUrStartupMessage("options renderer toggle: clamped (dialog bottom %d)", (int)dialog_rect.bottom);
-				}
-				WMrWindow_SetLocation(
-					checkbox,
-					(UUtInt16)(anchor_rect.left - checkbox_rect.left),
-					(UUtInt16)(top - checkbox_rect.top));
-				{
-					UUtRect final_rect;
-					WMrWindow_GetRect(checkbox, &final_rect);
-					UUrStartupMessage(
-						"options renderer toggle: anchor rect %d,%d-%d,%d; created at %d,%d-%d,%d; placed at %d,%d-%d,%d; visible=%d",
-						(int)anchor_rect.left, (int)anchor_rect.top, (int)anchor_rect.right, (int)anchor_rect.bottom,
-						(int)checkbox_rect.left, (int)checkbox_rect.top, (int)checkbox_rect.right, (int)checkbox_rect.bottom,
-						(int)final_rect.left, (int)final_rect.top, (int)final_rect.right, (int)final_rect.bottom,
-						(int)WMrWindow_GetVisible(checkbox));
-				}
-
-				/* Z-order (#89 root cause): WMrWindow_New appends the new child at
-				 * the END of the dialog's child list, and WMiWindow_Draw paints that
-				 * list from last to first. The Options template's last item is
-				 * pict_options_background, so an appended control is painted before
-				 * the background art and ends up underneath it. Moving it to the
-				 * head of the list puts it on top, like every template control. */
-				WMrWindow_SetPosition(
-					checkbox,
-					NULL,
-					0, 0, 0, 0,
-					WMcPosChangeFlag_NoMove | WMcPosChangeFlag_NoSize);
-				UUrStartupMessage("options renderer toggle: moved to front of z-order (above pict_options_background)");
-
-				// borrow the font from a checkbox that already draws a title:
-				// the anchor itself when it is Invert Mouse, else Subtitles
-				font_donor = anchor_is_checkbox ? anchor : WMrDialog_GetItemByID(inDialog, ONcOptions_CB_SubtitlesOn);
-				if (font_donor == NULL) { font_donor = anchor; }
-				WMrWindow_GetFontInfo(font_donor, &font_info);
-				WMrWindow_SetFontInfo(checkbox, &font_info);
-
-				pref = ONrRendererPref_Read();
-				checked =
-					(pref != ONcRendererPref_None) ?
-						(UUtBool)(pref == ONcRendererPref_Metal) :
-						ONgCommandLine.useMetal;
-				WMrCheckBox_SetCheck(checkbox, checked);
-
-				if (!metal_is_available())
-				{
-					WMrWindow_SetEnabled(checkbox, UUcFalse);
-				}
-			}
+			ONiOGU_Options_AddRendererRow(inDialog, anchor, anchor_is_checkbox);
 		}
 	}
 #endif
@@ -725,12 +1005,28 @@ ONiOGU_Options_HandleCommand(
 		break;
 
 #ifdef __APPLE__
+		case ONcOptions_CB_OpenGLRenderer:
 		case ONcOptions_CB_MetalRenderer:
 			if (command_type != WMcNotify_Click) { break; }
 			{
 				UUtBool			want_metal;
+				WMtWindow		*other;
 
-				want_metal = WMrCheckBox_GetCheck(inControl);
+				want_metal = (UUtBool)(control_id == ONcOptions_CB_MetalRenderer);
+
+				/* the click has already toggled the box: if it is now off, it
+				 * was the checked one, so put it back and do nothing else */
+				if (!WMrCheckBox_GetCheck(inControl))
+				{
+					WMrCheckBox_SetCheck(inControl, UUcTrue);
+					break;
+				}
+
+				other = WMrDialog_GetItemByID(
+					inDialog,
+					want_metal ? ONcOptions_CB_OpenGLRenderer : ONcOptions_CB_MetalRenderer);
+				if (other != NULL) { WMrCheckBox_SetCheck(other, UUcFalse); }
+
 				if (!ONrRendererPref_Write(want_metal))
 				{
 					UUrStartupMessage("could not save the renderer preference");

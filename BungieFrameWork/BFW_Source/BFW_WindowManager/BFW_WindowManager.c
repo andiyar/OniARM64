@@ -1019,6 +1019,33 @@ WMrWindow_GetOwner(
 }
 
 // ----------------------------------------------------------------------
+/* #89: child walk for runtime tweaks to template dialogs whose items have
+ * no usable ID (text labels). Returns the head of the child list, which is
+ * the frontmost child. */
+WMtWindow*
+WMrWindow_GetFirstChild(
+	WMtWindow				*inWindow)
+{
+	UUmAssert(inWindow);
+
+	if (!WMiWA_Valid(inWindow)) { return NULL; }
+
+	return inWindow->child;
+}
+
+// ----------------------------------------------------------------------
+WMtWindow*
+WMrWindow_GetNextSibling(
+	WMtWindow				*inWindow)
+{
+	UUmAssert(inWindow);
+
+	if (!WMiWA_Valid(inWindow)) { return NULL; }
+
+	return inWindow->next;
+}
+
+// ----------------------------------------------------------------------
 WMtWindow*
 WMrWindow_GetParent(
 	WMtWindow				*inWindow)
