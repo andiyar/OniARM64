@@ -12,6 +12,7 @@
 */
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>	// fmod, ONI_TICK_TRACE (issue #49)
 
 #include "BFW.h"
 #include "BFW_Motoko.h"
@@ -574,6 +575,31 @@ ONiTest_Proc(
 	return UUcFalse;
 }
 
+// issue #49 diagnostic: ONI_TICK_TRACE=1 bins game_ticks per un-paused frame and
+// prints one [tick] line every 600 counted frames. Off by default.
+static UUtBool oniTickTraceEnabled(void)
+{
+	static int s_init = 0;
+	static UUtBool s_enabled = UUcFalse;
+	if (!s_init) {
+		const char *v = getenv("ONI_TICK_TRACE");
+		s_enabled = (v != NULL && v[0] != '0' && v[0] != '\0') ? UUcTrue : UUcFalse;
+		s_init = 1;
+	}
+	return s_enabled;
+}
+
+static struct {
+	UUtUns32 frames;			// cumulative counted frames
+	UUtUns32 window;			// frames in the current 600-frame window
+	UUtUns32 ticks[4];			// game_ticks 0/1/2/3+
+	UUtUns32 actions[3];		// numActionsInBuffer 0/1/2+
+	UUtUns32 slowmo;
+	UUtUns32 run;				// current run of game_ticks != 1
+	UUtUns32 longest_run;
+	UUtUns32 phase[10];			// sub-ms phase of the frame clock, in tenths
+} ONgTickTrace;
+
 #ifndef USE_OPENGL_WITH_BINK
 static UUtBool play_ending_movie_at_exit= UUcFalse;
 #endif
@@ -688,6 +714,42 @@ ONiRunGame(
 				TMrAKOT_TripwireCheck(twmsg3);
 			}
 			if (rg_log) UUrStartupMessage("[RG1] post ONrGameState_Update game_ticks=%u", (unsigned)game_ticks);
+			if (oniTickTraceEnabled())	// issue #49: 0/2-tick frames vs sluggish feel
+			{
+				double ms;
+				UUtUns32 tenth;
+				ONgTickTrace.ticks[game_ticks >= 3 ? 3 : game_ticks]++;
+				ONgTickTrace.actions[numActionsInBuffer >= 2 ? 2 : numActionsInBuffer]++;
+				if (ONgGameState->local.slowMotionEnable || ONgGameState->local.slowMotionTimer > 0) {
+					ONgTickTrace.slowmo++;
+				}
+				ms = (double)UUrMachineTime_High() / UUrMachineTime_High_Frequency() * 1000.0;
+				tenth = (UUtUns32)(fmod(ms, 1.0) * 10.0);
+				if (tenth > 9) tenth = 9;
+				ONgTickTrace.phase[tenth]++;
+				if (game_ticks != 1) {
+					ONgTickTrace.run++;
+					if (ONgTickTrace.run > ONgTickTrace.longest_run) ONgTickTrace.longest_run = ONgTickTrace.run;
+				} else {
+					ONgTickTrace.run = 0;
+				}
+				ONgTickTrace.frames++;
+				if (++ONgTickTrace.window >= 600) {
+					UUrStartupMessage("[tick] f=%u ticks 0/1/2/3+=%u/%u/%u/%u actions 0/1/2+=%u/%u/%u slowmo=%u longest-non1-run=%u phase-tenths=%u,%u,%u,%u,%u,%u,%u,%u,%u,%u",
+						(unsigned)ONgTickTrace.frames,
+						(unsigned)ONgTickTrace.ticks[0], (unsigned)ONgTickTrace.ticks[1], (unsigned)ONgTickTrace.ticks[2], (unsigned)ONgTickTrace.ticks[3],
+						(unsigned)ONgTickTrace.actions[0], (unsigned)ONgTickTrace.actions[1], (unsigned)ONgTickTrace.actions[2],
+						(unsigned)ONgTickTrace.slowmo, (unsigned)ONgTickTrace.longest_run,
+						(unsigned)ONgTickTrace.phase[0], (unsigned)ONgTickTrace.phase[1], (unsigned)ONgTickTrace.phase[2], (unsigned)ONgTickTrace.phase[3], (unsigned)ONgTickTrace.phase[4],
+						(unsigned)ONgTickTrace.phase[5], (unsigned)ONgTickTrace.phase[6], (unsigned)ONgTickTrace.phase[7], (unsigned)ONgTickTrace.phase[8], (unsigned)ONgTickTrace.phase[9]);
+					ONgTickTrace.window = 0;
+					UUrMemory_Clear(ONgTickTrace.ticks, sizeof(ONgTickTrace.ticks));
+					UUrMemory_Clear(ONgTickTrace.actions, sizeof(ONgTickTrace.actions));
+					UUrMemory_Clear(ONgTickTrace.phase, sizeof(ONgTickTrace.phase));
+					ONgTickTrace.slowmo = 0;
+					ONgTickTrace.longest_run = 0;	// current run keeps going
+				}
+			}
 			UUmError_ReturnOnErrorMsg(error, "Could not update game state.");
 
 			#if defined(BRENTS_CHEESY_GAME_PERF) && BRENTS_CHEESY_GAME_PERF
