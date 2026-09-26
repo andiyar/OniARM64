@@ -1239,6 +1239,10 @@ static void KeyConfig(void)
 				if (!has_pad_binding) {
 					LIrGamepad_BindDefaults();
 				}
+			} else {
+				// No readable key_config at all: nothing ran unbindall, but the
+				// programmatic set has no pad entries either, so bind them here.
+				LIrGamepad_BindDefaults();
 			}
 		}
 #endif
