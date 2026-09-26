@@ -274,4 +274,16 @@ check 'grep -q "^=== " "$LOG17" && grep -q "23999-Test-Mod-A.zip" "$LOG17" && gr
 HOME="$H17" "$INST" --install "$W/empty-mod" --dest "$W/dest17" --gamedata none >/dev/null 2>&1
 check '[ "$(grep -c "^=== " "$LOG17")" = "2" ] && grep -qi "no texture" "$LOG17"' "a failed run is logged too (2 entries)"
 
+# 18. Depot index parser against a checked-in copy of jsoncache.zip (no network)
+"$INST" --parse-index tests/fixtures/depot/jsoncache.zip > "$W/out18" 2>"$W/err18"; rc=$?
+check '[ $rc -eq 0 ] && [ "$(wc -l < "$W/out18" | tr -d " ")" = "36" ]' "36 texture packages in Package format parsed (rc=$rc, got $(wc -l < "$W/out18")): $(cat "$W/err18")"
+check 'grep -q "^70000	HD Screens	" "$W/out18"' "HD Screens row: number, tab, title"
+check 'awk -F"\t" "\$7 !~ /^http:\/\/mods.oni2.net\/system\/files\/.*\.zip\$/ {bad++} END {exit bad>0}" "$W/out18"' "every row has a Depot download URL in column 7"
+check '! grep -q "sky dome test" "$W/out18"' "a file-swap texture mod is excluded (Package format only)"
+check '! grep -qi "Kanabo" "$W/out18"' "a Tool package is excluded"
+check 'sort -t"	" -k2,2f "$W/out18" | diff -q - "$W/out18" >/dev/null' "rows sorted by title, case-insensitive"
+mkdir -p "$W/badidx"; (cd "$W/badidx" && printf '[]' > vocabulary.json && ditto -c -k . "$W/bad.zip")
+"$INST" --parse-index "$W/bad.zip" >/dev/null 2>"$W/err18b"; rc=$?
+check '[ $rc -eq 3 ] && grep -qi "nodes.json\|vocabulary\|term" "$W/err18b"' "a zip without the index files exits 3 with a message naming what is missing (rc=$rc)"
+
 echo "$PASS passed, $FAIL failed"; rm -rf "$W"; exit $((FAIL>0))
