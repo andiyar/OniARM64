@@ -1,6 +1,7 @@
 // main.swift — Oni Texture Installer entry (#20).
-//   CLI:  OniTextureInstaller --install <zip-or-folder> [--dest <TexturePacks>]
-//                         [--gamedata <GameDataFolder>|none] [--replace]
+//   CLI:  OniTextureInstaller --install <zip-or-folder>... [--dest <TexturePacks>]
+//                         [--gamedata <GameDataFolder>|none] [--replace] [--source-depot <N>]
+//         (several inputs install in turn, one combined report; Batch.swift)
 //         OniTextureInstaller --file-id <level> <suffix>   (test hook: prints the
 //         engine file id the installer computes, for the Swift/C parity check)
 //         OniTextureInstaller --parse-index <jsoncache.zip>   (prints the Depot
@@ -33,11 +34,17 @@ func stderrLine(_ s: String) {
 
 func runCLI(_ args: [String]) -> Never {
     var inst = makeInstaller()
-    var input: URL?
+    var inputs: [URL] = []
+    var sourceDepot: Int?
     var i = 0
     while i < args.count {
         switch args[i] {
-        case "--install": i += 1; if i < args.count { input = URL(fileURLWithPath: args[i]) }
+        case "--install":
+            while i + 1 < args.count, !args[i + 1].hasPrefix("--") { i += 1; inputs.append(URL(fileURLWithPath: args[i])) }
+        case "--source-depot":
+            i += 1
+            guard i < args.count, let n = Int(args[i]) else { stderrLine("usage: --source-depot <Depot package number>"); exit(2) }
+            sourceDepot = n
         case "--dest":    i += 1; if i < args.count { inst.texturePacksDir = URL(fileURLWithPath: args[i]) }
         case "--gamedata": i += 1; if i < args.count { inst.gameDataDir = args[i] == "none" ? nil : URL(fileURLWithPath: args[i]) }
         case "--replace": inst.replace = true
@@ -60,31 +67,27 @@ func runCLI(_ args: [String]) -> Never {
             guard i + 1 < args.count else { stderrLine("usage: OniTextureInstaller --list-installed <TexturePacks>"); exit(2) }
             for p in InstalledPacks.scan(dir: URL(fileURLWithPath: args[i + 1])) { print(InstalledPacks.tsvLine(p)) }
             exit(0)
-        case "--help": input = nil; i = args.count
+        case "--help": inputs = []; i = args.count
         default:
             stderrLine("unknown argument \(args[i])")
             exit(2)
         }
         i += 1
     }
-    guard let input = input else {
-        stderrLine("usage: OniTextureInstaller --install <zip-or-folder> [--dest dir] [--gamedata dir|none] [--replace]\n       OniTextureInstaller --parse-index <jsoncache.zip>\n       OniTextureInstaller --list-installed <TexturePacks>")
+    guard let first = inputs.first else {
+        stderrLine("usage: OniTextureInstaller --install <zip-or-folder>... [--dest dir] [--gamedata dir|none] [--replace] [--source-depot N]\n       OniTextureInstaller --parse-index <jsoncache.zip>\n       OniTextureInstaller --list-installed <TexturePacks>\nexit: 0 installed (at least one), 1 no textures, 2 other failure, 4 already installed (use --replace),\n      5 file-id collision, 6 download failed")
         exit(2)
     }
-    do {
-        let r = try inst.install(input)
-        ReportLog.append(source: input.path, text: r.text)
-        print(r.text)
-        exit(0)
-    } catch let e as InstallError {
-        ReportLog.append(source: input.path, text: "Nothing installed: \(e.description)")
-        stderrLine("Oni Texture Installer: \(e.description)")
-        exit(e.exitCode)
-    } catch {
-        ReportLog.append(source: input.path, text: "Nothing installed: \(error)")
-        stderrLine("Oni Texture Installer: \(error)")
-        exit(2)
-    }
+    let base = inst
+    let override = sourceDepot.map { InstallSource.depot(packageNumber: $0, title: first.deletingPathExtension().lastPathComponent) }
+    let runner = BatchRunner(makeInstaller: { base }, sourceOverride: override, askReplace: { _ in base.replace })
+    let outcome = runner.run(inputs.map { .file($0) })
+    print(outcome.text)
+    // One install that worked is a success; otherwise "already installed" (4) if that is all
+    // that happened, else the first failure's code (matches the old single-input exits).
+    if outcome.installed > 0 { exit(0) }
+    if outcome.skipped > 0 && outcome.failed == 0 { exit(4) }
+    exit(outcome.firstFailureCode ?? 0)
 }
 
 let argv = Array(CommandLine.arguments.dropFirst())

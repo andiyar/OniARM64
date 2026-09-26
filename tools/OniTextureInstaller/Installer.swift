@@ -76,12 +76,16 @@ struct InstallReport {
     }
 }
 
+/// Where an install came from; written into the pack's Mod_Info.txt (#124).
+enum InstallSource { case unknown, file(String), depot(packageNumber: Int, title: String) }
+
 struct ModInstaller {
     var onipack: URL
     var indexTool: URL
     var texturePacksDir: URL
     var gameDataDir: URL?          // nil = don't try the alpha guard
     var replace = false
+    var source: InstallSource = .unknown
 
     static func defaultTexturePacksDir() -> URL {
         FileManager.default.homeDirectoryForCurrentUser
@@ -235,7 +239,12 @@ struct ModInstaller {
 
         // 7. Credits / provenance file, then move into place.
         var meta = "Installed by Oni Texture Installer from \(input.lastPathComponent)\n"
-        if let info = info { for (k, v) in info.sorted(by: { $0.key < $1.key }) { meta += "\(k): \(v)\n" } }
+        switch source {
+        case .depot(let n, let t): meta += "DepotPackage: \(n)\nDepotTitle: \(t)\n"
+        case .file(let name): meta += "Source: \(name)\n"
+        case .unknown: meta += "Source: \(input.lastPathComponent)\n"
+        }
+        if let info = info { for (k, v) in info.sorted(by: { $0.key < $1.key }) where k != "Source" && k != "DepotPackage" && k != "DepotTitle" { meta += "\(k): \(v)\n" } }
         try meta.write(to: stagedPack.appendingPathComponent("Mod_Info.txt"), atomically: true, encoding: .utf8)
 
         try fm.createDirectory(at: texturePacksDir, withIntermediateDirectories: true)
