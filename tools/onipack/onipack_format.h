@@ -90,6 +90,11 @@ static inline uint64_t opk_rd64(const uint8_t *p) {
     return (uint64_t)opk_rd32(p) | ((uint64_t)opk_rd32(p + 4) << 32);
 }
 
+/* The engine's file layer caps a leaf name at BFcMaxFileNameLength-1 = 31
+ * characters (BFW_FileManager.h). A longer level<N>_<Suffix>.dat can
+ * register but never load (#111, #112), so writers refuse it up front. */
+#define OPK_MAX_LEAF_CHARS 31
+
 /* fileID from output name parts — engine: TMrUtility_LevelInfo_Get
  * (BFW_TM_Common.c:623-704); OniSplit: MakeFileId. "Final" => hash 0.
  * hash/factor are uint32_t as in the engine (UUtUns32); negative digit

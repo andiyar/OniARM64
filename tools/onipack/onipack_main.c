@@ -92,6 +92,14 @@ int main(int argc, char **argv) {
         fprintf(stderr, "onipack: output must be named level<N>_<Suffix>.dat (got %s)\n", base);
         return 2;
     }
+    if (strlen(base) > OPK_MAX_LEAF_CHARS) {
+        int prefixLen = (int)(strchr(base, '_') - base) + 1 + 4;   /* "level<N>_" + ".dat"; not derived from suffix, which sscanf caps at 63 */
+        fprintf(stderr,
+                "onipack: output name %s is %zu characters; Oni allows at most %d for "
+                "level<N>_<Suffix>.dat, so the suffix for level %d must be %d characters or fewer\n",
+                base, strlen(base), OPK_MAX_LEAF_CHARS, level, OPK_MAX_LEAF_CHARS - prefixLen);
+        return 2;
+    }
     char outDir[1024];
     if (base == outDat) snprintf(outDir, sizeof outDir, ".");
     else { snprintf(outDir, sizeof outDir, "%.*s", (int)(base - outDat - 1), outDat); }
