@@ -13,6 +13,9 @@ GitHub release notes and gets stamped with the version + date.
 - New app icon for macOS 26: the Oni "O" is now a proper layered glass icon, so it follows your system icon style (default, dark, clear, tinted) instead of sitting on the white placeholder tile. On older toolchains the build falls back to a refreshed static icon with a dark background.
 
 ### Mods
+- A texture pack whose `.dat` file is cut short (a bad download or copy) is
+  now skipped with a `[tm] … header rejected (truncated …)` line in the log
+  instead of crashing the game at level load (#119).
 - Texture packs with over-long file names no longer stop Oni from starting. A
   pack file whose name runs past the engine's 31-character limit (`level10_` +
   name + `.dat`) used to make the game quit silently on launch (or crash, on
@@ -76,6 +79,11 @@ GitHub release notes and gets stamped with the version + date.
   (or `persist.dat.unreadable.bak`) before anything gets cleared, so save
   points, unlocked levels and diary pages are still recoverable. An existing
   backup is never overwritten, so the earliest copy is the one you keep (#91).
+
+### In-game
+- The aiming reticle and muzzle flashes are round again on widescreen
+  displays (16:9, 21:9). Sprites were scaled with a 4:3 assumption, so they
+  came out stretched sideways at anything wider (#114, reported by simX).
 
 ### Menus
 - Grabbing the scrollbar thumb in a list (save/load, options) no longer makes
