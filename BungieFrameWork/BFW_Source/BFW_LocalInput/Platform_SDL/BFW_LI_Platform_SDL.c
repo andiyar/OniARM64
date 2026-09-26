@@ -28,11 +28,14 @@
 // ======================================================================
 static UUtWindow			LIgWindow;
 
-// #78 -- set by the event pump when a real (non-repeat) key-down arrives for a
-// key bound to escape; consumed by every keyboard poll. The polled path may
-// only raise the escape action bit on a frame that saw such a key-down.
-static UUtBool				LIgEscapeKeyDownThisFrame = UUcFalse;
-static int					LIgEscapeKeyDownScan = -1;
+// #78 -- held latch: set by the event pump on a real (non-repeat) key-down of a
+// key bound to escape, cleared on that key's key-up (SDL synthesises key-ups on
+// focus loss, so that clears it too) and on any input mode change. The polled
+// path may only raise the escape action bit while the latch is set. It is held
+// rather than per-poll because a zero-tick frame discards its polled action
+// (ONrGameState_Update), and a one-poll latch would then lose a real press.
+static UUtBool				LIgEscapeKeyHeld = UUcFalse;
+static int					LIgEscapeKeyHeldScan = -1;
 
 // Issue #78 — ONI_INPUT_TRACE=1 traces raw SDL key events and per-poll
 // oni-key edges, to discriminate a lost keyUp (OS/SDL level: the raw UP
@@ -513,6 +516,7 @@ LIiPlatform_Keyboard_GetData(
 	static UUtUns8 sPrevDown[32];
 	UUtUns8 nowDown[32] = {0};
 	static int sSrcScan[256];	// #78 -- last scancode that produced each oni key
+	static UUtBool sEscapeDropping = UUcFalse;	// #78 -- rate-limits the drop line
 	UUtUns32 escapeBefore = outAction->buttonBits & LIc_BitMask_Escape;
 	int escapeScan = -1;
 
@@ -537,7 +541,8 @@ LIiPlatform_Keyboard_GetData(
 					nowDown[deviceInput.input >> 3] |= (UUtUns8)(1u << (deviceInput.input & 7));
 					sSrcScan[deviceInput.input] = i;
 				}
-				if (LIrBinding_KeyIsBoundToBit((LItKeyCode)deviceInput.input, LIc_Bit_Escape)) {
+				// #78 -- escapeScan only feeds the trace line, so skip the binding walk otherwise
+				if (trace && LIrBinding_KeyIsBoundToBit((LItKeyCode)deviceInput.input, LIc_Bit_Escape)) {
 					escapeScan = i;
 				}
 				LIrActionBuffer_Add(outAction, &deviceInput);
@@ -545,15 +550,24 @@ LIiPlatform_Keyboard_GetData(
 		}
 	}
 
-	// #78 -- the escape action bit may only come from a real key-down this
-	// frame (latched by the event pump). A held-state escape with no key-down
-	// behind it is dropped; bits another device set before us are left alone.
-	if ((outAction->buttonBits & LIc_BitMask_Escape) && !escapeBefore && !LIgEscapeKeyDownThisFrame)
+	// #78 -- the escape action bit may only come from a key the event pump saw
+	// go down for real and not yet come up (LIgEscapeKeyHeld). A held-state
+	// escape with no key-down behind it is dropped on every poll; bits another
+	// device set before us are left alone. NB: under ONI_KEY_LAYOUT=1 this latch
+	// is the only guard on 0x1B -- the positional scancode gate in
+	// sdl_scancode_to_oni_keycode does not apply to the layout path.
+	if ((outAction->buttonBits & LIc_BitMask_Escape) && !escapeBefore && !LIgEscapeKeyHeld)
 	{
 		outAction->buttonBits &= ~LIc_BitMask_Escape;
-		if (trace) {
-			UUrStartupMessage("[input-trace] escape bit dropped: no key-down (scan %d)", escapeScan);
+		if (trace && !sEscapeDropping) {
+			UUrStartupMessage("[input-trace] escape bit dropped: no key-down (poll scan %d, last real scan %d)",
+				escapeScan, LIgEscapeKeyHeldScan);
 		}
+		sEscapeDropping = UUcTrue;
+	}
+	else
+	{
+		sEscapeDropping = UUcFalse;
 	}
 
 	// #78 trace: log only edges of the translated key set, so the log stays
@@ -570,10 +584,6 @@ LIiPlatform_Keyboard_GetData(
 		}
 		memcpy(sPrevDown, nowDown, sizeof(sPrevDown));
 	}
-
-	// #78 -- the latch covers one poll only
-	LIgEscapeKeyDownThisFrame = UUcFalse;
-	LIgEscapeKeyDownScan = -1;
 }
 
 #if UUmCompiler == UUmCompiler_MWerks
@@ -729,6 +739,11 @@ LIrPlatform_Mode_Set(
 	LItMode				inMode)
 {
 	int x = 0, y = 0;
+
+	// #78 -- no keyboard poll runs in Normal mode, so a latch left over from a
+	// menu round trip must not survive into the next game poll.
+	LIgEscapeKeyHeld = UUcFalse;
+
 	if (inMode == LIcMode_Normal)
 	{
 		SDL_SetWindowGrab(LIgWindow, SDL_FALSE);
@@ -835,12 +850,18 @@ LIrPlatform_Update(
 						(int)event.key.repeat, (unsigned)event.key.keysym.mod);
 				}
 
-				// #78 -- latch a real Escape key-down for the next keyboard poll
-				if ((event.key.state == SDL_PRESSED) && (event.key.repeat == 0) &&
-					LIrBinding_KeyIsBoundToBit(sdl_keysym_to_oni_keycode(&event.key.keysym), LIc_Bit_Escape))
+				// #78 -- hold the escape latch from a real key-down to its key-up
+				if (LIrBinding_KeyIsBoundToBit(sdl_keysym_to_oni_keycode(&event.key.keysym), LIc_Bit_Escape))
 				{
-					LIgEscapeKeyDownThisFrame = UUcTrue;
-					LIgEscapeKeyDownScan = (int)event.key.keysym.scancode;
+					if (event.key.state != SDL_PRESSED)
+					{
+						LIgEscapeKeyHeld = UUcFalse;
+					}
+					else if (event.key.repeat == 0)
+					{
+						LIgEscapeKeyHeld = UUcTrue;
+						LIgEscapeKeyHeldScan = (int)event.key.keysym.scancode;
+					}
 				}
 
 				eventType = (event.key.state == SDL_PRESSED) ? LIcInputEvent_KeyDown : LIcInputEvent_KeyUp;
