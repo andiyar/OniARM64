@@ -10,6 +10,7 @@ GitHub release notes and gets stamped with the version + date.
 
 ## Unreleased (since 1.3.0r5, 2026-07-17)
 
+- Fixed a memory leak on level load: every death reload, save-point load and level change used to keep about 15 to 26 MB of the previous level in memory for good. Long sessions with many reloads should stay flat now (#30).
 - New app icon for macOS 26: the Oni "O" is now a proper layered glass icon, so it follows your system icon style (default, dark, clear, tinted) instead of sitting on the white placeholder tile. On older toolchains the build falls back to a refreshed static icon with a dark background.
 
 ### Mods
