@@ -164,7 +164,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         c.install(files: urls)
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    // Closing the window mid-batch must not kill the run; finishBatch quits once it ends.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { !(controller?.isBusy ?? false) }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard controller?.isBusy == true else { return .terminateNow }
+        let a = NSAlert()
+        a.messageText = "An install is still running"
+        a.informativeText = "Quitting now could leave a half-written pack. Wait for the report, then quit."
+        a.addButton(withTitle: "Wait"); a.addButton(withTitle: "Quit Anyway")
+        return a.runModal() == .alertFirstButtonReturn ? .terminateCancel : .terminateNow
+    }
 }
 
 let app = NSApplication.shared

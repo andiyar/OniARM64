@@ -305,7 +305,7 @@ HOME="$H20" "$INST" --install "$W/23999-Test-Mod-A.zip" "$W/24001-Second Mod" "$
 check '[ $rc -eq 0 ] && grep -q "^Installed \"Test Mod A!\"" "$W/out20" && grep -q "^Installed \"Second Mod\"" "$W/out20"' "batch of three prints a section per item (rc=$rc)"
 check 'grep -q "^2 installed, 0 skipped, 1 failed\.$" "$W/out20"' "trailing count line"
 check 'grep -q "^Source: 23999-Test-Mod-A.zip$" "$D20/TestModA/Mod_Info.txt"' "Mod_Info.txt records the source file"
-check '[ "$(grep -c "^=== " "$H20/Library/Logs/OniARM64/installer.txt")" = "3" ]' "each batch item logged separately"
+check '[ "$(grep -c "^=== " "$H20/Library/Logs/OniARM64/installer.txt")" = "4" ]' "each batch item logged separately, plus one batch summary"
 HOME="$H20" "$INST" --install "$W/23999-Test-Mod-A.zip" --source-depot 70000 --dest "$D20" --gamedata none --replace >/dev/null 2>&1; rc=$?
 check '[ $rc -eq 0 ] && grep -q "^DepotPackage: 70000$" "$D20/TestModA/Mod_Info.txt"' "--source-depot writes DepotPackage into Mod_Info.txt (rc=$rc)"
 check '"$INST" --list-installed "$D20" | grep -q "^TestModA	2	[0-9]*	Depot 70000$"' "the scan reports the Depot number as the source"
