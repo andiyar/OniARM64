@@ -515,35 +515,49 @@ ONiOGU_Options_InitDialog(
 #ifdef __APPLE__
 	/* #89: the shipping Options template can't gain controls by editing game
 	 * data, so the renderer toggle is created here. It is positioned by
-	 * measuring the gamma slider rather than by absolute coordinates, so it
-	 * lands inside the dialog art on whichever Options layout is on screen. */
+	 * measuring the Invert Mouse checkbox (gamma slider as a fallback) rather
+	 * than by absolute coordinates, so it lands one row under Invert Mouse in
+	 * the third box on whichever Options layout is on screen. */
 	{
 		extern UUtBool			metal_is_available(void);
 
 		WMtWindow				*anchor;
+		UUtBool					anchor_is_checkbox;
 
-		anchor = WMrDialog_GetItemByID(inDialog, ONcOptions_Sldr_Gamma);
+		// the template's own checkbox row; the gamma slider is the fallback
+		anchor = WMrDialog_GetItemByID(inDialog, ONcOptions_CB_InvertMouseOn);
+		anchor_is_checkbox = (UUtBool)(anchor != NULL);
+		if (anchor == NULL)
+		{
+			anchor = WMrDialog_GetItemByID(inDialog, ONcOptions_Sldr_Gamma);
+		}
 		// #89 diagnostics: the checkbox never rendered on the maintainer's
 		// machine with no visible failure — every step reports until the
 		// on-screen result is confirmed.
-		UUrStartupMessage("options renderer toggle: gamma anchor %s",
-			(anchor != NULL) ? "found" : "MISSING - no checkbox");
+		UUrStartupMessage("options renderer toggle: %s",
+			anchor_is_checkbox ? "anchor invert-mouse" :
+			(anchor != NULL) ? "anchor gamma (fallback)" : "MISSING - no checkbox");
 		if ((anchor != NULL) &&
 			(WMrDialog_GetItemByID(inDialog, ONcOptions_CB_MetalRenderer) == NULL))
 		{
 			WMtWindow			*checkbox;
 			UUtInt16			width;
 			UUtInt16			height;
+			UUtUns32			style;
 
 			WMrWindow_GetSize(anchor, &width, &height);
 			UUrStartupMessage("options renderer toggle: anchor size %dx%d", (int)width, (int)height);
 
+			/* copy the Invert Mouse checkbox's style word so the new row draws
+			 * like the template's; a slider's style means nothing to a checkbox */
+			style = anchor_is_checkbox ? WMrWindow_GetStyle(anchor) : WMcCheckBoxStyle_TextCheckBox;
+
 			checkbox =
 				WMrWindow_New(
 					WMcWindowType_CheckBox,
-					"Metal renderer (restart required)",
+					"Metal renderer",
 					WMcWindowFlag_Visible | WMcWindowFlag_Child,
-					WMcCheckBoxStyle_TextCheckBox,
+					style,
 					ONcOptions_CB_MetalRenderer,
 					0,
 					0,
@@ -560,6 +574,9 @@ ONiOGU_Options_InitDialog(
 				WMtWindow		*font_donor;
 				UUtRect			anchor_rect;
 				UUtRect			checkbox_rect;
+				UUtRect			dialog_rect;
+				UUtInt16		gap;
+				UUtInt16		top;
 				TStFontInfo		font_info;
 				ONtRendererPref	pref;
 				UUtBool			checked;
@@ -569,10 +586,22 @@ ONiOGU_Options_InitDialog(
 				 * two screen rects — it was created at the parent origin. */
 				WMrWindow_GetRect(anchor, &anchor_rect);
 				WMrWindow_GetRect(checkbox, &checkbox_rect);
+				WMrWindow_GetRect(inDialog, &dialog_rect);
+
+				/* One row below the anchor with a half-row gap. Subtitles and Invert
+				 * Mouse are not known to share a box, so their spacing is not used as
+				 * the row pitch; half a row matches the template to the eye. Clamp inside the dialog if that would run off its end. */
+				gap = (UUtInt16)((anchor_rect.bottom - anchor_rect.top) / 2);
+				top = (UUtInt16)(anchor_rect.bottom + gap);
+				if (top + height > dialog_rect.bottom)
+				{
+					top = (UUtInt16)(dialog_rect.bottom - height - gap);
+					UUrStartupMessage("options renderer toggle: clamped (dialog bottom %d)", (int)dialog_rect.bottom);
+				}
 				WMrWindow_SetLocation(
 					checkbox,
 					(UUtInt16)(anchor_rect.left - checkbox_rect.left),
-					(UUtInt16)(anchor_rect.bottom + 4 - checkbox_rect.top));
+					(UUtInt16)(top - checkbox_rect.top));
 				{
 					UUtRect final_rect;
 					WMrWindow_GetRect(checkbox, &final_rect);
@@ -597,8 +626,9 @@ ONiOGU_Options_InitDialog(
 					WMcPosChangeFlag_NoMove | WMcPosChangeFlag_NoSize);
 				UUrStartupMessage("options renderer toggle: moved to front of z-order (above pict_options_background)");
 
-				// borrow the font from a checkbox that already draws a title
-				font_donor = WMrDialog_GetItemByID(inDialog, ONcOptions_CB_SubtitlesOn);
+				// borrow the font from a checkbox that already draws a title:
+				// the anchor itself when it is Invert Mouse, else Subtitles
+				font_donor = anchor_is_checkbox ? anchor : WMrDialog_GetItemByID(inDialog, ONcOptions_CB_SubtitlesOn);
 				if (font_donor == NULL) { font_donor = anchor; }
 				WMrWindow_GetFontInfo(font_donor, &font_info);
 				WMrWindow_SetFontInfo(checkbox, &font_info);
