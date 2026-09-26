@@ -138,7 +138,8 @@ GitHub release notes and gets stamped with the version + date.
   new `pad_*` names can be rebound like keys. Menu control comes in a later
   build. (#73)
 - Game controllers: the left stick moves and the right stick aims (invert
-  mouse applies to it too); click the right stick to dash. (#73)
+  mouse applies to it too); click the right stick while running forward to
+  sprint, the same as the keyboard double-tap. (#73)
 
 ## 1.3.0r5 — 2026-07-17
 

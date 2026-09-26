@@ -20,8 +20,8 @@ static LItPadDashState LIgPad_Dash = { 0 };   // dash-gap state
 #define LIcPadStickOffFrac       0.30f
 #define LIcPadAimDeadFrac        0.15f
 #define LIcPadAimScale           8.0f     // mouse-equivalent units per poll (frame) at full deflection
-#define LIcGamepadDashPhaseMs    20       // min wall time per dash phase (OFF1, ON1, OFF2), and at
-                                          // least one poll each; ~60 ms total, well under the
+#define LIcGamepadDashPhaseMs    40       // min wall time per dash phase (OFF1, ON1, OFF2), and at
+                                          // least one poll each; ~120 ms total, well under the
                                           // engine's 15-tick (~250 ms) sprint double-tap window
 
 static void LIiPad_ResetStickState(void)
