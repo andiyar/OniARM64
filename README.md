@@ -25,7 +25,7 @@ Currently it's playable (I've run through the first 4 levels... too many times..
 
 ## Status
 
-Chapters 1–9 (through level 10) verified playable end-to-end: combat, AI, weapons, particle effects, audio, save/load all working. Chapters 10–14 load and render but haven't had a full playthrough yet. Loads **both** (or either?) the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. The **native Metal renderer** (hold Option at launch to pick it) is now feature-complete with OpenGL; OpenGL remains the default. Continuing to bughunt. **HD texture packs** are supported: drop a pack into `~/Library/Application Support/OniARM64/TexturePacks` and its textures override the originals without touching your game data. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
+The whole campaign is playable. Chapters 1–9 were verified end-to-end by the maintainer (combat, AI, weapons, particle effects, audio, save/load) and chapters 10–14 were played through by tester simX ([#90](https://github.com/andiyar/OniARM64/issues/90#issuecomment-5768414956)). v1.3.0 is the first stable release; 1.3.0a1 and r1 to r5 were pre-releases. Loads **both** (or either?) the original Mac retail and PC game data (auto-detected). Downloadable and notarized .app in a DMG. The **native Metal renderer** (hold Option at launch to pick it) is now feature-complete with OpenGL; OpenGL remains the default. Continuing to bughunt. **HD texture packs** are supported: drop a pack into `~/Library/Application Support/OniARM64/TexturePacks` and its textures override the originals without touching your game data. List of stuff done / broken and fixed below. Issues tracking for interest are available, albeit it's more like Claude writing notes for Claude (although you can see the things done as it goes if interested).
 
 <details>
 <summary><strong>Full milestone status</strong></summary>
@@ -75,7 +75,7 @@ Chapters 1–9 (through level 10) verified playable end-to-end: combat, AI, weap
 - [x] Tutorial level completable to next-level transition
 - [x] Save / load works across runs
 - [x] Chapters 1–9 (levels 1–10) playable with particle effects, combat, AI, level transitions
-- [ ] All 14 chapters playable — 10–14 still to march ([#90](https://github.com/andiyar/OniARM64/issues/90))
+- [x] All 14 chapters playable: 10–14 played through by simX ([#90](https://github.com/andiyar/OniARM64/issues/90#issuecomment-5768414956))
 - [x] Level sweep harness — every level's assets, characters, particles, AI and scripts exercised headlessly per renderer and gated against committed baselines; first run surfaced three engine bugs in the unplayed levels ([#103](https://github.com/andiyar/OniARM64/issues/103))
 
 ### Phase 7 — Shippable artefact
