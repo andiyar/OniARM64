@@ -28,8 +28,9 @@
  * Output, one line per non-placeholder TXMP:
  *   <instanceName-or-'-'>\t<formatName>\t<filePath>
  * instanceName has the 'TXMP' tag prefix stripped, matching OniSplit.
- * Single-instance .oni files (version '23RV') carry no name table —
- * the caller derives the name from the file name; we print '-'.
+ * For single-instance .oni files (version '23RV') this TXMP mode prints
+ * '-' and the caller derives the name from the file name. --txmb mode
+ * reads their names from the name table (desc_name), and so does not.
  *
  * Build: cc -O2 -o txmp-format-index txmp-format-index.c
  * Usage: txmp-format-index [--txmb] <file.dat|file.oni> [...]
@@ -99,15 +100,16 @@ static const char *desc_name(const unsigned char *buf, long fsize,
     return *name ? name : NULL;
 }
 
-static void process_txmb(const char *path, const unsigned char *buf, long fsize) {
+static int process_txmb(const char *path, const unsigned char *buf, long fsize) {
     uint32_t instanceCount   = rd32(buf + 0x14);
     uint32_t dataTableOffset = rd32(buf + 0x20);
     uint32_t nameTableOffset = rd32(buf + 0x28);
     uint32_t nameTableSize   = rd32(buf + 0x2C);
 
+    int rc = 0;
     for (uint32_t i = 0; i < instanceCount; i++) {
         long doff = 0x40 + (long)i * 20;
-        if (doff + 20 > fsize) break;
+        if (doff + 20 > fsize) { rc = 1; break; }
         const unsigned char *d = buf + doff;
         if (rd32(d) != 0x54584d42u)   /* TemplateTag.TXMB */
             continue;
@@ -119,14 +121,14 @@ static void process_txmb(const char *path, const unsigned char *buf, long fsize)
         long base = (long)dataTableOffset + (long)dataOffset;
         if (base + 0x18 > fsize) {
             fprintf(stderr, "%s: TXMB #%u data out of range\n", path, i);
-            continue;
+            rc = 1; continue;
         }
         uint32_t width  = rd16(buf + base + 0x08);
         uint32_t height = rd16(buf + base + 0x0A);
         uint32_t ntiles = rd32(buf + base + 0x14);
         if (ntiles > 4096 || base + 0x18 + (long)ntiles * 4 > fsize) {
             fprintf(stderr, "%s: TXMB #%u tile array out of range\n", path, i);
-            continue;
+            rc = 1; continue;
         }
 
         char fallback[256];
@@ -161,6 +163,7 @@ static void process_txmb(const char *path, const unsigned char *buf, long fsize)
         }
         printf("\t%s\n", path);
     }
+    return rc;
 }
 
 static int process(const char *path, int txmb) {
@@ -188,7 +191,7 @@ static int process(const char *path, int txmb) {
         free(buf); return 1;
     }
 
-    if (txmb) { process_txmb(path, buf, fsize); free(buf); return 0; }
+    if (txmb) { int rc = process_txmb(path, buf, fsize); free(buf); return rc; }
 
     uint32_t instanceCount   = rd32(buf + 0x14);
     uint32_t dataTableOffset = rd32(buf + 0x20);

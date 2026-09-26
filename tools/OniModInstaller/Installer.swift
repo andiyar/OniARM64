@@ -13,6 +13,7 @@ enum InstallError: Error, CustomStringConvertible {
     case notFound(String)
     case unzipFailed(String)
     case noTextures
+    case onlyScreenTiles(count: Int)  // every TXMP was a tile of a re-laid-out screen (#113)
     case alreadyInstalled(String)     // pack folder path
     case toolMissing(String)
     case packFailed(String)
@@ -24,6 +25,7 @@ enum InstallError: Error, CustomStringConvertible {
         case .notFound(let p): return "Can't find \(p)."
         case .unzipFailed(let m): return "Couldn't unpack the zip: \(m)"
         case .noTextures: return "No texture files (TXMP*.oni) found in this mod. OniMod Installer only handles texture mods; character models, levels and scripts can't be installed."
+        case .onlyScreenTiles(let n): return "This mod only re-lays-out screens (\(n) tiles of screens with a different grid from the game's). Screen mods aren't supported yet, see https://github.com/andiyar/OniARM64/issues/121"
         case .alreadyInstalled(let p): return "A pack with this name is already installed at \(p)."
         case .toolMissing(let t): return "The bundled helper '\(t)' is missing. Reinstall OniMod Installer."
         case .packFailed(let m): return "Packing failed: \(m)"
@@ -31,11 +33,11 @@ enum InstallError: Error, CustomStringConvertible {
         case .idCollisionWithRetail(let l): return "Oni would confuse this mod with its own level\(l)_Final.dat: the name's checksum is zero, the same as 'Final', so the game would drop its own level data. Change NameOfMod in Mod_Info.cfg (or, if the mod has no Mod_Info.cfg, rename the zip or folder) and try again."
         }
     }
-    /// CLI exit code. 4 = already installed (retry with --replace), 5 = engine file-id collision (with an installed pack or the game's own level data), 1 = no textures, 2 = anything else.
+    /// CLI exit code. 4 = already installed (retry with --replace), 5 = engine file-id collision (with an installed pack or the game's own level data), 1 = no textures (or only re-laid-out screen tiles), 2 = anything else.
     var exitCode: Int32 {
         switch self {
         case .alreadyInstalled: return 4
-        case .noTextures: return 1
+        case .noTextures, .onlyScreenTiles: return 1
         case .idCollision, .idCollisionWithRetail: return 5
         default: return 2
         }
@@ -50,6 +52,7 @@ struct InstallReport {
     var ignoredNonTexture = 0
     var duplicateNames = 0
     var alphaGuard = ""                    // one line: what happened
+    var screenCheck = ""                   // one line: did the #113 screen check run
     var warnings: [String] = []
 
     var text: String {
@@ -64,6 +67,7 @@ struct InstallReport {
         if ignoredNonTexture > 0 { s += "  \(ignoredNonTexture) non-texture file(s) ignored\n" }
         if duplicateNames > 0 { s += "  \(duplicateNames) duplicate texture name(s) dropped (first copy kept)\n" }
         if !alphaGuard.isEmpty { s += "  alpha guard: \(alphaGuard)\n" }
+        if !screenCheck.isEmpty { s += "  screen check: \(screenCheck)\n" }
         for w in warnings { s += "  note: \(w)\n" }
         s += "Pack folder: \(packFolder)"
         return s
@@ -130,14 +134,8 @@ struct ModInstaller {
             report.warnings.append("name shortened to \(report.packName) so the pack's file names fit Oni's \(Self.maxLeafLength)-character limit")
         }
 
-        // 2b. HD Screens tiles (#113): a mod TXMB whose grid differs from retail
-        // would have its tiles drawn into the retail layout (we never pack TXMB,
-        // #62), so those tiles are left out. Full support is #121.
-        let screenSkip = screenTilesToSkip(tree: tree)
-        var screenSkipped: [Int: Int] = [:]
-
         // 3. Collect TXMP*.oni by level.
-        var byLevel: [Int: [URL]] = [:]
+        var allByLevel: [Int: [URL]] = [:]
         var seen: Set<String> = []          // "level/basename"
         if let e = fm.enumerator(at: tree, includingPropertiesForKeys: [.isRegularFileKey]) {
             for case let f as URL in e {
@@ -149,17 +147,33 @@ struct ModInstaller {
                 let key = "\(level)/\(name)"
                 if seen.contains(key) { report.duplicateNames += 1; continue }
                 seen.insert(key)
-                if screenSkip.contains(String(name.dropFirst(4).dropLast(4)).lowercased()) {
-                    screenSkipped[level, default: 0] += 1; continue
-                }
-                byLevel[level, default: []].append(f)
+                allByLevel[level, default: []].append(f)
             }
         }
-        guard !byLevel.isEmpty else { throw InstallError.noTextures }
+        guard !allByLevel.isEmpty else { throw InstallError.noTextures }
 
         // 4. Destination check (before doing any expensive work).
         let finalDir = texturePacksDir.appendingPathComponent(report.packName)
         if fm.fileExists(atPath: finalDir.path) && !replace { throw InstallError.alreadyInstalled(finalDir.path) }
+
+        // 4a. HD Screens tiles (#113): a mod TXMB whose grid differs from retail
+        // would have its tiles drawn into the retail layout (we never pack TXMB,
+        // #62), so those tiles are left out. Full support is #121. Runs after
+        // the destination check so a refused reinstall never reads the retail dats.
+        let (screenSkip, screenCheck) = screenTilesToSkip(tree: tree)
+        report.screenCheck = screenCheck
+        var byLevel: [Int: [URL]] = [:]
+        var screenSkipped: [Int: Int] = [:]
+        for (level, files) in allByLevel {
+            for f in files {
+                if screenSkip.contains(String(f.lastPathComponent.dropFirst(4).dropLast(4)).lowercased()) {
+                    screenSkipped[level, default: 0] += 1
+                } else {
+                    byLevel[level, default: []].append(f)
+                }
+            }
+        }
+        guard !byLevel.isEmpty else { throw InstallError.onlyScreenTiles(count: screenSkipped.values.reduce(0, +)) }
         // 4b. Engine file-id collision with an installed pack (#111, #112).
         try checkFileIDCollisions(levels: Array(byLevel.keys), packName: report.packName,
                                   excluding: replace ? report.packName : nil)
@@ -394,15 +408,23 @@ struct ModInstaller {
     /// the same name: the union of the mod's and retail's tile names (#113). A
     /// mod TXMB with no retail twin, a same-grid one, or no retail data at all
     /// skips nothing. Retail: level*_Final.dat, first hit per name wins.
-    func screenTilesToSkip(tree: URL) -> Set<String> {
+    /// Also returns a one-line state for the report ("on ..." or "off — why").
+    func screenTilesToSkip(tree: URL) -> (skip: Set<String>, state: String) {
         let fm = FileManager.default
-        guard let gd = gameDataDir else { return [] }
+        guard let gd = gameDataDir else {
+            return ([], "off — game data folder not found, so screen mods with a different grid (#113) can't be detected")
+        }
+        guard fm.isExecutableFile(atPath: indexTool.path) else {
+            return ([], "off — the bundled helper 'txmp-format-index' is missing, so screen mods with a different grid (#113) can't be detected")
+        }
         let dats = ((try? fm.contentsOfDirectory(at: gd, includingPropertiesForKeys: nil)) ?? [])
             .filter { $0.lastPathComponent.hasPrefix("level") && $0.lastPathComponent.hasSuffix("_Final.dat") }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
         var retail: [String: ScreenGrid] = [:]
         for r in screenGrids(dats) where retail[r.name] == nil { retail[r.name] = r.grid }
-        guard !retail.isEmpty else { return [] }
+        guard !retail.isEmpty else {
+            return ([], "off — no screens found in the game data folder, so screen mods with a different grid (#113) can't be detected")
+        }
         var modFiles: [URL] = []
         if let e = fm.enumerator(at: tree, includingPropertiesForKeys: [.isRegularFileKey]) {
             for case let f as URL in e {
@@ -419,7 +441,7 @@ struct ModInstaller {
                 skip.formUnion(m.grid.tiles); skip.formUnion(r.tiles)
             }
         }
-        return skip
+        return (skip, "on (retail screens indexed)")
     }
 
     struct GuardFailure: Error { var message: String }

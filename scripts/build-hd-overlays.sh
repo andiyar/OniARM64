@@ -405,7 +405,7 @@ if grep -q '^SKIP' "$DECISIONS"; then
 else
     echo "  none"
 fi
-awk -F '\t' '$1 == "SCREEN-SKIP" { print "  screen " $2 ": " $3 " tiles skipped (re-lays-out the screen, see #121)" }' "$DECISIONS"
+awk -F '\t' '$1 == "SCREEN-SKIP" { print "  screen " $2 ": " $3 " tiles skipped (this mod re-lays-out the screen; not supported yet, see #121)" }' "$DECISIONS"
 grep '^WARN' "$DECISIONS" | sed 's/^WARN\t/  WARNING: /' || true
 echo
 
