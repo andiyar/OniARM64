@@ -152,9 +152,11 @@ GitHub release notes and gets stamped with the version + date.
 - Fixed glow effects (energy rings, light halos) washing out to hard white in
   fogged areas under Metal. Additive effects are now drawn fog-free, matching
   OpenGL (#82).
-- Still being chased: a sporadic mid-play freeze where a phantom Escape opens
-  the menu invisibly and seizes input (#78). Seen only under the opt-in Metal
-  renderer on development builds; tracing is in place.
+- Still being chased: a stuck sidestep key when creeping (hold shift plus q or
+  e, let go, the character keeps strafing) (#78). Erratum, 2026-09-26: this
+  line originally described "a phantom Escape opens the menu invisibly and
+  seizes input"; that framing was a misreading of a debugger capture and is
+  withdrawn. The maintainer never saw a self-opening menu.
 
 ### HD texture packs
 - Texture-pack support landed: drop a pack into
