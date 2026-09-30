@@ -6066,6 +6066,7 @@ static void ONiCharacter_Display_Body(
 	float distanceToCameraSquared;
 	TRtBodySelector resolution;
 	float alphaAmount = 1.f;
+	UUtUns32 diag128_draws0 = 0, diag128_rejects0 = 0; // #128 diagnostic
 
 	UUmAssertReadPtr(inCharacter, sizeof(inCharacter));
 	UUmAssert(inActiveCharacter->curBody >= TRcBody_SuperLow);
@@ -6136,6 +6137,13 @@ static void ONiCharacter_Display_Body(
 		M3rGeom_State_Commit();
 	}
 
+	// #128 diagnostic baseline, read back after the body draw below
+	{
+		extern UUtUns32 MSgDiag128_GeomDraws, MSgDiag128_GeomRejects;
+		diag128_draws0 = MSgDiag128_GeomDraws;
+		diag128_rejects0 = MSgDiag128_GeomRejects;
+	}
+
 	// draw the body
 	if (gShowTriggerQuad) {
 		UUtUns32 trigger_quad_shade = IMcShade_White;
@@ -6153,6 +6161,41 @@ static void ONiCharacter_Display_Body(
 #endif
 		TRrBody_Draw(body, gDrawWeapon ? inActiveCharacter->extraBody : NULL, inActiveCharacter->matricies, TRcBody_DrawAll,
 			inActiveCharacter->flash_parts, 0, 0, 0);
+	}
+
+	/* #128 diagnostic: the player's body vanishes in some cutscene shots while the
+	   Daodan shield (drawn just below from the same matrices) stays. Once every
+	   15 frames while in a cutscene, record where the camera and the body are and
+	   how many of the body's part geometries the software geom engine trivially
+	   rejected, then the same for the shield draw, so the log says whether the
+	   body was culled, drawn-but-not-visible, or never reached the draw. */
+	{
+		extern UUtUns32 MSgDiag128_GeomDraws, MSgDiag128_GeomRejects, MSgDiag128_LastClipStatus;
+		UUtBool diag128_on = (ONgGameState->local.in_cutscene) &&
+			(inCharacter == ONgGameState->local.playerCharacter) &&
+			((ONgGameState->gameTime % 15) == 0);
+
+		if (diag128_on) {
+			M3tPoint3D cam_loc, pelvis;
+			M3tVector3D cam_view;
+			PHtPhysicsContext *phy = inActiveCharacter->physics;
+
+			M3rCamera_GetViewData(ONgActiveCamera, &cam_loc, &cam_view, NULL);
+			pelvis = MUrMatrix_GetTranslation(inActiveCharacter->matricies + ONcPelvis_Index);
+
+			UUrStartupMessage("[128] t=%u cammode=%d cam=(%.1f %.1f %.1f) view=(%.2f %.2f %.2f) loc=(%.1f %.1f %.1f) pelvis=(%.1f %.1f %.1f) phys=(%.1f %.1f %.1f) envanim=%d",
+				(unsigned) ONgGameState->gameTime, (int) CAgCamera.mode,
+				cam_loc.x, cam_loc.y, cam_loc.z, cam_view.x, cam_view.y, cam_view.z,
+				inCharacter->location.x, inCharacter->location.y, inCharacter->location.z,
+				pelvis.x, pelvis.y, pelvis.z,
+				(phy != NULL) ? phy->position.x : -999.f, (phy != NULL) ? phy->position.y : -999.f, (phy != NULL) ? phy->position.z : -999.f,
+				(phy != NULL && phy->animContext.animation != NULL) ? 1 : 0);
+			UUrStartupMessage("[128]   body: curBody=%d res=%d alpha=%.2f parts=%u drawn=%u rejected=%u lastclip=%u flags=0x%08x shield=%d daodan=%d",
+				(int) inActiveCharacter->curBody, (int) resolution, alphaAmount, (unsigned) body->numParts,
+				MSgDiag128_GeomDraws - diag128_draws0, MSgDiag128_GeomRejects - diag128_rejects0,
+				(unsigned) MSgDiag128_LastClipStatus, (unsigned) inCharacter->flags,
+				(int) inActiveCharacter->shield_active, (int) inActiveCharacter->daodan_shield_effect);
+		}
 	}
 
 	if (inActiveCharacter->shield_active)
@@ -6177,6 +6220,13 @@ static void ONiCharacter_Display_Body(
 			M3rDraw_State_SetInt(M3cDrawStateIntType_Time, ONgGameState->gameTime);
 
 			TRrBody_DrawMagic(magic_shield_body, inActiveCharacter->matricies, shield_texture, 1.4f, inActiveCharacter->shield_parts);
+
+			// #128 diagnostic: same counters for the shield draw, for comparison
+			if ((ONgGameState->local.in_cutscene) && (inCharacter == ONgGameState->local.playerCharacter) && ((ONgGameState->gameTime % 15) == 0)) {
+				extern UUtUns32 MSgDiag128_GeomDraws, MSgDiag128_GeomRejects;
+				UUrStartupMessage("[128]   shield: parts=%u drawn_total=%u rejected_total=%u (cumulative since body baseline)",
+					(unsigned) magic_shield_body->numParts, MSgDiag128_GeomDraws - diag128_draws0, MSgDiag128_GeomRejects - diag128_rejects0);
+			}
 		}
 	}
 

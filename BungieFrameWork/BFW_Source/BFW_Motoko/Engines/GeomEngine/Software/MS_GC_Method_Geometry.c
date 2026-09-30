@@ -1212,6 +1212,11 @@ MSiGeometry_Draw_BackFaceRemove_ClipAccept_ShadeFace(
 	return UUcError_None;
 }
 
+/* #128 diagnostic counters (see Oni_Character.c ONiCharacter_Display_Body). */
+UUtUns32 MSgDiag128_GeomDraws = 0;
+UUtUns32 MSgDiag128_GeomRejects = 0;
+UUtUns32 MSgDiag128_LastClipStatus = 0;
+
 UUtError
 MSrGeomContext_Method_Geometry_Draw(
 	M3tGeometry*		inGeometryObject)
@@ -1242,8 +1247,14 @@ MSrGeomContext_Method_Geometry_Draw(
 		MSgGeomContextPrivate->activeFunctions->transformBoundingBoxClipStatus(
 			inGeometryObject);
 
+	/* #128 diagnostic: per-geometry outcome counters, read by Oni_Character.c
+	   around the player's body draw during cutscenes. */
+	MSgDiag128_GeomDraws++;
+	MSgDiag128_LastClipStatus = (UUtUns32) clipStatus;
+
 	if(clipStatus == MScClipStatus_TrivialReject)
 	{
+		MSgDiag128_GeomRejects++;
 		return UUcError_None;
 	}
 
