@@ -6,9 +6,9 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
-### 2026-10-01 — Session 83: #128, Konoko vanishes in the chapter 14 elevator cutscene
+### 2026-10-01 — Session 83: #128, Konoko vanishes in the chapter 8 elevator cutscene
 
-- **diag(character): `[128]` cutscene body-draw trace** (addresses #128): simX reports Konoko's body disappearing for the whole `elevator()` cutscene in chapter 14 (Metal, 1.3.0) while the Daodan overpower particles stay put; she is back the moment the cutscene ends. Static reading so far: the shield and the body are drawn from the same matrices inside `ONiCharacter_Display_Body`, so the character-level visibility and LOD checks pass; the software clipper is byte-identical to Bungie's; the script drives her with `chr_envanim ElevatorKonBox01` and the camera with `cm_anim both ElevatorCam01`. The trace prints, every 15 frames of any cutscene for the player only, camera position and view vector, `location` / pelvis / physics position, whether an env-anim is attached, the LOD picked, and how many of the body's part geometries the software geom engine trivially rejected, then the same counters for the shield draw. Always on (no env var, so it works from the .app); a cutscene costs about 40 log lines.
+- **diag(character): `[128]` cutscene body-draw trace** (addresses #128): simX reports Konoko's body disappearing for the whole `elevator()` cutscene in chapter 8, the ACC interior, level file 10 (Metal, 1.3.0) while the Daodan overpower particles stay put; she is back the moment the cutscene ends. Static reading so far: the shield and the body are drawn from the same matrices inside `ONiCharacter_Display_Body`, so the character-level visibility and LOD checks pass; the software clipper is byte-identical to Bungie's; the script drives her with `chr_envanim ElevatorKonBox01` and the camera with `cm_anim both ElevatorCam01`. The trace prints, every 15 frames of any cutscene for the player only, camera position and view vector, `location` / pelvis / physics position, whether an env-anim is attached, the LOD picked, and how many of the body's part geometries the software geom engine trivially rejected, then the same counters for the shield draw. Always on (no env var, so it works from the .app); a cutscene costs about 40 log lines.
 
 ### 2026-09-27 — Session 82: v1.3.0 release cut
 
