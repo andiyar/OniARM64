@@ -367,6 +367,21 @@ int gl_enumerate_valid_display_modes(
 		raw_count++;
 	}
 
+	// Dev override (#131): ONI_WINDOW_SIZE=WxH adds a size the display cannot
+	// show natively, so an ultrawide shape can be reproduced in a window on a
+	// 16:9 screen. Oni_Motoko.c picks it and forces windowed mode.
+	{
+		const char *env = getenv("ONI_WINDOW_SIZE");
+		int ew = 0, eh = 0;
+		if (env != NULL && sscanf(env, "%dx%d", &ew, &eh) == 2 &&
+			ew >= 640 && eh >= 480 && raw_count < 128) {
+			raw_w[raw_count] = ew;
+			raw_h[raw_count] = eh;
+			raw_count++;
+			UUrStartupMessage("[window] ONI_WINDOW_SIZE=%dx%d added to the mode list", ew, eh);
+		}
+	}
+
 	// Enumerate every mode SDL reports for display 0.
 	num_sdl_modes = SDL_GetNumDisplayModes(0);
 	for (i = 0; i < num_sdl_modes && raw_count < 128; i++) {

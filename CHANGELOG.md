@@ -21,10 +21,12 @@ GitHub release notes and gets stamped with the version + date.
 
 ### Cutscenes
 - Ultrawide screens (21:9): Konoko no longer vanishes from close cutscene
-  shots such as the chapter 8 opening and the elevator ride. The widescreen
-  framing was cropping the top and bottom of the picture by the screen's
-  aspect, which on 21:9 cut her out; it now crops no more than a 16:9 screen
-  does. (#128)
+  shots such as the chapter 8 opening, the elevator ride, and the chapter 2
+  meeting with the agents. The engine's quick "is this character anywhere
+  near the view" check was using the cutscene's cropped field of view, so on
+  a wide screen it threw her out before drawing; it now uses the game's own
+  field of view. The cutscene framing itself is unchanged, so the chapter 2
+  opening keeps its wall out of shot. (#128, #131)
 
 ## 1.3.0 — 2026-09-27
 

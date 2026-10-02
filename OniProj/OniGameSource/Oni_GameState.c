@@ -5123,7 +5123,21 @@ ONiGameState_Display_NonReflectable(
 				// off the top and bottom entirely. Cap the crop at what a 16:9 screen gets
 				// (verified in play for #36); wider screens keep that vertical field and
 				// let the horizontal open past 4:3 to fill the rest.
-				float crop_aspect = UUmMin(framing_aspect, ONcMotoko_CutsceneCropAspectMax);
+				float crop_cap = ONcMotoko_CutsceneCropAspectMax;
+				float crop_aspect;
+				// Dev override (#131): ONI_CUTSCENE_CROP_CAP=<aspect> changes the cap
+				// at launch so the before/after of the crop can be compared without a
+				// rebuild (e.g. 9 = no cap, the 1.3.0 behaviour; 1.7778 = the 16:9 cap).
+				{
+					static float env_cap = -1.0f;
+					if (env_cap < 0.0f) {
+						const char *env = getenv("ONI_CUTSCENE_CROP_CAP");
+						env_cap = (env != NULL && atof(env) >= 1.0) ? (float) atof(env) : 0.0f;
+						if (env_cap > 0.0f) UUrStartupMessage("[131] ONI_CUTSCENE_CROP_CAP=%.3f", env_cap);
+					}
+					if (env_cap > 0.0f) crop_cap = env_cap;
+				}
+				crop_aspect = UUmMin(framing_aspect, crop_cap);
 				float fov_ratio = ONcMotoko_CutsceneAspect / crop_aspect;
 				render_fovy = 2.0f * MUrATan(fov_ratio * MUrTan(ONgMotoko_FieldOfView * 0.5f));
 			}

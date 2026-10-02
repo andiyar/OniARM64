@@ -383,6 +383,21 @@ ONrMotoko_Initialize(
 		M3tDisplayMode resolution = ONrPersist_GetResolution();
 		UUtBool set_resolution;
 
+		// Dev override (#131): ONI_WINDOW_SIZE=WxH runs at that size in a
+		// window, so a 21:9 cutscene can be reproduced on a 16:9 display.
+		// gl_sdl.c adds the size to the engine's mode list so it matches.
+		{
+			const char *env = getenv("ONI_WINDOW_SIZE");
+			int ew = 0, eh = 0;
+			if (env != NULL && sscanf(env, "%dx%d", &ew, &eh) == 2 && ew >= 640 && eh >= 480) {
+				resolution.width = (UUtUns16) ew;
+				resolution.height = (UUtUns16) eh;
+				resolution.bitDepth = 32;
+				M3gResolutionSwitch = UUcFalse;
+				UUrStartupMessage("[window] ONI_WINDOW_SIZE: %dx%d windowed", ew, eh);
+			}
+		}
+
 		set_resolution = ONrMotoko_SetResolution_Internal(&resolution);
 
 		if (!set_resolution) {

@@ -6825,7 +6825,13 @@ static UUtBool ONiCharacter_NeedsRendering(ONtCharacter *inCharacter, CAtCamera 
 		if (nr_log) UUrStartupMessage("[NR] path:gDrawAll");
 		is_visible = UUcTrue;
 	}
-	else if (MUrAngleBetweenVectors3D(&toObj,&viewVector) > (fov + fovFudge)) {
+	/* #131: compare against the AUTHORED field of view, not the camera's. The
+	   cutscene widescreen clamp (#36) narrows the camera's vertical FOV with the
+	   screen shape, and this coarse test (feet-to-axis angle vs fov + 22.5 deg)
+	   was written for the fixed 45 degree field; fed the cropped value it drops
+	   the whole character in close shots on wide screens (#128). The exact
+	   bounding-box test below still decides what is really in frame. */
+	else if (MUrAngleBetweenVectors3D(&toObj,&viewVector) > (ONgMotoko_FieldOfView + fovFudge)) {
 		if (nr_log) UUrStartupMessage("[NR] path:angleOOF");
 		is_visible = UUcFalse;
 	}
@@ -6841,6 +6847,22 @@ static UUtBool ONiCharacter_NeedsRendering(ONtCharacter *inCharacter, CAtCamera 
 		if (nr_log) UUrStartupMessage("[NR] pre BoundingBoxMinMaxVisible");
 		is_visible = AKrEnvironment_IsBoundingBoxMinMaxVisible(&inCharacter->boundingBox);
 		if (nr_log) UUrStartupMessage("[NR] post BoundingBoxMinMaxVisible vis=%u", (unsigned)is_visible);
+	}
+
+	/* #131 diagnostic: during a cutscene, show the player's coarse angle test
+	   against the camera's (possibly cropped) vertical FOV plus the fudge, so a
+	   log says whether the whole character was culled here before the per-part
+	   draw. Every 15 frames, and every frame the test fails. */
+	if ((ONgGameState->local.in_cutscene) && (inCharacter == ONgGameState->local.playerCharacter)) {
+		float angle = MUrAngleBetweenVectors3D(&toObj, &viewVector);
+		UUtBool angle_fail = (angle > (ONgMotoko_FieldOfView + fovFudge));
+		if (angle_fail || ((ONgGameState->gameTime % 15) == 0)) {
+			UUrStartupMessage("[131] t=%u angle=%.1f fov=%.1f cutoff=%.1f %s%s",
+				(unsigned) ONgGameState->gameTime,
+				angle * (360.f / M3c2Pi), fov * (360.f / M3c2Pi), (ONgMotoko_FieldOfView + fovFudge) * (360.f / M3c2Pi),
+				angle_fail ? "CULLED-by-angle" : "angle-ok",
+				(!angle_fail && !is_visible) ? " (culled later: far or env bbox)" : "");
+		}
 	}
 
 	if (is_visible) {
