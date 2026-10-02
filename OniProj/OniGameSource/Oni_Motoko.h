@@ -78,6 +78,7 @@ extern float ONgMotoko_FieldOfView;
 // stays off-screen (issue #36 — the level-2 intro wall).
 #define ONcMotoko_CutsceneAspect (4.0f / 3.0f)
 #define ONcMotoko_CutsceneCropAspectMax 100.0f	// #131: no cap by default, the #36 fill-width crop applies at any aspect. The 16:9 and 18:9 caps tried for #128 are withdrawn; the real fix is the coarse cull test in Oni_Character.c. ONI_CUTSCENE_CROP_CAP=<aspect> overrides at launch for experiments.
+#define ONcMotoko_PillarboxAspect (16.0f / 9.0f)	// #134: on screens wider than this, cutscenes render the 16:9 framing centred with black side bars
 
 extern UUtInt32 ONgMotoko_ClearColor;
 extern UUtBool ONgMotoko_ShadeVertex;

@@ -25,8 +25,11 @@ GitHub release notes and gets stamped with the version + date.
   meeting with the agents. The engine's quick "is this character anywhere
   near the view" check was using the cutscene's cropped field of view, so on
   a wide screen it threw her out before drawing; it now uses the game's own
-  field of view. The cutscene framing itself is unchanged, so the chapter 2
-  opening keeps its wall out of shot. (#128, #131)
+  field of view. (#128, #131)
+- Screens wider than 16:9: cutscenes now show the same picture a 16:9 screen
+  gets, centred, with black bars at the sides for the cutscene only. Before
+  this the picture was cropped top and bottom to fill the width, which on an
+  ultrawide cut shots very tight. (#134)
 
 ## 1.3.0 — 2026-09-27
 
