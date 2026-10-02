@@ -5117,7 +5117,14 @@ ONiGameState_Display_NonReflectable(
 			M3rCamera_GetStaticData(ONgVisibilityCamera, NULL, NULL, &cur_near, &cur_far);
 
 			if ((ONgGameState->local.in_cutscene) && (framing_aspect > ONcMotoko_CutsceneAspect)) {
-				float fov_ratio = ONcMotoko_CutsceneAspect / framing_aspect;
+				// Issue #128: the vertical crop is computed from the screen aspect, so on an
+				// ultrawide (21:9) it took almost half the vertical field and close shots
+				// authored to look up at Konoko (chapter 8 opening, the elevator) lost her
+				// off the top and bottom entirely. Cap the crop at what a 16:9 screen gets
+				// (verified in play for #36); wider screens keep that vertical field and
+				// let the horizontal open past 4:3 to fill the rest.
+				float crop_aspect = UUmMin(framing_aspect, ONcMotoko_CutsceneCropAspectMax);
+				float fov_ratio = ONcMotoko_CutsceneAspect / crop_aspect;
 				render_fovy = 2.0f * MUrATan(fov_ratio * MUrTan(ONgMotoko_FieldOfView * 0.5f));
 			}
 

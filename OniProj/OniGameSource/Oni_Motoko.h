@@ -77,6 +77,7 @@ extern float ONgMotoko_FieldOfView;
 // horizontal framing and trim vertical FOV instead, so side geometry the shot excluded
 // stays off-screen (issue #36 — the level-2 intro wall).
 #define ONcMotoko_CutsceneAspect (4.0f / 3.0f)
+#define ONcMotoko_CutsceneCropAspectMax (16.0f / 9.0f)	// #128: cap the cutscene vertical crop at the 16:9 amount
 
 extern UUtInt32 ONgMotoko_ClearColor;
 extern UUtBool ONgMotoko_ShadeVertex;

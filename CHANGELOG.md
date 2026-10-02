@@ -19,6 +19,13 @@ GitHub release notes and gets stamped with the version + date.
   mouse applies to it too); click the right stick while running forward to
   sprint, the same as the keyboard double-tap. (#73)
 
+### Cutscenes
+- Ultrawide screens (21:9): Konoko no longer vanishes from close cutscene
+  shots such as the chapter 8 opening and the elevator ride. The widescreen
+  framing was cropping the top and bottom of the picture by the screen's
+  aspect, which on 21:9 cut her out; it now crops no more than a 16:9 screen
+  does. (#128)
+
 ## 1.3.0 — 2026-09-27
 
 - You can now pick the renderer in Options, and Oni remembers your choice. The
