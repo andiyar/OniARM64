@@ -2,45 +2,45 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
-    <key>CFBundleExecutable</key>
-    <string>Oni</string>
-    <key>CFBundleIconFile</key>
-    <string>Oni</string>
-    <key>CFBundleIconName</key>
-    <string>Oni</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.andiyar.oniarm64</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>OniARM64</string>
-    <key>CFBundleDisplayName</key>
-    <string>Oni</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.3.0</string>
-    <key>CFBundleVersion</key>
-    <string>1.3.0</string>
-    <key>CFBundleSignature</key>
-    <string>Oni </string>
-    <key>LSMinimumSystemVersion</key>
-    <string>15.0</string>
-    <key>LSApplicationCategoryType</key>
-    <string>public.app-category.games</string>
-    <key>LSArchitecturePriority</key>
-    <array>
-        <string>arm64</string>
-    </array>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>NSPrincipalClass</key>
-    <string>NSApplication</string>
-    <key>NSSupportsAutomaticGraphicsSwitching</key>
-    <true/>
-    <key>NSHumanReadableCopyright</key>
-    <string>Oni copyright 2000-2001 Take-Two Interactive &amp; Bungie. PowerPC OS X port copyright 2001-2007 The Omni Group. Intel macOS port copyright 2008-2015 Feral Interactive. ARM64 macOS port copyright 2026 OniARM64 contributors. Fan port; not affiliated with Bungie or Take-Two.</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Oni</string>
+	<key>CFBundleExecutable</key>
+	<string>Oni</string>
+	<key>CFBundleIconFile</key>
+	<string>Oni</string>
+	<key>CFBundleIconName</key>
+	<string>Oni</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.andiyar.oniarm64</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>OniARM64</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.3.1</string>
+	<key>CFBundleSignature</key>
+	<string>Oni </string>
+	<key>CFBundleVersion</key>
+	<string>1.3.1</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.games</string>
+	<key>LSArchitecturePriority</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>LSMinimumSystemVersion</key>
+	<string>15.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Oni copyright 2000-2001 Take-Two Interactive &amp; Bungie. PowerPC OS X port copyright 2001-2007 The Omni Group. Intel macOS port copyright 2008-2015 Feral Interactive. ARM64 macOS port copyright 2026 OniARM64 contributors. Fan port; not affiliated with Bungie or Take-Two.</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
 </dict>
 </plist>

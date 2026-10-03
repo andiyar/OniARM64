@@ -8,16 +8,7 @@ are written for players; the per-commit developer detail lives in
 land. At each release cut, the Unreleased section becomes the body of the
 GitHub release notes and gets stamped with the version + date.
 
-## Unreleased (since 1.3.0, 2026-09-27)
-
-### Input
-- Game controllers: a plugged-in pad (Switch Pro tested) now works for the
-  buttons, triggers and D-pad, including with an existing key_config.txt. The
-  new `pad_*` names can be rebound like keys. Menu control comes in a later
-  build. (#73)
-- Game controllers: the left stick moves and the right stick aims (invert
-  mouse applies to it too); click the right stick while running forward to
-  sprint, the same as the keyboard double-tap. (#73)
+## 1.3.1 — 2026-10-04
 
 ### Cutscenes
 - Extensive bug fixes for ultrawide and widescreen support. Cutscenes now
