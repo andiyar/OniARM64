@@ -30,6 +30,10 @@ GitHub release notes and gets stamped with the version + date.
   the sides to fill the window, the way most games handle widescreen. Before
   this the picture was cropped top and bottom to fill the width, which cut
   close shots tight on 16:9 and tighter still on an ultrawide. (#134)
+- Chapter 2 opening shot on widescreen: the building wall that used to swing
+  into frame beside the camera on wide screens is now kept out of that one
+  shot, so the courtyard and the officers walking in are framed as at 4:3,
+  with more to the sides. (#134, #36, #3)
 
 ## 1.3.0 — 2026-09-27
 

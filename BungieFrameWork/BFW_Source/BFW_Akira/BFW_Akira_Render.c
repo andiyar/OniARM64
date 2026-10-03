@@ -1361,23 +1361,25 @@ static void AgeEnvironment(AKtEnvironment *inEnvironment)
 static UUtUns32 AKgNumEqualFrames = 0;
 
 // #134 view-cone probe (ONI_CUTSCENE_DIAG=1): for the frames right after each
-// env_show, log the drawn environment quads nearest the camera that lie inside
-// the current frustum, with their angular offset from the view centre and their
-// vertices. Names the quads a widescreen cutscene shows at the sides.
+// env_show, log every drawn environment quad (up to AKcCutsceneDiagMaxQuads,
+// nearest first) with its vertices projected to normalised screen space
+// (sx, sy in -1..+1 inside the frame, "B" when behind the camera). A wall at
+// the near plane straddles the frustum edge, so a centre-in-cone test misses
+// it; per-vertex projection does not. Names the quads a widescreen cutscene
+// shows at the sides.
 static int AKgCutsceneDiag = -1;
 static UUtUns32 AKgCutsceneDiagFramesLeft = 0;
-#define AKcCutsceneDiagFrames 6
-#define AKcCutsceneDiagMaxQuads 24
-#define AKcCutsceneDiagMaxDist 250.0f
+#define AKcCutsceneDiagFrames 3
+#define AKcCutsceneDiagMaxQuads 64
 
 static void AKiEnvironment_ViewConeProbe(AKtEnvironment *inEnvironment, UUtUns32 *inVisible, UUtUns32 inNumVisible)
 {
 	M3tGeomCamera *camera;
 	M3tPoint3D cam;
 	M3tVector3D view, up, right;
-	float fovy, aspect, half_v, half_h;
+	float fovy, aspect, tan_v, tan_h;
 	UUtUns32 i, found = 0;
-	struct { UUtUns32 gq; float dist, h, v; } hits[AKcCutsceneDiagMaxQuads];
+	struct { UUtUns32 gq; float dist; } hits[AKcCutsceneDiagMaxQuads];
 	M3tPoint3D *points = inEnvironment->pointArray->points;
 
 	M3rCamera_GetActive(&camera);
@@ -1385,57 +1387,59 @@ static void AKiEnvironment_ViewConeProbe(AKtEnvironment *inEnvironment, UUtUns32
 	M3rCamera_GetViewData(camera, &cam, &view, &up);
 	M3rCamera_GetStaticData(camera, &fovy, &aspect, NULL, NULL);
 	MUrVector_CrossProduct(&view, &up, &right);
-	half_v = fovy * 0.5f;
-	half_h = MUrATan(aspect * MUrTan(half_v));
+	tan_v = MUrTan(fovy * 0.5f);
+	tan_h = aspect * tan_v;
 
 	for (i = 0; i < inNumVisible; i++) {
 		UUtUns32 gq = inVisible[i];
 		AKtGQ_General *gen = inEnvironment->gqGeneralArray->gqGeneral + gq;
-		M3tPoint3D c = { 0.f, 0.f, 0.f };
-		M3tVector3D d;
-		float depth, dr, du, h, v, dist;
+		float dist = 1.0e9f;
 		UUtUns32 k, slot;
 
 		for (k = 0; k < 4; k++) {
 			M3tPoint3D *p = points + gen->m3Quad.vertexIndices.indices[k];
-			c.x += p->x * 0.25f; c.y += p->y * 0.25f; c.z += p->z * 0.25f;
+			M3tVector3D d;
+			float l;
+			MUmVector_Subtract(d, *p, cam);
+			l = MUmVector_GetLength(d);
+			if (l < dist) dist = l;
 		}
-		MUmVector_Subtract(d, c, cam);
-		depth = MUrVector_DotProduct(&d, &view);
-		if (depth <= 0.f) continue;
-		dr = MUrVector_DotProduct(&d, &right);
-		du = MUrVector_DotProduct(&d, &up);
-		h = MUrATan(dr / depth);
-		v = MUrATan(du / depth);
-		if ((h < -half_h) || (h > half_h) || (v < -half_v) || (v > half_v)) continue;
-		dist = MUmVector_GetLength(d);
-		if (dist > AKcCutsceneDiagMaxDist) continue;
-
-		// insert sorted by distance, keep the nearest AKcCutsceneDiagMaxQuads
 		for (slot = found; (slot > 0) && (hits[slot - 1].dist > dist); slot--) {
 			if (slot < AKcCutsceneDiagMaxQuads) hits[slot] = hits[slot - 1];
 		}
 		if (slot < AKcCutsceneDiagMaxQuads) {
-			hits[slot].gq = gq; hits[slot].dist = dist; hits[slot].h = h; hits[slot].v = v;
+			hits[slot].gq = gq; hits[slot].dist = dist;
 			if (found < AKcCutsceneDiagMaxQuads) found++;
 		}
 	}
 
-	UUrStartupMessage("[134-CONE] frame cam=(%.2f,%.2f,%.2f) view=(%.3f,%.3f,%.3f) up=(%.3f,%.3f,%.3f) fovy=%.1f aspect=%.3f hfov=%.1f visible=%u inCone=%u",
-		cam.x, cam.y, cam.z, view.x, view.y, view.z, up.x, up.y, up.z,
-		fovy * (360.f / M3c2Pi), aspect, 2.f * half_h * (360.f / M3c2Pi), (unsigned) inNumVisible, (unsigned) found);
+	UUrStartupMessage("[134-CONE] frame cam=(%.2f,%.2f,%.2f) view=(%.3f,%.3f,%.3f) up=(%.3f,%.3f,%.3f) right=(%.3f,%.3f,%.3f) fovy=%.1f aspect=%.3f visible=%u logged=%u",
+		cam.x, cam.y, cam.z, view.x, view.y, view.z, up.x, up.y, up.z, right.x, right.y, right.z,
+		fovy * (360.f / M3c2Pi), aspect, (unsigned) inNumVisible, (unsigned) found);
 	for (i = 0; i < found; i++) {
 		AKtGQ_General *gen = inEnvironment->gqGeneralArray->gqGeneral + hits[i].gq;
 		UUtUns32 k, ref = 0xFFFFFFFF;
-		M3tPoint3D *p[4];
+		char buf[512];
+		int n = 0;
 		for (k = 0; k < inEnvironment->envQuadRemapIndices->numIndices; k++) {
 			if (inEnvironment->envQuadRemapIndices->indices[k] == hits[i].gq) { ref = inEnvironment->envQuadRemaps->indices[k]; break; }
 		}
-		for (k = 0; k < 4; k++) p[k] = points + gen->m3Quad.vertexIndices.indices[k];
-		UUrStartupMessage("[134-CONE]  gq=%u dist=%.1f h=%+.1f v=%+.1f flags=0x%08x ref=%d v0=(%.1f,%.1f,%.1f) v1=(%.1f,%.1f,%.1f) v2=(%.1f,%.1f,%.1f) v3=(%.1f,%.1f,%.1f)",
-			(unsigned) hits[i].gq, hits[i].dist, hits[i].h * (360.f / M3c2Pi), hits[i].v * (360.f / M3c2Pi),
-			(unsigned) gen->flags, (ref == 0xFFFFFFFF) ? -1 : (int) ref,
-			p[0]->x, p[0]->y, p[0]->z, p[1]->x, p[1]->y, p[1]->z, p[2]->x, p[2]->y, p[2]->z, p[3]->x, p[3]->y, p[3]->z);
+		for (k = 0; k < 4; k++) {
+			M3tPoint3D *p = points + gen->m3Quad.vertexIndices.indices[k];
+			M3tVector3D d;
+			float depth, dr, du;
+			MUmVector_Subtract(d, *p, cam);
+			depth = MUrVector_DotProduct(&d, &view);
+			dr = MUrVector_DotProduct(&d, &right);
+			du = MUrVector_DotProduct(&d, &up);
+			if (depth > 0.01f) {
+				n += sprintf(buf + n, " v%u=(%.1f,%.1f,%.1f)@d%.1f,s(%+.2f,%+.2f)", (unsigned) k, p->x, p->y, p->z, depth, dr / (depth * tan_h), du / (depth * tan_v));
+			} else {
+				n += sprintf(buf + n, " v%u=(%.1f,%.1f,%.1f)@d%.1f,B", (unsigned) k, p->x, p->y, p->z, depth);
+			}
+		}
+		UUrStartupMessage("[134-CONE]  gq=%u near=%.1f flags=0x%08x ref=%d%s",
+			(unsigned) hits[i].gq, hits[i].dist, (unsigned) gen->flags, (ref == 0xFFFFFFFF) ? -1 : (int) ref, buf);
 	}
 }
 

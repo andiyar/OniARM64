@@ -77,7 +77,7 @@ extern float ONgMotoko_FieldOfView;
 // Widescreen is "hor+" (#134): the vertical field stays at the authored value at every
 // window aspect and the horizontal field opens with the width (57.8 degrees at 4:3,
 // 72.7 at 16:9, about 93 at 21:9). Shots that framed side geometry out at 4:3 can
-// show it; those are fixed per shot on the data side (ONrCutscene_EnvShowCompanion).
+// show it; those are fixed per shot on the data side (ONrCutscene_ShotHide_Update).
 #define ONcMotoko_CutsceneAspect (4.0f / 3.0f)
 // Dev override: ONI_CUTSCENE_CROP_CAP=<aspect> at launch re-enables the #36
 // fill-width / vertical-crop framing (hold the 4:3 horizontal field, trim the vertical

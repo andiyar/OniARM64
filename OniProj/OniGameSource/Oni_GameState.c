@@ -5080,6 +5080,143 @@ static void ONiGameState_Display_NonReflectable_Tool(Display_Performance_Variabl
 }
 #endif
 
+// ---------------------------------------------------------------------------
+// #134: per-shot environment hides for widescreen cutscenes.
+//
+// In-engine cutscenes were authored at 4:3. With hor+ framing a wider window
+// opens the horizontal field, and a few shots were authored with the camera
+// just outside a wall it looks through: at 4:3 no visibility ray walks an
+// octree leaf that lists the wall, so it is never drawn, but the wider fan
+// admits it, it is front-facing and a few units away, and it then occludes
+// the whole scene. The script's env_show list for the shot does not cover
+// these quads (#3, #36), and players use retail data, so the engine hides
+// them itself while the cutscene camera sits at the authored position and
+// the window is wider than 4:3. At 4:3 nothing changes.
+//
+// Quads are matched by world-space bounds rather than index so PC and Mac
+// level data both work. The hide uses the same BrokenGlass flag as env_show,
+// which the renderer and the visibility raycast both skip.
+// ---------------------------------------------------------------------------
+
+typedef struct ONtCutsceneShotHide {
+	UUtUns16	level;
+	M3tPoint3D	camera;		// authored camera position of the shot
+	float		radius;		// hide while the active camera is within this distance
+	M3tPoint3D	box_min;	// all four vertices of a hidden quad lie inside this box
+	M3tPoint3D	box_max;
+	const char	*what;
+} ONtCutsceneShotHide;
+
+static const ONtCutsceneShotHide ONgCutsceneShotHides[] = {
+	// Chapter 2 (level 2, manplant_cutscene.bsl intro, cm_interpolate Camout01):
+	// the building's back wall on the plane x=564.7 (gq 2396 and 13983 in the
+	// PC data), between the camera and the courtyard it is looking at.
+	{ 2, { 569.46f, 9.57f, 144.48f }, 10.0f, { 564.2f, -2.0f, -3.5f }, { 565.2f, 135.0f, 221.0f }, "chapter 2 intro back wall" },
+};
+
+#define ONcCutsceneShotHide_MaxQuads 16
+
+static struct {
+	const AKtEnvironment	*env;			// environment the cache was built for
+	int						shot;			// index into ONgCutsceneShotHides, -1 = none active
+	UUtUns32				num_quads;
+	UUtUns32				quads[ONcCutsceneShotHide_MaxQuads];
+} ONgCutsceneShotHideState = { NULL, -1, 0, { 0 } };
+
+static UUtUns32 ONiCutsceneShotHide_FindQuads(const AKtEnvironment *inEnv, const ONtCutsceneShotHide *inShot, UUtUns32 *outQuads, UUtUns32 inMax)
+{
+	UUtUns32 gq, count = 0;
+	const M3tPoint3D *points = inEnv->pointArray->points;
+
+	for (gq = 0; gq < inEnv->gqGeneralArray->numGQs; gq++) {
+		const AKtGQ_General *gen = inEnv->gqGeneralArray->gqGeneral + gq;
+		UUtUns32 k;
+		UUtBool inside = UUcTrue;
+
+		for (k = 0; (k < 4) && inside; k++) {
+			const M3tPoint3D *p = points + gen->m3Quad.vertexIndices.indices[k];
+			inside = (p->x >= inShot->box_min.x) && (p->x <= inShot->box_max.x) &&
+			         (p->y >= inShot->box_min.y) && (p->y <= inShot->box_max.y) &&
+			         (p->z >= inShot->box_min.z) && (p->z <= inShot->box_max.z);
+		}
+		if (!inside) continue;
+		if (count < inMax) outQuads[count] = gq;
+		count++;
+	}
+	return count;
+}
+
+static void ONiCutsceneShotHide_Apply(AKtEnvironment *inEnv, UUtBool inHide)
+{
+	UUtUns32 i;
+	for (i = 0; i < ONgCutsceneShotHideState.num_quads; i++) {
+		AKtGQ_General *gen = inEnv->gqGeneralArray->gqGeneral + ONgCutsceneShotHideState.quads[i];
+		if (inHide) gen->flags |= AKcGQ_Flag_BrokenGlass;
+		else gen->flags &= ~AKcGQ_Flag_BrokenGlass;
+	}
+	AKrEnvironment_GunkChanged();
+}
+
+// Called once per frame before the environment visibility pass.
+static void ONrCutscene_ShotHide_Update(M3tGeomCamera *inCamera)
+{
+	AKtEnvironment *env = (ONgGameState != NULL && ONgGameState->level != NULL) ? ONgGameState->level->environment : NULL;
+	int want = -1;
+
+	if (env != ONgCutsceneShotHideState.env) {
+		// new level: the old flags went with the old data, drop the state
+		ONgCutsceneShotHideState.env = env;
+		ONgCutsceneShotHideState.shot = -1;
+		ONgCutsceneShotHideState.num_quads = 0;
+	}
+	if (env == NULL) return;
+
+	if (ONgGameState->local.in_cutscene && (ONcMotoko_AspectRatio > ONcMotoko_CutsceneAspect + 0.01f)) {
+		UUtUns16 level = ONrLevel_GetCurrentLevel();
+		M3tPoint3D cam;
+		M3tVector3D view, up;
+		int i;
+
+		M3rCamera_GetViewData(inCamera, &cam, &view, &up);
+		for (i = 0; i < (int) (sizeof(ONgCutsceneShotHides) / sizeof(ONgCutsceneShotHides[0])); i++) {
+			const ONtCutsceneShotHide *shot = ONgCutsceneShotHides + i;
+			if (shot->level != level) continue;
+			if (MUmVector_GetDistanceSquared(cam, shot->camera) > UUmSQR(shot->radius)) continue;
+			want = i;
+			break;
+		}
+	}
+
+	if (want == ONgCutsceneShotHideState.shot) return;
+
+	if (ONgCutsceneShotHideState.shot >= 0) {
+		ONiCutsceneShotHide_Apply(env, UUcFalse);
+		UUrStartupMessage("[134-SHOT] restored %u quads (%s)", (unsigned) ONgCutsceneShotHideState.num_quads, ONgCutsceneShotHides[ONgCutsceneShotHideState.shot].what);
+		ONgCutsceneShotHideState.shot = -1;
+		ONgCutsceneShotHideState.num_quads = 0;
+	}
+	if (want >= 0) {
+		const ONtCutsceneShotHide *shot = ONgCutsceneShotHides + want;
+		UUtUns32 count = ONiCutsceneShotHide_FindQuads(env, shot, ONgCutsceneShotHideState.quads, ONcCutsceneShotHide_MaxQuads);
+		if (count > ONcCutsceneShotHide_MaxQuads) {
+			UUrStartupMessage("[134-SHOT] %s: %u quads match the box, more than %u; hiding none", shot->what, (unsigned) count, ONcCutsceneShotHide_MaxQuads);
+			count = 0;
+		}
+		ONgCutsceneShotHideState.num_quads = count;
+		ONgCutsceneShotHideState.shot = want;
+		if (count > 0) {
+			UUtUns32 i;
+			ONiCutsceneShotHide_Apply(env, UUcTrue);
+			for (i = 0; i < count; i++) {
+				UUrStartupMessage("[134-SHOT] hid gq=%u (%s)", (unsigned) ONgCutsceneShotHideState.quads[i], shot->what);
+			}
+		} else {
+			UUrStartupMessage("[134-SHOT] %s: no quads match the box in this level data", shot->what);
+		}
+	}
+}
+
+
 static UUtError
 ONiGameState_Display_NonReflectable(
 	Display_Performance_Variables	*ioPerfVars)
@@ -5110,7 +5247,7 @@ ONiGameState_Display_NonReflectable(
 		// zoom into the middle band of the authored frame (34.5 of 45 degrees at 16:9,
 		// 26 at 21:9); it survives only behind ONI_CUTSCENE_CROP_CAP for comparisons.
 		// Side geometry a 4:3 shot framed out (the chapter 2 intro wall) is handled
-		// per shot on the data side, see ONrCutscene_EnvShowCompanion. The authored
+		// per shot on the data side, see ONrCutscene_ShotHide_Update. The authored
 		// FOV is re-asserted every frame, so it auto-restores outside cutscenes.
 		{
 			float framing_aspect = ONcMotoko_AspectRatio;
@@ -5138,6 +5275,7 @@ ONiGameState_Display_NonReflectable(
 			}
 		}
 
+		ONrCutscene_ShotHide_Update(ONgVisibilityCamera);	// #134
 		TMrAKOT_TripwireCheck("NR pre AKrEnvironment_StartFrame");
 		error = AKrEnvironment_StartFrame(ONgGameState->level->environment, ONgVisibilityCamera, &render_sky_this_frame);
 		TMrAKOT_TripwireCheck("NR post AKrEnvironment_StartFrame");
