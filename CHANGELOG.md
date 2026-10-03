@@ -26,10 +26,10 @@ GitHub release notes and gets stamped with the version + date.
   near the view" check was using the cutscene's cropped field of view, so on
   a wide screen it threw her out before drawing; it now uses the game's own
   field of view. (#128, #131)
-- Screens wider than 16:9: cutscenes now show the same picture a 16:9 screen
-  gets, centred, with black bars at the sides for the cutscene only. Before
-  this the picture was cropped top and bottom to fill the width, which on an
-  ultrawide cut shots very tight. (#134)
+- Widescreen cutscenes now show the full height of the authored shot and open
+  the sides to fill the window, the way most games handle widescreen. Before
+  this the picture was cropped top and bottom to fill the width, which cut
+  close shots tight on 16:9 and tighter still on an ultrawide. (#134)
 
 ## 1.3.0 — 2026-09-27
 

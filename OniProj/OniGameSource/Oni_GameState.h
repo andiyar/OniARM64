@@ -315,7 +315,6 @@ void ONrGameState_LetterBox_Start(ONtLetterBox *inLetterBox);
 void ONrGameState_LetterBox_Stop(ONtLetterBox *inLetterBox);
 void ONrGameState_LetterBox_Update(ONtLetterBox *ioLetterBox, UUtUns32 inTicks);
 void ONrGameState_LetterBox_Display(ONtLetterBox *inLetterBox);
-UUtUns16 ONrGameState_CutscenePillarboxWidth(void);	// #134
 UUtBool ONrGameState_LetterBox_Active(ONtLetterBox *inLetterBox);
 
 // timer functions

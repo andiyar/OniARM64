@@ -104,33 +104,6 @@ static UUtBool ONgSingleStep = UUcFalse;
 #define ONcLetterBox_Depth 75
 #define ONcLetterBox_Increment 1.25f
 
-// #134: width in pixels of each cutscene side bar on a screen wider than 16:9,
-// 0 when the screen is 16:9 or narrower or ONI_CUTSCENE_PILLARBOX=0 disables it.
-// The camera clamp uses the 16:9 field whenever this is non-zero, so the picture
-// under the bars is exactly what a 16:9 player sees.
-UUtUns16 ONrGameState_CutscenePillarboxWidth(void)
-{
-	static int enabled = -1;
-	float screen_width = (float) M3rDraw_GetWidth();
-	float screen_height = (float) M3rDraw_GetHeight();
-	float boxed_width;
-
-	if (enabled < 0) {
-		const char *env = getenv("ONI_CUTSCENE_PILLARBOX");
-		enabled = (env != NULL && env[0] == '0') ? 0 : 1;
-		if (!enabled) UUrStartupMessage("[134] ONI_CUTSCENE_PILLARBOX=0: side bars off");
-	}
-	if (!enabled || screen_height <= 0.f) {
-		return 0;
-	}
-
-	boxed_width = screen_height * ONcMotoko_PillarboxAspect;
-	if (screen_width <= boxed_width + 1.f) {
-		return 0;
-	}
-	return (UUtUns16) ((screen_width - boxed_width) * 0.5f + 0.5f);
-}
-
 
 UUtBool	ONgShow_Environment = UUcTrue;
 UUtBool	ONgShow_Characters = UUcTrue;
@@ -5115,7 +5088,6 @@ ONiGameState_Display_NonReflectable(
 	M3tGeomCamera*	activeCamera;
 	UUtBool			render_sky_this_frame = UUcTrue;
 	UUtBool			is_skipping_cutscene = (ONgGameState->local.in_cutscene) && (ONcCutsceneSkip_skipping == ONgGameState->local.cutscene_skip_mode);
-	float			vis_aspect = 0.f, render_aspect = 0.f, vis_fovy = 0.f;	// #134
 	extern void TMrAKOT_TripwireCheck(const char* where);
 
 	// start the environment
@@ -5128,69 +5100,41 @@ ONiGameState_Display_NonReflectable(
 		TMrAKOT_TripwireCheck("NR pre Camera_GetActive");
 		M3rCamera_GetActive(&activeCamera);
 
-		// Cutscene widescreen framing (issue #36): in-engine cutscenes were authored
-		// for 4:3. On a wider window the camera inherits the window aspect, opening the
-		// horizontal FOV (57.8 deg -> 72.7 deg at 16:9) and pulling side geometry the
-		// 4:3 shot framed out into view (the level-2 intro wall). Hold the 4:3 horizontal
-		// framing during cutscenes and fill the extra width by trimming vertical FOV
-		// (fill-width / vert-crop). The same camera object drives both the visibility cull
-		// and the GL projection, so one clamp narrows them together. Sourced from the
-		// authored global FOV (never telescopes) and recomputed from the live aspect each
-		// frame; outside cutscenes it re-asserts the authored FOV, so it auto-restores.
+		// Cutscene widescreen framing (#36, #131, #134): in-engine cutscenes were
+		// authored for a 4:3 frame with a 45 degree vertical field. Since #134 the
+		// framing is "hor+", the standard widescreen answer: the vertical field stays
+		// at the authored value at every window aspect and the horizontal field opens
+		// with the width, so a wider window shows more of the scene at the sides and
+		// never less at the top and bottom. The earlier fill-width / vertical-crop
+		// (#36) held the 4:3 horizontal field and trimmed the vertical one, which is a
+		// zoom into the middle band of the authored frame (34.5 of 45 degrees at 16:9,
+		// 26 at 21:9); it survives only behind ONI_CUTSCENE_CROP_CAP for comparisons.
+		// Side geometry a 4:3 shot framed out (the chapter 2 intro wall) is handled
+		// per shot on the data side, see ONrCutscene_EnvShowCompanion. The authored
+		// FOV is re-asserted every frame, so it auto-restores outside cutscenes.
 		{
 			float framing_aspect = ONcMotoko_AspectRatio;
 			float render_fovy    = ONgMotoko_FieldOfView;
 			float cur_near, cur_far;
+			static float env_cap = -1.0f;
+
+			if (env_cap < 0.0f) {
+				const char *env = getenv("ONI_CUTSCENE_CROP_CAP");
+				env_cap = (env != NULL && atof(env) >= 1.0) ? (float) atof(env) : 0.0f;
+				if (env_cap > 0.0f) UUrStartupMessage("[131] ONI_CUTSCENE_CROP_CAP=%.3f: #36 vertical crop re-enabled up to that aspect", env_cap);
+			}
 
 			M3rCamera_GetStaticData(ONgVisibilityCamera, NULL, NULL, &cur_near, &cur_far);
 
-			if ((ONgGameState->local.in_cutscene) && (framing_aspect > ONcMotoko_CutsceneAspect)) {
-				// Issue #134 (pillarbox): on a screen wider than 16:9, cutscenes use the
-				// 16:9 camera (the framing verified for #36 and preferred by testers) at
-				// the real window aspect. That lands the 16:9 picture in the centre with
-				// extra scene in the side strips, and ONrGameState_LetterBox_Display
-				// paints black bars over those strips, so what the player sees is exactly
-				// the 16:9 framing. The engine's screen mapping is untouched.
-				float crop_cap = ONcMotoko_CutsceneCropAspectMax;
-				float crop_aspect;
-				if (ONrGameState_CutscenePillarboxWidth() > 0) {
-					crop_cap = ONcMotoko_PillarboxAspect;
-				}
-				// Dev override (#131): ONI_CUTSCENE_CROP_CAP=<aspect> changes the cap
-				// at launch so the before/after of the crop can be compared without a
-				// rebuild (e.g. 9 = no cap, the 1.3.0 behaviour; 1.7778 = the 16:9 cap).
-				{
-					static float env_cap = -1.0f;
-					if (env_cap < 0.0f) {
-						const char *env = getenv("ONI_CUTSCENE_CROP_CAP");
-						env_cap = (env != NULL && atof(env) >= 1.0) ? (float) atof(env) : 0.0f;
-						if (env_cap > 0.0f) UUrStartupMessage("[131] ONI_CUTSCENE_CROP_CAP=%.3f", env_cap);
-					}
-					if (env_cap > 0.0f) crop_cap = env_cap;
-				}
-				crop_aspect = UUmMin(framing_aspect, crop_cap);
+			if ((env_cap > 0.0f) && (ONgGameState->local.in_cutscene) && (framing_aspect > ONcMotoko_CutsceneAspect)) {
+				float crop_aspect = UUmMin(framing_aspect, env_cap);
 				float fov_ratio = ONcMotoko_CutsceneAspect / crop_aspect;
 				render_fovy = 2.0f * MUrATan(fov_ratio * MUrTan(ONgMotoko_FieldOfView * 0.5f));
 			}
 
-			// #134: when pillarboxing, the visibility pass must see the 16:9 frustum.
-			// The chapter 2 wall (#36) is an occluder the camera sits against; the
-			// environment visibility pass draws it as soon as the horizontal field is
-			// wide enough for its bounding box to enter the frustum, and then it
-			// covers the whole picture, bars or not. So the visibility camera gets
-			// the 16:9 aspect for AKrEnvironment_StartFrame, exactly what a 16:9
-			// player's pass sees, and is set back to the window aspect for drawing
-			// right after (both jobs normally share one camera object).
-			vis_aspect = framing_aspect;
-			if ((ONgGameState->local.in_cutscene) && (ONrGameState_CutscenePillarboxWidth() > 0)) {
-				vis_aspect = ONcMotoko_PillarboxAspect;
-			}
-			render_aspect = framing_aspect;
-			vis_fovy = render_fovy;
-
-			M3rCamera_SetStaticData(ONgVisibilityCamera, vis_fovy, vis_aspect, cur_near, cur_far);
+			M3rCamera_SetStaticData(ONgVisibilityCamera, render_fovy, framing_aspect, cur_near, cur_far);
 			if (activeCamera != ONgVisibilityCamera) {
-				M3rCamera_SetStaticData(activeCamera, render_fovy, render_aspect, cur_near, cur_far);
+				M3rCamera_SetStaticData(activeCamera, render_fovy, framing_aspect, cur_near, cur_far);
 			}
 		}
 
@@ -5198,13 +5142,6 @@ ONiGameState_Display_NonReflectable(
 		error = AKrEnvironment_StartFrame(ONgGameState->level->environment, ONgVisibilityCamera, &render_sky_this_frame);
 		TMrAKOT_TripwireCheck("NR post AKrEnvironment_StartFrame");
 		UUmError_ReturnOnError(error);
-
-		if (vis_aspect != render_aspect) {
-			// #134: visibility done with the 16:9 frustum; draw with the window's.
-			float cur_near, cur_far;
-			M3rCamera_GetStaticData(ONgVisibilityCamera, NULL, NULL, &cur_near, &cur_far);
-			M3rCamera_SetStaticData(ONgVisibilityCamera, vis_fovy, render_aspect, cur_near, cur_far);
-		}
 
 		render_sky_this_frame &= !is_skipping_cutscene;
 
@@ -6421,33 +6358,6 @@ void ONrGameState_LetterBox_Display(ONtLetterBox *ioLetterBox)
 		M3rDraw_Sprite(
 			points,
 			uv);
-
-		// #134: side bars on a screen wider than 16:9, sliding in with the
-		// top and bottom bars. They cover the extra horizontal field the 16:9
-		// cutscene camera shows at the real window aspect (the chapter 2 wall of
-		// #36 lives there), so the visible picture is the 16:9 framing.
-		{
-			UUtUns16 side_full = ONrGameState_CutscenePillarboxWidth();
-			if (side_full > 0) {
-				float side = side_full * (ioLetterBox->position / (float) ONcLetterBox_Depth);
-				static UUtBool side_logged = UUcFalse;
-
-				if (!side_logged) {
-					UUrStartupMessage("[134] pillarbox: %ux%u window, %u px side bars each side", screen_width, screen_height, side_full);
-					side_logged = UUcTrue;
-				}
-
-				points[0].x = 0.f;
-				points[0].y = 0.f;
-				points[1].x = side;
-				points[1].y = (float) screen_height;
-				M3rDraw_Sprite(points, uv);
-
-				points[0].x = (float) screen_width - side;
-				points[1].x = (float) screen_width;
-				M3rDraw_Sprite(points, uv);
-			}
-		}
 
 		M3rDraw_State_Pop();
 	}

@@ -1360,6 +1360,85 @@ static void AgeEnvironment(AKtEnvironment *inEnvironment)
 
 static UUtUns32 AKgNumEqualFrames = 0;
 
+// #134 view-cone probe (ONI_CUTSCENE_DIAG=1): for the frames right after each
+// env_show, log the drawn environment quads nearest the camera that lie inside
+// the current frustum, with their angular offset from the view centre and their
+// vertices. Names the quads a widescreen cutscene shows at the sides.
+static int AKgCutsceneDiag = -1;
+static UUtUns32 AKgCutsceneDiagFramesLeft = 0;
+#define AKcCutsceneDiagFrames 6
+#define AKcCutsceneDiagMaxQuads 24
+#define AKcCutsceneDiagMaxDist 250.0f
+
+static void AKiEnvironment_ViewConeProbe(AKtEnvironment *inEnvironment, UUtUns32 *inVisible, UUtUns32 inNumVisible)
+{
+	M3tGeomCamera *camera;
+	M3tPoint3D cam;
+	M3tVector3D view, up, right;
+	float fovy, aspect, half_v, half_h;
+	UUtUns32 i, found = 0;
+	struct { UUtUns32 gq; float dist, h, v; } hits[AKcCutsceneDiagMaxQuads];
+	M3tPoint3D *points = inEnvironment->pointArray->points;
+
+	M3rCamera_GetActive(&camera);
+	if (camera == NULL) return;
+	M3rCamera_GetViewData(camera, &cam, &view, &up);
+	M3rCamera_GetStaticData(camera, &fovy, &aspect, NULL, NULL);
+	MUrVector_CrossProduct(&view, &up, &right);
+	half_v = fovy * 0.5f;
+	half_h = MUrATan(aspect * MUrTan(half_v));
+
+	for (i = 0; i < inNumVisible; i++) {
+		UUtUns32 gq = inVisible[i];
+		AKtGQ_General *gen = inEnvironment->gqGeneralArray->gqGeneral + gq;
+		M3tPoint3D c = { 0.f, 0.f, 0.f };
+		M3tVector3D d;
+		float depth, dr, du, h, v, dist;
+		UUtUns32 k, slot;
+
+		for (k = 0; k < 4; k++) {
+			M3tPoint3D *p = points + gen->m3Quad.vertexIndices.indices[k];
+			c.x += p->x * 0.25f; c.y += p->y * 0.25f; c.z += p->z * 0.25f;
+		}
+		MUmVector_Subtract(d, c, cam);
+		depth = MUrVector_DotProduct(&d, &view);
+		if (depth <= 0.f) continue;
+		dr = MUrVector_DotProduct(&d, &right);
+		du = MUrVector_DotProduct(&d, &up);
+		h = MUrATan(dr / depth);
+		v = MUrATan(du / depth);
+		if ((h < -half_h) || (h > half_h) || (v < -half_v) || (v > half_v)) continue;
+		dist = MUmVector_GetLength(d);
+		if (dist > AKcCutsceneDiagMaxDist) continue;
+
+		// insert sorted by distance, keep the nearest AKcCutsceneDiagMaxQuads
+		for (slot = found; (slot > 0) && (hits[slot - 1].dist > dist); slot--) {
+			if (slot < AKcCutsceneDiagMaxQuads) hits[slot] = hits[slot - 1];
+		}
+		if (slot < AKcCutsceneDiagMaxQuads) {
+			hits[slot].gq = gq; hits[slot].dist = dist; hits[slot].h = h; hits[slot].v = v;
+			if (found < AKcCutsceneDiagMaxQuads) found++;
+		}
+	}
+
+	UUrStartupMessage("[134-CONE] frame cam=(%.2f,%.2f,%.2f) view=(%.3f,%.3f,%.3f) up=(%.3f,%.3f,%.3f) fovy=%.1f aspect=%.3f hfov=%.1f visible=%u inCone=%u",
+		cam.x, cam.y, cam.z, view.x, view.y, view.z, up.x, up.y, up.z,
+		fovy * (360.f / M3c2Pi), aspect, 2.f * half_h * (360.f / M3c2Pi), (unsigned) inNumVisible, (unsigned) found);
+	for (i = 0; i < found; i++) {
+		AKtGQ_General *gen = inEnvironment->gqGeneralArray->gqGeneral + hits[i].gq;
+		UUtUns32 k, ref = 0xFFFFFFFF;
+		M3tPoint3D *p[4];
+		for (k = 0; k < inEnvironment->envQuadRemapIndices->numIndices; k++) {
+			if (inEnvironment->envQuadRemapIndices->indices[k] == hits[i].gq) { ref = inEnvironment->envQuadRemaps->indices[k]; break; }
+		}
+		for (k = 0; k < 4; k++) p[k] = points + gen->m3Quad.vertexIndices.indices[k];
+		UUrStartupMessage("[134-CONE]  gq=%u dist=%.1f h=%+.1f v=%+.1f flags=0x%08x ref=%d v0=(%.1f,%.1f,%.1f) v1=(%.1f,%.1f,%.1f) v2=(%.1f,%.1f,%.1f) v3=(%.1f,%.1f,%.1f)",
+			(unsigned) hits[i].gq, hits[i].dist, hits[i].h * (360.f / M3c2Pi), hits[i].v * (360.f / M3c2Pi),
+			(unsigned) gen->flags, (ref == 0xFFFFFFFF) ? -1 : (int) ref,
+			p[0]->x, p[0]->y, p[0]->z, p[1]->x, p[1]->y, p[1]->z, p[2]->x, p[2]->y, p[2]->z, p[3]->x, p[3]->y, p[3]->z);
+	}
+}
+
 extern void OBJrTrigger_Dirty(void); // OT_Trigger.c
 void AKrEnvironment_GunkChanged(void)
 {
@@ -1368,6 +1447,13 @@ void AKrEnvironment_GunkChanged(void)
 	// we are recaculating the visibility
 
 	AKgNumEqualFrames = 0;
+
+	if (AKgCutsceneDiag < 0) {
+		const char *env = getenv("ONI_CUTSCENE_DIAG");
+		AKgCutsceneDiag = (env != NULL && env[0] == '1') ? 1 : 0;
+		if (AKgCutsceneDiag) UUrStartupMessage("[134-CONE] ONI_CUTSCENE_DIAG=1: view-cone probe armed after each env_show");
+	}
+	if (AKgCutsceneDiag) AKgCutsceneDiagFramesLeft = AKcCutsceneDiagFrames;
 
 	OBJrTrigger_Dirty();
 
@@ -1734,6 +1820,11 @@ forceDraw:
 	}
 
 	AKrEnvironment_VisibleSort(visibleArray, numVisible);
+
+	if (AKgCutsceneDiagFramesLeft > 0) {
+		AKgCutsceneDiagFramesLeft--;
+		AKiEnvironment_ViewConeProbe(inEnvironment, visibleArray, numVisible);
+	}
 
 	environmentPrivate->visGQ_Num = numVisible;
 

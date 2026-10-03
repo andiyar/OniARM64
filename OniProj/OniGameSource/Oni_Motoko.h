@@ -73,12 +73,16 @@ extern float ONgMotoko_FieldOfView;
 #define ONcMotoko_NearPlane 2.0f
 //#define ONcMotoko_FarPlane 1000.0f
 #define ONcMotoko_AspectRatio ((float)M3rDraw_GetWidth() / (float)M3rDraw_GetHeight())
-// In-engine cutscenes were authored for a 4:3 frame. On wider displays we hold this
-// horizontal framing and trim vertical FOV instead, so side geometry the shot excluded
-// stays off-screen (issue #36 — the level-2 intro wall).
+// In-engine cutscenes were authored for a 4:3 frame with a 45 degree vertical field.
+// Widescreen is "hor+" (#134): the vertical field stays at the authored value at every
+// window aspect and the horizontal field opens with the width (57.8 degrees at 4:3,
+// 72.7 at 16:9, about 93 at 21:9). Shots that framed side geometry out at 4:3 can
+// show it; those are fixed per shot on the data side (ONrCutscene_EnvShowCompanion).
 #define ONcMotoko_CutsceneAspect (4.0f / 3.0f)
-#define ONcMotoko_CutsceneCropAspectMax 100.0f	// #131: no cap by default, the #36 fill-width crop applies at any aspect. The 16:9 and 18:9 caps tried for #128 are withdrawn; the real fix is the coarse cull test in Oni_Character.c. ONI_CUTSCENE_CROP_CAP=<aspect> overrides at launch for experiments.
-#define ONcMotoko_PillarboxAspect (16.0f / 9.0f)	// #134: on screens wider than this, cutscenes render the 16:9 framing centred with black side bars
+// Dev override: ONI_CUTSCENE_CROP_CAP=<aspect> at launch re-enables the #36
+// fill-width / vertical-crop framing (hold the 4:3 horizontal field, trim the vertical
+// field) capped at that aspect, e.g. 100 = the 1.3.0 crop at any width, 1.7778 = the
+// 16:9-capped crop of 1.3.1-test1. For before/after comparisons only.
 
 extern UUtInt32 ONgMotoko_ClearColor;
 extern UUtBool ONgMotoko_ShadeVertex;
