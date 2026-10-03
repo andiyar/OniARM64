@@ -5171,6 +5171,13 @@ static void ONrCutscene_ShotHide_Update(M3tGeomCamera *inCamera)
 	}
 	if (env == NULL) return;
 
+	{
+		// #134 diagnostics: with ONI_CUTSCENE_DIAG=1 the view-cone probe also
+		// fires every 30 frames of a cutscene, not only after env_show.
+		static UUtUns32 diag_tick = 0;
+		if (ONgGameState->local.in_cutscene && ((diag_tick++ % 30) == 0)) AKrEnvironment_ArmViewConeProbe(1);
+	}
+
 	if (ONgGameState->local.in_cutscene && (ONcMotoko_AspectRatio > ONcMotoko_CutsceneAspect + 0.01f)) {
 		UUtUns16 level = ONrLevel_GetCurrentLevel();
 		M3tPoint3D cam;

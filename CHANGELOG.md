@@ -34,6 +34,10 @@ GitHub release notes and gets stamped with the version + date.
   into frame beside the camera on wide screens is now kept out of that one
   shot, so the courtyard and the officers walking in are framed as at 4:3,
   with more to the sides. (#134, #36, #3)
+- Widescreen cutscenes no longer black out part of the frame when the camera
+  is placed right up against a wall, as in the chapter 12 lobby shot. A wall
+  too close to be drawn used to block the engine's view of everything behind
+  it. (#134)
 
 ## 1.3.0 — 2026-09-27
 

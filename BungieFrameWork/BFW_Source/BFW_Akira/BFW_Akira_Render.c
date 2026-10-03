@@ -38,6 +38,11 @@
 #include "Oni_GameStatePrivate.h"
 #include "Oni_Motoko.h"
 
+// #134 diagnostics: ray-stop trace (see AKiEnvironment_ViewConeProbe)
+static UUtUns32 AKgDiagRayTraceLeft = 0;
+static float AKgDiagRayU = 0.f, AKgDiagRayV = 0.f;
+static UUtUns32 AKgDiagRayLogged = 0;
+
 //#define OCT_TREE_TOOL_SUPPORT 0
 
 #ifndef OCT_TREE_TOOL_SUPPORT
@@ -506,7 +511,24 @@ float	AKgIntToFloatXYZ[512] =
 #define AKcMaxRayCastStackElems	200
 
 #define MAX_AKIRA_RAYS 20
-static AKtRay AKgInternalRayStorage[MAX_AKIRA_RAYS * MAX_AKIRA_RAYS];
+// #134: the visibility ray fan was a square grid of inDivs x inDivs rays over
+// the frustum, tuned for 4:3. With hor+ widescreen the frustum is up to 1.8x
+// wider for the same height, which spread the columns 1.8x further apart, and
+// on a held cutscene shot (rays stop after AKcNumTemperalFrames, hits age out)
+// geometry at the sides of a wide frame fell between columns and vanished a
+// moment after the cut (chapter 12 lobby, left wall). The grid now has
+// inDivs rows and inDivs * aspect / (4/3) columns, so the density matches
+// 4:3 at every aspect, and is rebuilt when the camera aspect changes.
+#define MAX_AKIRA_RAY_COLS 48
+static AKtRay AKgInternalRayStorage[MAX_AKIRA_RAYS * MAX_AKIRA_RAY_COLS];
+static UUtUns32 AKgRayGridDivs = 0;
+static float AKgRayGridAspect = 0.f;
+
+static float AKiRayGrid_CurrentAspect(void)
+{
+	float w = (float) M3rDraw_GetWidth(), h = (float) M3rDraw_GetHeight();
+	return (w > 0.f && h > 0.f) ? (w / h) : (4.0f / 3.0f);
+}
 
 UUtError
 AKrRayCastCoefficients_Initialize(UUtUns32 inDivs)
@@ -514,47 +536,52 @@ AKrRayCastCoefficients_Initialize(UUtUns32 inDivs)
 	if (inDivs > MAX_AKIRA_RAYS) {
 		COrConsole_Printf("allocated too many akira rays");
 	}
-
 	inDivs = UUmMin(inDivs, MAX_AKIRA_RAYS);
 
 	{
 		UUtUns16		numTotalRays = 0;
 		AKtRay*			curDestRay;
-
 		UUtUns16	itr;
 		UUtUns32	x,y;
-
-		float		dimOffset = 1.f / ((float) inDivs);
+		float		aspect = AKiRayGrid_CurrentAspect();
+		UUtUns32	rows = inDivs;
+		UUtUns32	cols = (UUtUns32) (inDivs * aspect / (4.0f / 3.0f) + 0.5f);
+		float		dimOffsetU, dimOffsetV;
 		UUtUns32	table[4] = { 0,2,1,3 };
 
+		cols = UUmPin(cols, rows, MAX_AKIRA_RAY_COLS);
+		dimOffsetU = 1.f / ((float) cols);
+		dimOffsetV = 1.f / ((float) rows);
 
 		AKgFrame.rays = NULL;
-
 		UUmAssert(AKgFrame.rays == NULL);
-		AKgFrame.numRays = inDivs * inDivs;
+
+		AKgFrame.numRays = cols * rows;
 		AKgFrame.rays = AKgInternalRayStorage;
 		UUmError_ReturnOnNull(AKgFrame.rays);
-
 		curDestRay = AKgFrame.rays;
 
-		for(x = 0; x < inDivs; x++)
+		for(x = 0; x < cols; x++)
 		{
-			for(y = 0; y < inDivs; y++)
+			for(y = 0; y < rows; y++)
 			{
-				curDestRay->u = dimOffset * ((float) x) + (dimOffset * table[y % 4] * 0.25f);
-				curDestRay->v = dimOffset * ((float) y) + (dimOffset * table[x % 4] * 0.25f);
+				curDestRay->u = dimOffsetU * ((float) x) + (dimOffsetU * table[y % 4] * 0.25f);
+				curDestRay->v = dimOffsetV * ((float) y) + (dimOffsetV * table[x % 4] * 0.25f);
 				curDestRay++;
 				numTotalRays++;
 			}
 		}
-
-		UUmAssert(numTotalRays == inDivs * inDivs);
+		UUmAssert(numTotalRays == cols * rows);
 
 		for(itr = 0; itr < AKcNumTemperalFrames; itr++)
 		{
-			AKgRayOffset[itr].u_offset = AKgSourceRayOffset[itr].u_offset * dimOffset;
-			AKgRayOffset[itr].v_offset = AKgSourceRayOffset[itr].v_offset * dimOffset;
+			AKgRayOffset[itr].u_offset = AKgSourceRayOffset[itr].u_offset * dimOffsetU;
+			AKgRayOffset[itr].v_offset = AKgSourceRayOffset[itr].v_offset * dimOffsetV;
 		}
+
+		AKgRayGridDivs = inDivs;
+		AKgRayGridAspect = aspect;
+		UUrStartupMessage("[134-RAYS] visibility ray grid %u x %u for aspect %.3f", (unsigned) cols, (unsigned) rows, aspect);
 	}
 
 	return UUcError_None;
@@ -634,6 +661,11 @@ typedef struct raycast_block_type
 	float						total_max_z;
 
 	UUtUns32					hit_sky;
+
+	// #134: camera position and near-plane distance squared. A quad hit closer
+	// than the near plane cannot be drawn, so it must not stop a ray either.
+	float						camX, camY, camZ;
+	float						nearSq;
 } raycast_block_type;
 
 static void traverse_single_ray(raycast_block_type *in_block)
@@ -942,6 +974,20 @@ static void traverse_single_ray(raycast_block_type *in_block)
 					}
 
 					stopChecking = always_positive | always_negative;
+					if (stopChecking) {
+						// #134: inside the near plane the renderer clips this quad away, so
+						// letting it occlude would black out everything behind it (the
+						// chapter 12 lobby shot on widescreen, camera 1.5 units from a
+						// wall end). Keep it marked visible, keep the ray going.
+						float ndx = in_block->testPoint.x - in_block->camX;
+						float ndy = in_block->testPoint.y - in_block->camY;
+						float ndz = in_block->testPoint.z - in_block->camZ;
+						if ((ndx * ndx + ndy * ndy + ndz * ndz) < in_block->nearSq) stopChecking = UUcFalse;
+					}
+					if (stopChecking && (AKgDiagRayTraceLeft > 0) && (AKgDiagRayU < 0.34f) && (AKgDiagRayLogged < 60)) {
+						AKgDiagRayLogged++;
+						UUrStartupMessage("[134-RAY] u=%.3f v=%.3f stopped by gq=%u flags=0x%08x at (%.1f,%.1f,%.1f)", AKgDiagRayU, AKgDiagRayV, (unsigned) curGQIndex, (unsigned) curGQGeneral->flags, in_block->testPoint.x, in_block->testPoint.y, in_block->testPoint.z);
+					}
 				}
 			}
 		}
@@ -1143,6 +1189,7 @@ AKiEnvironment_RayCastOctTree(
 	#endif
 
 	raycast_block.hit_sky = UUcFalse;
+	if (AKgDiagRayTraceLeft > 0) { AKgDiagRayLogged = 0; UUrStartupMessage("[134-RAY] frame: left-third rays that hit an occluder"); }
 
 #if PERFORMANCE_TIMER
 	UUrPerformanceTimer_Enter(AKg_RayCastOctTree_Timer);
@@ -1184,6 +1231,14 @@ AKiEnvironment_RayCastOctTree(
 
 
 		raycast_block.startNodeIndex = AKrFindOctTreeNodeIndex(raycast_block.interiorNodeArray, cameraLocation.x, cameraLocation.y, cameraLocation.z, NULL);
+		{
+			float near_plane = 0.f;
+			M3rCamera_GetStaticData(inCamera, NULL, NULL, &near_plane, NULL);
+			raycast_block.camX = cameraLocation.x;
+			raycast_block.camY = cameraLocation.y;
+			raycast_block.camZ = cameraLocation.z;
+			raycast_block.nearSq = near_plane * near_plane;
+		}
 
 		raycast_block.total_min_x = cameraLocation.x;
 		raycast_block.total_min_y = cameraLocation.y;
@@ -1244,6 +1299,7 @@ AKiEnvironment_RayCastOctTree(
 
 			u = curRay->u + curRayOffset->u_offset;
 			v = curRay->v + curRayOffset->v_offset;
+			AKgDiagRayU = u; AKgDiagRayV = v;
 
 			raycast_block.endPointX = uv_far_initial_x + u * u_far_delta_x + v * v_far_delta_x;
 			raycast_block.endPointY = uv_far_initial_y + u * u_far_delta_y + v * v_far_delta_y;
@@ -1370,9 +1426,9 @@ static UUtUns32 AKgNumEqualFrames = 0;
 static int AKgCutsceneDiag = -1;
 static UUtUns32 AKgCutsceneDiagFramesLeft = 0;
 #define AKcCutsceneDiagFrames 3
-#define AKcCutsceneDiagMaxQuads 64
+#define AKcCutsceneDiagMaxQuads 160
 
-static void AKiEnvironment_ViewConeProbe(AKtEnvironment *inEnvironment, UUtUns32 *inVisible, UUtUns32 inNumVisible)
+static void AKiEnvironment_ViewConeProbe(AKtEnvironment *inEnvironment, UUtUns32 *inVisible, UUtUns32 inNumVisible, const UUtUns32 *inBackFaceBV, UUtUns32 *inVisVector)
 {
 	M3tGeomCamera *camera;
 	M3tPoint3D cam;
@@ -1441,6 +1497,68 @@ static void AKiEnvironment_ViewConeProbe(AKtEnvironment *inEnvironment, UUtUns32
 		UUrStartupMessage("[134-CONE]  gq=%u near=%.1f flags=0x%08x ref=%d%s",
 			(unsigned) hits[i].gq, hits[i].dist, (unsigned) gen->flags, (ref == 0xFFFFFFFF) ? -1 : (int) ref, buf);
 	}
+	// Second pass: quads the visibility pass left out although a vertex of
+	// theirs projects inside the frame within 80 units of the camera. These
+	// are the holes a widescreen frame can reveal (a wall whose back faces an
+	// authored camera placed inside or just outside it).
+	{
+		UUtUns32 gq, missed = 0;
+		for (gq = 0; (gq < inEnvironment->gqGeneralArray->numGQs) && (missed < AKcCutsceneDiagMaxQuads); gq++) {
+			AKtGQ_General *gen = inEnvironment->gqGeneralArray->gqGeneral + gq;
+			UUtUns32 k, ref = 0xFFFFFFFF;
+			UUtBool listed = UUcFalse, in_frame = UUcFalse;
+			float near_dist = 1.0e9f;
+			char buf[512];
+			int n = 0;
+
+			for (k = 0; k < inNumVisible; k++) { if (inVisible[k] == gq) { listed = UUcTrue; break; } }
+			for (k = 0; k < 4; k++) {
+				M3tPoint3D *p = points + gen->m3Quad.vertexIndices.indices[k];
+				M3tVector3D d;
+				float depth, dr, du, l;
+				MUmVector_Subtract(d, *p, cam);
+				l = MUmVector_GetLength(d);
+				if (l < near_dist) near_dist = l;
+				depth = MUrVector_DotProduct(&d, &view);
+				dr = MUrVector_DotProduct(&d, &right);
+				du = MUrVector_DotProduct(&d, &up);
+				if (depth > 0.01f) {
+					float sx = dr / (depth * tan_h), sy = du / (depth * tan_v);
+					if ((sx >= -1.f) && (sx <= 1.f) && (sy >= -1.f) && (sy <= 1.f) && (!listed || (sx < -0.1f))) in_frame = UUcTrue;
+					n += sprintf(buf + n, " v%u=(%.1f,%.1f,%.1f)@d%.1f,s(%+.2f,%+.2f)", (unsigned) k, p->x, p->y, p->z, depth, sx, sy);
+				} else {
+					n += sprintf(buf + n, " v%u=(%.1f,%.1f,%.1f)@d%.1f,B", (unsigned) k, p->x, p->y, p->z, depth);
+				}
+			}
+			if (!in_frame || (near_dist > 150.f)) continue;
+			for (k = 0; k < inEnvironment->envQuadRemapIndices->numIndices; k++) {
+				if (inEnvironment->envQuadRemapIndices->indices[k] == gq) { ref = inEnvironment->envQuadRemaps->indices[k]; break; }
+			}
+			{
+				M3tTextureMap *tex = inEnvironment->textureMapArray->maps[inEnvironment->gqRenderArray->gqRender[gq].textureMapIndex];
+				const char *texname = (tex != NULL) ? tex->debugName : "(none)";
+			UUrStartupMessage("[134-CONE]  %s gq=%u tex=%s near=%.1f flags=0x%08x%s%s%s%s%s ref=%d backface=%u vis=%u%s",
+				listed ? "near" : "miss", (unsigned) gq, texname, near_dist, (unsigned) gen->flags,
+				(gen->flags & AKcGQ_Flag_Door) ? " DOOR" : "", (gen->flags & AKcGQ_Flag_Ghost) ? " GHOST" : "",
+				(gen->flags & AKcGQ_Flag_Invisible) ? " INVIS" : "", (gen->flags & AKcGQ_Flag_Transparent) ? " TRANSP" : "",
+				(gen->flags & (AKcGQ_Flag_SAT_Up | AKcGQ_Flag_SAT_Down)) ? " SAT" : "",
+				(ref == 0xFFFFFFFF) ? -1 : (int) ref,
+				(unsigned) (UUrBitVector_TestBit(inBackFaceBV, gq) ? 1 : 0), (unsigned) UUr2BitVector_Test(inVisVector, gq), buf);
+			}
+			missed++;
+		}
+		UUrStartupMessage("[134-CONE] missing-in-frame quads within 80u: %u", (unsigned) missed);
+	}
+}
+
+// Arm the probe from outside (the cutscene update does this on a cadence).
+void AKrEnvironment_ArmViewConeProbe(UUtUns32 inFrames)
+{
+	if (AKgCutsceneDiag < 0) {
+		const char *env = getenv("ONI_CUTSCENE_DIAG");
+		AKgCutsceneDiag = (env != NULL && env[0] == '1') ? 1 : 0;
+	}
+	if (AKgCutsceneDiag) { AKgCutsceneDiagFramesLeft = inFrames; AKgDiagRayTraceLeft = inFrames; }
 }
 
 extern void OBJrTrigger_Dirty(void); // OT_Trigger.c
@@ -1534,6 +1652,14 @@ AKrEnvironment_StartFrame(
 			AKgNumEqualFrames = 0;
 		}
 
+		if (cast_rays && (AKgRayGridDivs > 0)) {
+			// #134: keep the ray grid density matched to the current aspect
+			float aspect = AKiRayGrid_CurrentAspect();
+			if ((aspect > AKgRayGridAspect + 0.01f) || (aspect < AKgRayGridAspect - 0.01f)) {
+				AKrRayCastCoefficients_Initialize(AKgRayGridDivs);
+			}
+		}
+
 		if (cast_rays) {
 			static UUtUns32 slow_aging = 0;
 			UUtBool sky_is_visible;
@@ -1569,6 +1695,7 @@ AKrEnvironment_StartFrame(
 			if (sky_is_visible) {
 				environmentPrivate->sky_visibility = AKcNumTemperalFrames;
 			}
+			if (AKgDiagRayTraceLeft > 0) AKgDiagRayTraceLeft--;
 
 			oldCameraLocation = newCameraLocation;
 			oldCameraViewVector = newCameraViewVector;
@@ -1827,7 +1954,7 @@ forceDraw:
 
 	if (AKgCutsceneDiagFramesLeft > 0) {
 		AKgCutsceneDiagFramesLeft--;
-		AKiEnvironment_ViewConeProbe(inEnvironment, visibleArray, numVisible);
+		AKiEnvironment_ViewConeProbe(inEnvironment, visibleArray, numVisible, environmentPrivate->gqBackFaceBV, environmentPrivate->gq2VisibilityVector);
 	}
 
 	environmentPrivate->visGQ_Num = numVisible;

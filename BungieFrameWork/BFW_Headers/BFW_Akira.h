@@ -666,6 +666,7 @@ AKrEnvironment_SetContextDimensions(
 
 void AKrEnvironment_FastMode(UUtBool inFast);
 void AKrEnvironment_GunkChanged(void);
+void AKrEnvironment_ArmViewConeProbe(UUtUns32 inFrames);	// #134 diagnostics
 
 UUtError
 AKrEnvironment_StartFrame(
