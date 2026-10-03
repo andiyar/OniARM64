@@ -20,24 +20,12 @@ GitHub release notes and gets stamped with the version + date.
   sprint, the same as the keyboard double-tap. (#73)
 
 ### Cutscenes
-- Ultrawide screens (21:9): Konoko no longer vanishes from close cutscene
-  shots such as the chapter 8 opening, the elevator ride, and the chapter 2
-  meeting with the agents. The engine's quick "is this character anywhere
-  near the view" check was using the cutscene's cropped field of view, so on
-  a wide screen it threw her out before drawing; it now uses the game's own
-  field of view. (#128, #131)
-- Widescreen cutscenes now show the full height of the authored shot and open
-  the sides to fill the window, the way most games handle widescreen. Before
-  this the picture was cropped top and bottom to fill the width, which cut
-  close shots tight on 16:9 and tighter still on an ultrawide. (#134)
-- Chapter 2 opening shot on widescreen: the building wall that used to swing
-  into frame beside the camera on wide screens is now kept out of that one
-  shot, so the courtyard and the officers walking in are framed as at 4:3,
-  with more to the sides. (#134, #36, #3)
-- Widescreen cutscenes no longer black out part of the frame when the camera
-  is placed right up against a wall, as in the chapter 12 lobby shot. A wall
-  too close to be drawn used to block the engine's view of everything behind
-  it. (#134)
+- Extensive bug fixes for ultrawide and widescreen support. Cutscenes now
+  show the full height of the authored shot and open the sides to fill the
+  window instead of cropping top and bottom, Konoko no longer vanishes from
+  close shots on 21:9 screens, and the chapter 2 and chapter 12 opening
+  shots no longer show a stray wall or a black patch at the edge of a wide
+  frame. (#128, #131, #134)
 
 ## 1.3.0 — 2026-09-27
 
