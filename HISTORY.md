@@ -6,6 +6,10 @@ This file is updated per behaviour-changing commit (the workflow contract in `..
 
 ---
 
+### 2026-10-28 — Session 86: #137 test build for REDFLVG's single-byte text patch
+
+- **test build 1.3.1-text-test1 to REDFLVG** (addresses #137): REDFLVG's commit 82e9a99 (Roman fonts decode text one byte per glyph, so Russian and European retail menus stop coming out blank) cherry-picked unchanged onto 1.3.1 on the local branch `test/137-single-byte-text`, movies stripped, notarised and stapled, 4.4 MB, on the `test-builds` branch. On Ben's English retail data the log shows `[text] font language=Roman, encoding=single-byte` and Ben confirmed the English menu buttons look normal. Russian behaviour is REDFLVG's to confirm; we have no localised data. First notarise attempt failed with "No Keychain password item found" until Ben signed a pending Apple agreement. First bundle came out at 17 MB because the worktree had no `extern/ffmpeg` and fell back to Homebrew's full ffmpeg; rebuilt against the minimal one.
+
 ### 2026-10-03 — Session 85: #134, full-height widescreen cutscenes (hor+) and the chapter 2 wall
 
 - **release: 1.3.1** ([Info.plist](macos/Info.plist)): cut on simX's test6 confirmation, Ben's call. `build-release` ran `oni_app_release` end to end for the first time since the installer joined the pipeline: app, Oni Texture Installer and DMG each signed, notarised and stapled (six Accepted verdicts), DMG 94 MB, Gatekeeper accepts the app off the mounted image. Published as `v1.3.1` on GitHub Releases, not a pre-release, so the update notifier offers it to 1.3.0 users. Release body is Ben's own text. The CHANGELOG 1.3.1 section carries the ultrawide line only; the two session 81 controller lines were dropped from it since controllers are "upcoming" in the notes and will get their own line when that work ships.
