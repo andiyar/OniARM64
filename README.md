@@ -19,7 +19,7 @@ One of my favourite games from university, *Oni* is the action-brawler from Bung
 
 Fast forward until recently after I discovered the magic of Claude Code, and that there was, floating around on GitHub, forks of the Oni source code for windows from 2021. Two months later, lots of fiddling - I'm definitely not a programmer! - and this is OniARM64, my attempt to create a vanilla Oni experience running on Apple Silicon. No Rosetta, 64 bit, no WINE required. No particular roadmap, things added as they are thought of and done / bugs are encountered as I have life time on weekends when I play with it.
 
-Currently it's playable (I've run through the first 4 levels... too many times... so after that, unclear!) and I figure, maybe share! This is a personal project, as I love Oni, have played it too many times, and I want to keep playing it, so if you find bugs/issues please do advise, though time to fix/etc will be as life allows.
+Currently it's playable, and I figure, maybe share! This is a personal project, as I love Oni, have played it too many times, and I want to keep playing it, so if you find bugs/issues please do advise, though time to fix/etc will be as life allows.
 
 ---
 
